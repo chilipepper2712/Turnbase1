@@ -38,7 +38,7 @@ function generateOnce(seed, w, h) {
       const m = noise(nM, x, y, 2.5);
       let t = 'plain';
       if (hh > 0.66) t = m > 0.7 ? 'mountain' : 'hill';
-      else if (f > 0.6) t = 'forest';
+      else if (f > 0.68) t = 'forest';
       set(x, y, t);
     }
   }
@@ -120,7 +120,7 @@ function generateOnce(seed, w, h) {
       const t = at(x, y);
       if (t === 'river' || t === 'mountain' || t === 'stronghold' || t === 'bridge') continue;
       const d = Math.abs(x - sx) + Math.abs(y - sy);
-      if (d <= 4) cands.push({ x, y, d });
+      if (d >= 2 && d <= 5) cands.push({ x, y, d });
     }
   }
   cands.sort((a, b) => a.d - b.d || b.y - a.y || a.x - b.x);

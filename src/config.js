@@ -69,10 +69,10 @@ export const STATS = {
     cavalry:  { atk: 7,   def: 10, move: 7, range: [1, 1] },
   },
   orc: {
-    militia:  { atk: 5,   def: 5,  move: 4, range: [1, 1] },
-    infantry: { atk: 7.5, def: 22, move: 4, range: [1, 1] },
-    archer:   { atk: 6,   def: 8,  move: 4, range: [2, 3] },
-    cavalry:  { atk: 8.5, def: 12, move: 7, range: [1, 1] },
+    militia:  { atk: 4.4, def: 3,  move: 4, range: [1, 1] },
+    infantry: { atk: 6.8, def: 20, move: 4, range: [1, 1] },
+    archer:   { atk: 5.4, def: 6,  move: 4, range: [2, 3] },
+    cavalry:  { atk: 7.7, def: 11, move: 7, range: [1, 1] },
   },
 };
 

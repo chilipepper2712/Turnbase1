@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Chiến Địa Doodle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="stage"></div>
+  <div id="hud" hidden>
+    <div id="topbar">
+      <div id="turninfo"></div>
+      <div id="captureinfo"></div>
+      <div class="spacer"></div>
+      <button id="btn-fit" class="icon" aria-label="fit">⤢</button>
+      <button id="btn-menu" class="icon" aria-label="menu">☰</button>
+    </div>
+    <aside id="panel"></aside>
+    <div id="preview" hidden></div>
+    <div id="actions"></div>
+    <button id="endturn" class="primary"></button>
+    <div id="banner" hidden></div>
+    <div id="toast" hidden></div>
+  </div>
+  <div id="modal" hidden></div>
+  <div id="rotate" hidden>↻</div>
+  <div id="loading">…</div>
+  <script src="vendor/pixi.min.js"></script>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

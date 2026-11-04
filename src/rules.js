@@ -277,7 +277,7 @@ function checkElimination(s) {
 export function attackUnit(s, atk, def) {
   const events = [];
   const pv = previewAttack(s, atk, def);
-  events.push({ type: 'attack', attacker: atk.id, defender: def.id, preview: pv });
+  events.push({ type: 'attack', attacker: atk.id, defender: def.id, attackerRole: atk.role, preview: pv });
   damageUnit(s, def, pv.dmg, events);
   atk.morale = Math.min(100, atk.morale + CONFIG.moraleHit);
   const dead = removeIfDead(s, def, events);
@@ -286,7 +286,7 @@ export function attackUnit(s, atk, def) {
   } else {
     checkRout(def, events);
     if (pv.counter > 0) {
-      events.push({ type: 'counter', attacker: def.id, defender: atk.id });
+      events.push({ type: 'counter', attacker: def.id, defender: atk.id, attackerRole: def.role });
       damageUnit(s, atk, pv.counter, events);
       removeIfDead(s, atk, events);
     }

@@ -1,0 +1,536 @@
+// Điều khiển ván chơi: thao tác người chơi, vòng lặp AI, panel/preview/menu.
+import { CONFIG, FACTIONS, TERRAIN } from './config.js';
+import { generateMap } from './mapgen.js';
+import {
+  createState, reachable, targetsFrom, previewAttack, moveUnit, attackUnit, waitUnit, mergeUnits,
+  splitUnit, splitTiles, canSplit, endTurn, unitAt, key, pathTo, defensePct, statsOf, terrainId,
+  alliesOf, rangeAt, inEnemyZoc,
+} from './rules.js';
+import { planNextAction } from './ai.js';
+import { executeAction } from './actions.js';
+import { t, setLang, getLang, LANGS, langName } from './i18n.js';
+
+const SPEEDS = { normal: 1, fast: 2.4, instant: 14 };
+const $ = (id) => document.getElementById(id);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+export class Game {
+  constructor(view, settings, save) {
+    this.view = view;
+    this.settings = settings;
+    this.save = save;
+    this.busy = false;
+    this.sel = null;
+    this.pending = null;
+    this.hoverUnit = null;
+    this.hoverTile = null;
+    this.confirmEnd = false;
+    this.players = { human: { type: 'player' }, orc: { type: 'ai' } }; // sau này: hotseat/AI cả hai phe
+    view.hooks = {
+      onTap: (tile) => this.onTap(tile),
+      onHover: (tile) => this.onHover(tile),
+      onCancel: () => this.cancel(),
+    };
+    this.bindChrome();
+  }
+
+  get state() { return this.view.state; }
+  get speed() { return SPEEDS[this.settings.speed] || 1; }
+
+  // ---------- Vòng đời ----------
+  newGame(seed) {
+    this.seed = seed >>> 0;
+    const map = generateMap(this.seed);
+    this.map = map;
+    this.busy = false;
+    this.sel = null; this.pending = null; this.origin = null;
+    this.view.speed = this.speed;
+    const st = createState(map);
+    this.view.reset(st);
+    this.refreshAll();
+    this.beginTurn();
+  }
+
+  async beginTurn() {
+    const f = this.state.current;
+    this.banner(t(f === 'human' ? 'ui.yourTurn' : 'ui.enemyTurn'), f);
+    this.refreshAll();
+    if (this.players[f].type === 'ai') await this.runAI(f);
+  }
+
+  banner(text, cls = '') {
+    const b = $('banner');
+    b.hidden = true; void b.offsetWidth;
+    b.className = cls; b.textContent = text; b.hidden = false;
+    clearTimeout(this._bt);
+    this._bt = setTimeout(() => { b.hidden = true; }, 1300 / Math.min(this.speed, 3));
+  }
+
+  toast(text) {
+    const el = $('toast');
+    el.textContent = text; el.hidden = false;
+    clearTimeout(this._tt);
+    this._tt = setTimeout(() => { el.hidden = true; }, 1800);
+  }
+
+  // ---------- AI ----------
+  async runAI(f) {
+    this.busy = true;
+    this.refreshAll();
+    const level = f === 'orc' ? this.settings.difficulty : this.settings.difficulty;
+    const s = this.state;
+    await wait(550 / this.speed);
+    let guard = 0, a;
+    while (!s.winner && (a = planNextAction(s, level)) && guard++ < 80) {
+      const u = s.units.find((x) => x.id === a.unit.id);
+      if (!u) break;
+      await this.view.ensureVisible(u.x, u.y);
+      const ev = executeAction(s, a);
+      await this.view.playEvents(ev);
+      await wait(140 / this.speed);
+    }
+    if (!s.winner) await this.view.playEvents(endTurn(s));
+    this.busy = false;
+    this.afterTurnChange();
+  }
+
+  afterTurnChange() {
+    if (this.state.winner) return this.gameOver();
+    this.beginTurn();
+  }
+
+  // ---------- Kết thúc lượt ----------
+  idleUnits() {
+    const s = this.state;
+    return alliesOf(s, s.current).filter((u) => !u.acted && u.status === 'ok');
+  }
+
+  async onEndTurn() {
+    const s = this.state;
+    if (this.busy || s.winner || this.players[s.current].type !== 'player') return;
+    const idle = this.idleUnits().length;
+    if (idle > 0 && !this.confirmEnd) {
+      this.confirmEnd = true;
+      this.renderEndTurn();
+      clearTimeout(this._ce);
+      this._ce = setTimeout(() => { this.confirmEnd = false; this.renderEndTurn(); }, 3500);
+      return;
+    }
+    this.confirmEnd = false;
+    this.deselect();
+    this.busy = true;
+    this.refreshAll();
+    await this.view.playEvents(endTurn(s));
+    this.busy = false;
+    this.afterTurnChange();
+  }
+
+  // ---------- Chọn / hành động ----------
+  deselect() {
+    this.sel = null; this.pending = null; this.attackOpts = null; this.reach = null; this.origin = null;
+    this.mode = 'idle';
+    this.refreshOverlay();
+    this.refreshActions();
+    this.hidePreview();
+    this.refreshPanel();
+  }
+
+  cancel() {
+    if (this.busy) return;
+    if (this.pending) { this.pending = null; this.hidePreview(); this.refreshOverlay(); return; }
+    if (this.splitting) { this.splitting = false; this.select(this.sel); return; }
+    this.deselect();
+  }
+
+  select(u) {
+    const s = this.state;
+    this.sel = u; this.pending = null; this.splitting = false;
+    const own = u.faction === s.current && !u.acted && u.status === 'ok';
+    if (!own) {
+      this.reach = { tiles: new Map(), merges: new Map() };
+      this.attackOpts = new Map();
+      this.mode = 'view';
+    } else {
+      this.reach = u.moved ? { tiles: new Map([[key(u.x, u.y), { x: u.x, y: u.y, cost: 0 }]]), merges: new Map() } : reachable(s, u);
+      this.attackOpts = this.computeAttackOpts(u);
+      this.mode = u.moved ? 'moved' : 'selected';
+    }
+    this.refreshOverlay();
+    this.refreshActions();
+    this.hidePreview();
+    this.refreshPanel();
+  }
+
+  computeAttackOpts(u) {
+    const s = this.state;
+    const opts = new Map();
+    const dmgOf = (node, tgt) => previewAttack(s, u, tgt, node.x, node.y, node.cost);
+    for (const node of this.reach.tiles.values()) {
+      for (const tg of targetsFrom(s, u, node.x, node.y)) {
+        const cur = opts.get(tg.id);
+        const here = node.x === u.x && node.y === u.y;
+        const defHere = defensePct(s, u, node.x, node.y);
+        const better = !cur
+          || (here && !(cur.node.x === u.x && cur.node.y === u.y))
+          || (!(cur.node.x === u.x && cur.node.y === u.y) && (defHere > cur.def || (defHere === cur.def && node.cost < cur.node.cost)));
+        if (better) opts.set(tg.id, { node, target: tg, def: defHere });
+      }
+    }
+    for (const o of opts.values()) o.pv = dmgOf(o.node, o.target);
+    return opts;
+  }
+
+  refreshOverlay() {
+    const s = this.state, u = this.sel, o = {};
+    if (u) {
+      o.selected = { x: u.x, y: u.y };
+      if (this.splitting) {
+        o.split = splitTiles(s, u);
+      } else if (this.mode === 'selected') {
+        o.move = [...this.reach.tiles.values()].filter((n) => !(n.x === u.x && n.y === u.y));
+        o.merge = [...this.reach.merges.keys()].map((id) => s.units.find((x) => x.id === id)).filter(Boolean).map((x) => ({ x: x.x, y: x.y }));
+      }
+      if (this.attackOpts && !this.splitting) o.attack = [...this.attackOpts.values()].map((a) => ({ x: a.target.x, y: a.target.y }));
+      if (this.pending) {
+        const n = this.pending.node;
+        if (n.x !== u.x || n.y !== u.y) { o.dest = { x: n.x, y: n.y }; o.path = pathTo(this.reach.tiles.get(key(n.x, n.y))); }
+      }
+    }
+    if (this.hoverTile) o.hover = this.hoverTile;
+    this.view.setOverlay(o);
+  }
+
+  // ---------- Tap / hover ----------
+  onHover(tile) {
+    if (this.busy) return;
+    const same = tile && this.hoverTile && tile.x === this.hoverTile.x && tile.y === this.hoverTile.y;
+    if (same || (!tile && !this.hoverTile)) return;
+    this.hoverTile = tile;
+    this.hoverUnit = tile ? unitAt(this.state, tile.x, tile.y) : null;
+    this.refreshOverlay();
+    if (!this.pending) {
+      this.refreshPanel();
+      const opt = this.hoverUnit && this.attackOpts?.get(this.hoverUnit.id);
+      if (opt && !this.splitting) this.showPreview(opt, false); else this.hidePreview();
+    }
+  }
+
+  async onTap(tile) {
+    const s = this.state;
+    if (this.busy || s.winner || this.players[s.current].type !== 'player') return;
+    if (!tile) return this.cancel();
+    const u = unitAt(s, tile.x, tile.y);
+    const sel = this.sel;
+
+    if (this.splitting) {
+      const ok = splitTiles(s, sel).some((p) => p.x === tile.x && p.y === tile.y);
+      if (ok) return this.doSplit(tile);
+      return this.cancel();
+    }
+
+    if (this.pending) {
+      if (u && u.id === this.pending.target.id) return this.confirmAttack();
+      this.pending = null; this.hidePreview();
+    }
+
+    if (u && sel && u.id !== sel.id && u.faction !== s.current && this.attackOpts?.has(u.id)) {
+      return this.proposeAttack(u);
+    }
+    if (u && sel && u.id !== sel.id && u.faction === s.current && this.mode === 'selected' && this.reach.merges.has(u.id)) {
+      return this.doMerge(u);
+    }
+    if (u) {
+      if (sel && u.id === sel.id) return this.deselect();
+      this.select(u);
+      return;
+    }
+    if (sel && this.mode === 'selected' && this.reach.tiles.has(key(tile.x, tile.y))) {
+      return this.doMove(tile);
+    }
+    this.deselect();
+  }
+
+  proposeAttack(enemy) {
+    const opt = this.attackOpts.get(enemy.id);
+    if (!opt) return;
+    this.pending = opt;
+    this.refreshOverlay();
+    this.showPreview(opt, true);
+  }
+
+  async confirmAttack() {
+    const s = this.state, u = this.sel, p = this.pending;
+    if (!u || !p) return;
+    this.busy = true;
+    this.hidePreview();
+    this.view.setOverlay({});
+    if (p.node.x !== u.x || p.node.y !== u.y) {
+      const ev = moveUnit(s, u, p.node.x, p.node.y);
+      if (ev) await this.view.playEvents(ev);
+    }
+    const tgt = s.units.find((x) => x.id === p.target.id);
+    if (tgt) await this.view.playEvents(attackUnit(s, u, tgt));
+    this.afterAction();
+  }
+
+  async doMove(tile) {
+    const s = this.state, u = this.sel;
+    const origin = { x: u.x, y: u.y };
+    this.busy = true;
+    this.view.setOverlay({});
+    const ev = moveUnit(s, u, tile.x, tile.y);
+    if (ev) await this.view.playEvents(ev);
+    this.busy = false;
+    this.select(u);
+    this.origin = { id: u.id, ...origin };
+    this.refreshActions();
+  }
+
+  async doMerge(tgt) {
+    const s = this.state, u = this.sel;
+    this.busy = true; this.hidePreview(); this.view.setOverlay({});
+    const ev = mergeUnits(s, u, tgt);
+    if (ev) { await this.view.playEvents(ev); this.toast(t('ui.toast.merged')); } else this.toast(t('ui.toast.mergeFail'));
+    this.afterAction();
+  }
+
+  startSplit() {
+    const u = this.sel;
+    if (!u || !canSplit(this.state, u)) return this.toast(t('ui.toast.noSplit'));
+    this.splitting = true;
+    this.pending = null;
+    this.refreshOverlay(); this.refreshActions(); this.hidePreview();
+    this.toast(t('ui.toast.pickSplit'));
+  }
+
+  async doSplit(tile) {
+    const s = this.state, u = this.sel;
+    this.busy = true; this.view.setOverlay({});
+    const ev = splitUnit(s, u, tile.x, tile.y);
+    this.splitting = false;
+    if (ev) { await this.view.playEvents(ev); this.toast(t('ui.toast.splitDone')); }
+    this.afterAction();
+  }
+
+  async doWait() {
+    const u = this.sel;
+    if (!u || this.busy) return;
+    this.busy = true; this.view.setOverlay({});
+    await this.view.playEvents(waitUnit(this.state, u));
+    this.afterAction();
+  }
+
+  doUndo() {
+    const u = this.sel, o = this.origin;
+    if (!u || !o || o.id !== u.id || u.acted) return;
+    u.x = o.x; u.y = o.y; u.moved = false; u.movedDist = 0;
+    this.view.reconcile();
+    this.select(u);
+  }
+
+  afterAction() {
+    this.busy = false;
+    this.sel = null; this.pending = null; this.attackOpts = null; this.reach = null; this.origin = null; this.splitting = false;
+    this.mode = 'idle';
+    if (this.state.winner) { this.refreshAll(); return this.gameOver(); }
+    this.refreshAll();
+  }
+
+  // ---------- Panel / preview ----------
+  refreshAll() {
+    this.renderTop();
+    this.renderEndTurn();
+    this.refreshOverlay();
+    this.refreshActions();
+    this.refreshPanel();
+  }
+
+  renderTop() {
+    const s = this.state;
+    const f = s.current;
+    $('turninfo').innerHTML = `<span class="chip" style="background:${FACTIONS[f].fill}"></span>${esc(t('ui.turn', { n: s.turn }))} · ${esc(t('faction.' + f))}`;
+    const ci = $('captureinfo');
+    ci.classList.remove('danger');
+    if (s.capture.human > 0) ci.textContent = t('ui.capture.progress', { n: s.capture.human, total: CONFIG.captureTurns });
+    else if (s.capture.orc > 0) { ci.textContent = t('ui.capture.danger', { n: s.capture.orc, total: CONFIG.captureTurns }); ci.classList.add('danger'); }
+    else ci.textContent = '';
+  }
+
+  renderEndTurn() {
+    const b = $('endturn'), s = this.state;
+    const mine = this.players[s.current].type === 'player' && !s.winner;
+    b.disabled = !mine || this.busy;
+    const idle = mine ? this.idleUnits().length : 0;
+    b.classList.toggle('confirm', this.confirmEnd);
+    b.classList.toggle('pulse', mine && !this.busy && idle === 0 && !this.sel);
+    b.textContent = this.confirmEnd && idle ? t('ui.endTurnIdle', { n: idle }) : t('ui.endTurn');
+  }
+
+  refreshActions() {
+    const el = $('actions');
+    const u = this.sel, s = this.state;
+    if (!u || this.mode === 'view' || this.busy) { el.innerHTML = ''; return; }
+    const btn = (act, label, cls = '') => `<button data-act="${act}" class="${cls}">${esc(label)}</button>`;
+    let h = '';
+    if (this.splitting) h = btn('cancel', t('ui.cancel'));
+    else {
+      h += btn('wait', t('ui.wait'), this.mode === 'moved' ? 'primary' : '');
+      if (canSplit(s, u)) h += btn('split', t('ui.split'));
+      if (this.mode === 'moved' && this.origin && this.origin.id === u.id) h += btn('undo', t('ui.undo'));
+      h += btn('cancel', t('ui.cancel'));
+    }
+    el.innerHTML = h;
+  }
+
+  refreshPanel(forceUnit) {
+    const s = this.state, el = $('panel');
+    const u = forceUnit || (this.hoverUnit && !this.sel ? this.hoverUnit : this.sel || this.hoverUnit);
+    if (u) {
+      const live = s.units.find((x) => x.id === u.id);
+      if (live) return (el.innerHTML = this.unitCard(live));
+    }
+    const tl = this.hoverTile;
+    if (tl) {
+      const id = terrainId(s, tl.x, tl.y);
+      const noteKey = 'terrain.note.' + id;
+      const note = t(noteKey);
+      return (el.innerHTML = `<h3>${esc(t('terrain.' + id))}</h3><div class="desc">${note === noteKey ? '' : esc(note)}</div>`);
+    }
+    el.innerHTML = `<div class="hint">${esc(t(this.sel ? 'ui.hint.selected' : 'ui.hint.empty'))}</div>`;
+  }
+
+  unitCard(u) {
+    const s = this.state, st = statsOf(u), f = FACTIONS[u.faction];
+    const tid = terrainId(s, u.x, u.y);
+    const def = Math.round(defensePct(s, u, u.x, u.y));
+    const [mn, mx] = rangeAt(s, u, u.x, u.y);
+    let status = t('ui.status.ready');
+    if (u.status === 'routed') status = t('ui.status.routed');
+    else if (u.faction === s.current && u.acted) status = t('ui.status.done');
+    else if (u.faction === s.current && u.moved) status = t('ui.status.moved');
+    const pips = Array.from({ length: CONFIG.maxStrength }, (_, i) => `<b class="${i < u.strength ? 'on ' + u.faction : ''}"></b>`).join('');
+    const mor = Math.round(u.morale);
+    const morCol = mor <= f.routAt ? '#d8402f' : mor <= f.routAt + 25 ? '#e6a800' : '#4aa86a';
+    return `<h3>${esc(t(`unit.${u.faction}.${u.role}`))}</h3>
+      <div class="sub">${esc(t('faction.' + u.faction))} · <span class="tag">${esc(status)}</span></div>
+      <div class="row"><span>${esc(t('ui.strength'))}</span><b>${u.strength}/${CONFIG.maxStrength}</b></div><div class="pips">${pips}</div>
+      <div class="row"><span>${esc(t('ui.morale'))}</span><b>${mor}</b></div><div class="bar"><i style="width:${mor}%;background:${morCol}"></i></div>
+      <div class="row"><span>${esc(t('ui.defense'))}</span><b>${def}%</b></div>
+      <div class="row extra"><span>${esc(t('ui.move'))}</span><b>${st.move}</b></div>
+      <div class="row extra"><span>${esc(t('ui.range'))}</span><b>${mn === mx ? mx : mn + '–' + mx}</b></div>
+      <div class="row extra"><span>${esc(t('ui.terrain'))}</span><b>${esc(t('terrain.' + tid))}</b></div>
+      <div class="desc">${esc(t('unit.desc.' + u.role))}</div>`;
+  }
+
+  showPreview(opt, withButtons) {
+    const s = this.state, atk = this.sel, tgt = opt.target, pv = opt.pv;
+    const el = $('preview');
+    const d = pv.detail;
+    const lines = [];
+    lines.push(`<span class="good">${esc(t('ui.preview.deal', { n: pv.dmg }))}</span> (${tgt.strength} → ${pv.defLeft})`);
+    if (pv.kills) lines.push(`<span class="good">${esc(t('ui.preview.kill'))}</span>`);
+    else if (pv.counter > 0) lines.push(`<span class="bad">${esc(t('ui.preview.take', { n: pv.counter }))}</span> (${atk.strength} → ${pv.atkLeft})`);
+    else lines.push(esc(t('ui.preview.noCounter')));
+    if (pv.counterKills) lines.push(`<span class="bad">${esc(t('ui.preview.dies'))}</span>`);
+    const notes = [];
+    if (d.flank) notes.push(t('ui.preview.flank', { n: Math.round(d.flank * CONFIG.flankBonus * 100) }));
+    if (d.charge > 1) notes.push(t('ui.preview.charge', { n: Math.round((d.charge - 1) * 100) }));
+    notes.push(t('ui.preview.defense', { n: Math.round(d.defPct) }));
+    if (opt.node.x !== atk.x || opt.node.y !== atk.y) notes.push(t('ui.preview.from'));
+    el.innerHTML = `<h4>${esc(t('ui.preview.title', { attacker: t(`unit.${atk.faction}.${atk.role}`), defender: t(`unit.${tgt.faction}.${tgt.role}`) }))}</h4>`
+      + lines.map((l) => `<div>${l}</div>`).join('')
+      + `<div class="note">${notes.map(esc).join(' · ')}</div>`
+      + (withButtons ? `<div class="btns"><button data-act="confirm" class="primary">${esc(t('ui.attack'))}</button><button data-act="cancel">${esc(t('ui.cancel'))}</button></div>` : '');
+    el.hidden = false;
+  }
+
+  hidePreview() { $('preview').hidden = true; }
+
+  // ---------- Chrome (nút, menu, game over) ----------
+  bindChrome() {
+    $('actions').addEventListener('click', (e) => this.onAct(e));
+    $('preview').addEventListener('click', (e) => this.onAct(e));
+    $('endturn').addEventListener('click', () => this.onEndTurn());
+    $('btn-fit').addEventListener('click', () => this.view.fit());
+    $('btn-menu').addEventListener('click', () => this.openMenu());
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') this.cancel();
+      if (e.key === 'Enter' && this.pending) this.confirmAttack();
+    });
+    const rot = () => { $('rotate').hidden = !(window.innerHeight > window.innerWidth * 1.15 && window.innerWidth < 700); $('rotate').textContent = '↻ ' + t('ui.rotate'); };
+    window.addEventListener('resize', rot); rot();
+  }
+
+  onAct(e) {
+    const b = e.target.closest('button[data-act]');
+    if (!b || this.busy) return;
+    const a = b.dataset.act;
+    if (a === 'wait') this.doWait();
+    else if (a === 'split') this.startSplit();
+    else if (a === 'undo') this.doUndo();
+    else if (a === 'cancel') this.cancel();
+    else if (a === 'confirm') this.confirmAttack();
+  }
+
+  openMenu() {
+    const m = $('modal');
+    const opt = (v, label, cur) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${esc(label)}</option>`;
+    m.innerHTML = `<div class="card">
+      <h2>${esc(t('ui.title'))}</h2>
+      <label>${esc(t('ui.difficulty'))}</label>
+      <select id="m-diff">${['easy', 'tactical'].map((d) => opt(d, t('diff.' + d), this.settings.difficulty)).join('')}</select>
+      <label>${esc(t('ui.speed'))}</label>
+      <select id="m-speed">${Object.keys(SPEEDS).map((d) => opt(d, t('ui.speed.' + (d === 'normal' ? 'normal' : d === 'fast' ? 'fast' : 'instant')), this.settings.speed)).join('')}</select>
+      <label>${esc(t('ui.language'))}</label>
+      <select id="m-lang">${LANGS.map((c) => opt(c, langName(c), getLang())).join('')}</select>
+      <label>${esc(t('ui.seed'))}</label>
+      <input id="m-seed" type="number" min="0" value="${this.seed}">
+      <div class="btns">
+        <button data-m="new" class="primary">${esc(t('ui.newMap'))}</button>
+        <button data-m="restart">${esc(t('ui.restart'))}</button>
+        <button data-m="close">${esc(t('ui.close'))}</button>
+      </div></div>`;
+    m.hidden = false;
+    const apply = async () => {
+      this.settings.difficulty = $('m-diff').value;
+      this.settings.speed = $('m-speed').value;
+      const lang = $('m-lang').value;
+      if (lang !== getLang()) await setLang(lang);
+      this.settings.lang = lang;
+      this.view.speed = this.speed;
+      this.save();
+    };
+    m.onclick = async (e) => {
+      const b = e.target.closest('button[data-m]');
+      if (e.target === m) { await apply(); m.hidden = true; this.refreshAll(); return; }
+      if (!b) return;
+      await apply();
+      const act = b.dataset.m;
+      m.hidden = true;
+      if (act === 'new') this.newGame(Math.floor(Math.random() * 1e6));
+      else if (act === 'restart') this.newGame(+$('m-seed').value || this.seed);
+      else this.refreshAll();
+    };
+  }
+
+  gameOver() {
+    const s = this.state, m = $('modal');
+    const won = s.winner === 'human';
+    m.innerHTML = `<div class="card">
+      <h2 class="${won ? 'win' : 'lose'}">${esc(t(won ? 'ui.win.title' : 'ui.lose.title'))}</h2>
+      <p>${esc(t(`ui.${won ? 'win' : 'lose'}.${s.winReason}`))}</p>
+      <p>${esc(t('ui.stats.turns', { n: s.turn }))} · ${esc(t('ui.seed'))}: ${this.seed}</p>
+      <div class="btns">
+        <button data-m="restart" class="primary">${esc(t('ui.restart'))}</button>
+        <button data-m="new">${esc(t('ui.newMap'))}</button>
+      </div></div>`;
+    m.hidden = false;
+    m.onclick = (e) => {
+      const b = e.target.closest('button[data-m]');
+      if (!b) return;
+      m.hidden = true;
+      this.newGame(b.dataset.m === 'new' ? Math.floor(Math.random() * 1e6) : this.seed);
+    };
+  }
+}

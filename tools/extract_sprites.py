@@ -17,11 +17,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "assets", "src")
 
 # (tên, x0, y0, x1, y1) trong ảnh gốc
+# (tên, x0, y0, x1, y1, y_cắt): vạch mặt đất nghiêng nên mỗi hình cắt ở một hàng riêng,
+# ngay dưới gót chân (đo từ histogram hàng ảnh gốc).
 UNITS = [
-    ("militia",  140, 95, 310, 272),
-    ("infantry", 335, 95, 480, 272),
-    ("archer",   500, 95, 650, 272),
-    ("cavalry",  715, 40, 960, 272),
+    ("militia",  140, 95, 310, 272, 271),
+    ("infantry", 335, 95, 480, 272, 271),
+    ("archer",   500, 95, 650, 272, 266),
+    ("cavalry",  715, 40, 960, 272, 266),
 ]
 BUILDINGS = [
     ("stronghold", 100, 36, 215, 152),   # thành lớn
@@ -48,33 +50,12 @@ BUILDINGS = [
 ]
 
 
-def strip_ground(g, minrun=20, rows=22):
-    """Xoá các đoạn nét ngang dài (vạch mặt đất) ở đáy ảnh, giữ chân lính."""
-    h, w = g.shape
-    ink = g < 140
-    for y in range(max(h - rows, 0), h):
-        x = 0
-        while x < w:
-            if ink[y, x]:
-                x2 = x
-                while x2 < w and ink[y, x2]:
-                    x2 += 1
-                if x2 - x >= minrun:
-                    g[y, x:x2] = 255
-                x = x2
-            else:
-                x += 1
-    return g
-
-
 def process(img, box, out_base, erase_below=None):
     x0, y0, x1, y1 = box
     g = np.array(img.convert("L")).astype(float)
     if erase_below is not None:
         g[erase_below:, :] = 255
     g = g[y0:y1, x0:x1]
-    if erase_below is not None:
-        g = strip_ground(g)
     alpha = np.clip((235 - g) / (235 - 90), 0, 1)  # nét đen -> 1
     ink = alpha > 0.45
     # bỏ đốm nhiễu nhỏ
@@ -117,9 +98,9 @@ def main():
     os.makedirs(os.path.join(ROOT, "assets", "units"), exist_ok=True)
     os.makedirs(os.path.join(ROOT, "assets", "buildings"), exist_ok=True)
     us = Image.open(os.path.join(SRC, "units_sheet.jpg"))
-    for name, *box in UNITS:
+    for name, *box, cut in UNITS:
         # xoá vạch mặt đất dưới chân
-        r = process(us, box, os.path.join(ROOT, "assets", "units", name), erase_below=285)
+        r = process(us, box, os.path.join(ROOT, "assets", "units", name), erase_below=cut)
         print("unit", name, r)
     bs = Image.open(os.path.join(SRC, "buildings_sheet.jpg"))
     for name, *box in BUILDINGS:
