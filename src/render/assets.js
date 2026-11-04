@@ -26,12 +26,16 @@ const BUILDING_WIDTH = {
   ruin_a: 70, ruin_b: 66, ruin_c: 66, ruin_d: 70, ruin_e: 58,
 };
 
+// Bản đóng gói một file nhúng sprite dạng data: URI vào window.__ASSET_DATA__.
+// Khi có map này, file không có trong map coi như không tồn tại (không gửi request nào).
 function loadImage(url) {
+  const emb = globalThis.__ASSET_DATA__;
+  if (emb && !emb[url]) return Promise.resolve(null);
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
-    img.src = url;
+    img.src = emb ? emb[url] : url;
   });
 }
 
