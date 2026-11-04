@@ -1,0 +1,11 @@
+{
+  "name": "turnbase1",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Prototype chiến thuật theo lượt, bản đồ doodle isometric",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "serve": "python3 -m http.server 8080"
+  }
+}
