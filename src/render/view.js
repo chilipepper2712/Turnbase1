@@ -184,25 +184,20 @@ export class GameView {
     if (t === 'forest') {
       const n = 2 + rng.int(2);
       for (let i = 0; i < n; i++) {
-        const [px, py] = uv((rng() - 0.5) * 0.7, (rng() - 0.5) * 0.7);
-        const sc = 0.85 + rng() * 0.35;
+        const [px, py] = uv((rng() - 0.5) * 0.5, (rng() - 0.5) * 0.5);
+        const sc = 0.78 + rng() * 0.2;
         this.place(this.mk(A.deco('tree', rng.int(4)), sc), px, py + 8);
       }
     } else if (t === 'hill') {
-      const n = 1 + rng.int(2);
-      for (let i = 0; i < n; i++) {
-        const [px, py] = uv((rng() - 0.5) * 0.45, (rng() - 0.5) * 0.45);
-        this.place(this.mk(A.deco('hill', rng.int(3)), 0.95 + rng() * 0.3), px, py + 12, c.y + 2);
-      }
+      // đúng một nấm đồi nằm gọn giữa ô
+      this.place(this.mk(A.deco('hill', rng.int(3)), 0.72), c.x, c.y + 12, c.y + 2);
     } else if (t === 'peak') {
-      const [px, py] = uv((rng() - 0.5) * 0.15, (rng() - 0.5) * 0.15);
-      this.place(this.mk(A.deco('mountain', rng.int(3)), 1.12), px, py + 18);
+      this.place(this.mk(A.deco('mountain', rng.int(3)), 0.66), c.x, c.y + 16);
     } else if (t === 'mountain') {
-      const [px, py] = uv((rng() - 0.5) * 0.2, (rng() - 0.5) * 0.2);
-      // núi hạ thấp và nằm sau quân đứng cùng ô, để quân vẫn lấp ló khi đi vào
-      this.place(this.mk(A.deco('mountain', rng.int(3)), 0.58), px, py + 12, c.y + 2);
+      // núi thấp: nhỏ, nằm sau quân đứng cùng ô để quân vẫn lấp ló khi đi vào
+      this.place(this.mk(A.deco('mountain', rng.int(3)), 0.46), c.x, c.y + 11, c.y + 2);
     } else if (t === 'mine') {
-      this.place(this.mk(A.deco('mine', 0), 1.0), c.x, c.y + 14, c.y + 2);
+      this.place(this.mk(A.deco('mine', 0), 0.72), c.x, c.y + 12, c.y + 2);
     } else if (t === 'village') {
       const name = ['village_a', 'village_b', 'cottages'][rng.int(3)];
       this.place(this.mk(A.building(name)), c.x, c.y + 14, c.y + 2);
@@ -341,6 +336,9 @@ export class GameView {
     this.requestRender();
   }
 
+  // Quy ước màu (chỉ tô ô, không viền nét đứt):
+  //   vàng = đi được · đỏ = đánh được · tím = gộp quân · xanh dương = chỗ đặt đội tách
+  //   xanh lá (ô nhỏ ở giữa) = tầm bắn, nằm chồng lên ô vàng mà vẫn đọc được cả hai
   drawOverlay() {
     const g = this.hl;
     g.clear();
@@ -349,38 +347,18 @@ export class GameView {
       const c = tileToWorld(x, y);
       return [c.x, c.y - (TH / 2) * k, c.x + (TW / 2) * k, c.y, c.x, c.y + (TH / 2) * k, c.x - (TW / 2) * k, c.y];
     };
-    const dashed = (pts, color, width) => {
-      const n = pts.length / 2;
-      for (let i = 0; i < n; i++) {
-        const ax = pts[i * 2], ay = pts[i * 2 + 1], bx = pts[((i + 1) % n) * 2], by = pts[((i + 1) % n) * 2 + 1];
-        const len = Math.hypot(bx - ax, by - ay), segs = Math.round(len / 9);
-        for (let k = 0; k < segs; k++) {
-          const t0 = k / segs, t1 = (k + 0.58) / segs;
-          g.moveTo(ax + (bx - ax) * t0, ay + (by - ay) * t0).lineTo(ax + (bx - ax) * t1, ay + (by - ay) * t1);
-        }
-      }
-      g.stroke({ width, color, cap: 'round' });
+    const paint = (list, color, alpha, k = 0.97) => {
+      for (const p of list || []) g.poly(dia(p.x, p.y, k)).fill({ color, alpha });
     };
-    const paint = (list, fill, alpha, stroke, dash = true) => {
-      for (const p of list || []) {
-        g.poly(dia(p.x, p.y, 0.96)).fill({ color: fill, alpha });
-      }
-      for (const p of list || []) {
-        if (dash) dashed(dia(p.x, p.y, 0.92), stroke, 2.2);
-        else g.poly(dia(p.x, p.y, 0.94), true).stroke({ width: 2.4, color: stroke });
-      }
-    };
-    paint(o.move, 0xf2c200, 0.2, 0xd9a800);
-    paint(o.split, 0x3a78d8, 0.25, 0x2a5aa8);
-    paint(o.merge, 0x8a5cd6, 0.26, 0x6b3fb8);
-    paint(o.attack, 0xd8402f, 0.28, 0xb02a1c, false);
-    paint(o.threat, 0xd8402f, 0.12, 0xd8402f);
-    paint(o.range, 0x2fb36a, 0.22, 0x1f8f50);
-    if (o.dest) paint([o.dest], 0xf2c200, 0.4, 0x1b1b1b, false);
-    if (o.selected) {
-      g.poly(dia(o.selected.x, o.selected.y, 1), true).stroke({ width: 3.2, color: 0xf2c200 });
-    }
-    if (o.hover) dashed(dia(o.hover.x, o.hover.y, 0.8), 0x1b1b1b, 1.6);
+    paint(o.threat, 0xd8402f, 0.16);
+    paint(o.move, 0xf2c200, 0.38);
+    paint(o.split, 0x3a78d8, 0.38);
+    paint(o.merge, 0x8a5cd6, 0.4);
+    paint(o.attack, 0xd8402f, 0.42);
+    paint(o.range, 0x2fb36a, 0.7, 0.5);
+    if (o.dest) paint([o.dest], 0xf2c200, 0.6);
+    if (o.selected) g.poly(dia(o.selected.x, o.selected.y, 1), true).stroke({ width: 3, color: 0xf2c200 });
+    if (o.hover) g.poly(dia(o.hover.x, o.hover.y, 0.9), true).stroke({ width: 1.6, color: 0x1b1b1b, alpha: 0.55 });
     if (o.path && o.path.length > 1) {
       const pts = o.path.map((p) => tileToWorld(p.x, p.y));
       g.moveTo(pts[0].x, pts[0].y);
@@ -472,6 +450,16 @@ export class GameView {
     return { x: t.x, y: t.y };
   }
 
+  // Điểm chạm -> ô. Thứ tự ưu tiên:
+  //  1. ô dưới điểm chạm nếu nó đang là ô hành động được (đi / đánh / gộp / tách): quân đứng phía trước che ô đó vẫn không cản
+  //  2. quân có thân nằm dưới điểm chạm (sprite cao hơn ô)
+  //  3. ô dưới điểm chạm
+  pickAt(sx, sy) {
+    const tile = this.screenToTile(sx, sy);
+    if (tile && this.hooks.isActionable?.(tile)) return tile;
+    return this.pickUnit(sx, sy) || tile;
+  }
+
   screenToTile(sx, sy) {
     const wx = (sx - this.world.position.x) / this.zoom, wy = (sy - this.world.position.y) / this.zoom;
     const t = worldToTile(wx, wy - 0);
@@ -496,7 +484,7 @@ export class GameView {
         clearLp();
         if (e.pointerType !== 'mouse') {
           lpTimer = setTimeout(() => {
-            if (drag && !moved) { moved = true; this.hooks.onLongPress?.(this.pickUnit(drag.x, drag.y) || this.screenToTile(drag.x, drag.y)); }
+            if (drag && !moved) { moved = true; this.hooks.onLongPress?.(this.pickAt(drag.x, drag.y)); }
           }, 450);
         }
       }
@@ -520,7 +508,7 @@ export class GameView {
         if (!moved && Math.hypot(dx, dy) > 8) { moved = true; clearLp(); }
         if (moved) this.setCamera(this.zoom, drag.cam.x - dx / this.zoom, drag.cam.y - dy / this.zoom);
       } else if (e.pointerType === 'mouse' && !ptrs.size) {
-        this.hooks.onHover?.(this.pickUnit(p.x, p.y) || this.screenToTile(p.x, p.y));
+        this.hooks.onHover?.(this.pickAt(p.x, p.y));
       }
     });
     const up = (e) => {
@@ -529,7 +517,7 @@ export class GameView {
       ptrs.delete(e.pointerId);
       if (ptrs.size < 2) pinch = null;
       if (drag && e.pointerId === drag.id) {
-        if (had && !moved && e.type === 'pointerup' && drag.btn === 0) this.hooks.onTap?.(this.pickUnit(drag.x, drag.y) || this.screenToTile(drag.x, drag.y));
+        if (had && !moved && e.type === 'pointerup' && drag.btn === 0) this.hooks.onTap?.(this.pickAt(drag.x, drag.y));
         drag = null;
       }
     };

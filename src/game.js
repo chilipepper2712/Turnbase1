@@ -31,6 +31,7 @@ export class Game {
       onTap: (tile) => this.onTap(tile),
       onHover: (tile) => this.onHover(tile),
       onCancel: () => this.cancel(),
+      isActionable: (tile) => this.isActionable(tile),
       onLongPress: (tile) => this.inspect(tile),
     };
     this.bindChrome();
@@ -266,6 +267,19 @@ export class Game {
       return this.doMove(tile);
     }
     this.inspect(tile);
+  }
+
+  // Ô đang có hành động hợp lệ cho đơn vị được chọn (đi, đánh, gộp, tách)
+  isActionable(tile) {
+    const s = this.state, u = this.sel;
+    if (!u || this.busy || s.winner || this.mode === 'view') return false;
+    if (this.splitting) return splitTiles(s, u).some((p) => p.x === tile.x && p.y === tile.y);
+    const at = unitAt(s, tile.x, tile.y);
+    if (at) {
+      if (this.attackOpts?.has(at.id)) return true;
+      return this.mode === 'selected' && this.reach.merges.has(at.id);
+    }
+    return this.mode === 'selected' && this.reach.tiles.has(key(tile.x, tile.y)) && !(tile.x === u.x && tile.y === u.y);
   }
 
   // Xem thông tin một ô (chạm vào ô trống, hoặc giữ ngón tay lên bất kỳ ô nào). Không đổi đơn vị đang chọn.

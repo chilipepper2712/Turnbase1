@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateMap, assess } from '../src/mapgen.js';
+import { generateMap, assess, bridgeEndsClear } from '../src/mapgen.js';
 import {
   createState, addUnit, reachable, key, attackUnit, endTurn, fortifyUnit, canFortify, defensePct, calcDamage,
   moveUnit, levelOf, terrainFacts, moveCost, fortifyBonus, mergeUnits, splitUnit, waitUnit,
@@ -117,4 +117,23 @@ test('mapgen: có ràng buộc thành phần địa hình, không nhốt thành,
     assert.ok(a.comp.forest >= MAPGEN.forestMin && a.comp.forest <= MAPGEN.forestMax, 'rừng lệch');
     assert.ok(a.side.human.open >= MAPGEN.minOpenNearHold && a.side.orc.open >= MAPGEN.minOpenNearHold, 'thành bị nhốt');
   }
+});
+
+test('mapgen: đầu cầu thông thoáng (không đầm lầy / đồi / núi / hầm mỏ kề cầu)', () => {
+  const blockers = new Set(['swamp', 'hill', 'mountain', 'peak', 'mine']);
+  let bridges = 0;
+  for (let seed = 1; seed <= 150; seed++) {
+    const m = generateMap(seed);
+    assert.ok(bridgeEndsClear(m), 'seed ' + seed);
+    for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
+      if (m.tiles[y * m.w + x] !== 'bridge') continue;
+      bridges++;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= m.w || ny >= m.h) continue;
+        assert.ok(!blockers.has(m.tiles[ny * m.w + nx]), `seed ${seed}: ${m.tiles[ny * m.w + nx]} kề cầu (${x},${y})`);
+      }
+    }
+  }
+  assert.ok(bridges > 100, 'phải thực sự có cầu để kiểm: ' + bridges);
 });

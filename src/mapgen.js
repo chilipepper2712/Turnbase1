@@ -56,6 +56,19 @@ export function connected(map, cavalry) {
 
 const COVER = new Set(['forest', 'hill', 'mountain']);
 const ROUGH = new Set(['hill', 'mountain', 'peak']);
+const BRIDGE_BLOCKERS = new Set(['swamp', 'hill', 'mountain', 'peak', 'mine']);
+
+export function bridgeEndsClear(map) {
+  const { w, h, tiles } = map;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (tiles[y * w + x] !== 'bridge') continue;
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx, ny = y + dy;
+      if (nx >= 0 && ny >= 0 && nx < w && ny < h && BRIDGE_BLOCKERS.has(tiles[ny * w + nx])) return false;
+    }
+  }
+  return true;
+}
 
 // Đánh giá độ cân bằng của map (không phụ thuộc đối xứng)
 export function assess(map) {
@@ -100,6 +113,7 @@ export function assess(map) {
   if (comp.forest < MAPGEN.forestMin || comp.forest > MAPGEN.forestMax) reasons.push('tỉ lệ rừng lệch');
   if (diffForest > MAPGEN.sideDiff) reasons.push('rừng dồn một phía');
   if (diffRough > MAPGEN.sideDiff) reasons.push('đồi núi dồn một phía');
+  if (!bridgeEndsClear(map)) reasons.push('đầu cầu bị chắn');
   if (side.human.open < MAPGEN.minOpenNearHold || side.orc.open < MAPGEN.minOpenNearHold) reasons.push('thành bị nhốt');
   return { ok: reasons.length === 0, reasons, share, side, comp };
 }
@@ -209,6 +223,15 @@ export function generateOnce(seed, w, h) {
   for (let i = 0; i < 2 && spots.length; i++) {
     const p = spots.splice(rng.int(spots.length), 1)[0];
     set(p.x, p.y, 'mine');
+  }
+
+  // đầu cầu phải thông thoáng: đầm lầy / đồi / núi / hầm mỏ không được nằm ngay cạnh cầu
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (at(x, y) !== 'bridge') continue;
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx, ny = y + dy;
+      if (inb(nx, ny) && BRIDGE_BLOCKERS.has(at(nx, ny))) set(nx, ny, 'plain');
+    }
   }
 
   const map = { w, h, tiles, seed, strongholds: { orc, human }, spawns: { orc: [], human: [] } };

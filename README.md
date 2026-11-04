@@ -87,10 +87,16 @@ Cân bằng hiện chỉ được kiểm bằng AI đấu AI; cần chơi thử 
 
 Map **không đối xứng**: sông uốn lượn, thành đặt ngẫu nhiên trong dải của mỗi phe. Sau khi sinh, `assess()` loại map vi phạm bất kỳ điều nào:
 đường bộ không thông (cả kỵ binh) · vùng ảnh hưởng lệch ngoài 42–58% · thiếu làng / chỗ ẩn nấp · quá nhiều núi cao hoặc đồi núi · rừng quá ít / quá nhiều ·
-rừng hoặc đồi núi dồn về một phía · thành bị nhốt (ít ô đi được quanh thành). Các ngưỡng nằm ở `MAPGEN` trong `src/config.js`.
+rừng hoặc đồi núi dồn về một phía · đầm lầy / đồi / núi / hầm mỏ kề đầu cầu · thành bị nhốt (ít ô đi được quanh thành). Các ngưỡng nằm ở `MAPGEN` trong `src/config.js`.
 Khoảng 80% map sinh thô bị loại; sinh lại cho tới khi đạt (trung bình vài ms). Đây là bộ lọc thô, seed vẫn có thể hơi lệch.
 
 ## Xem thông tin trên cảm ứng
 
 Chạm ô trống để xem địa hình (tốn di chuyển, phòng thủ cộng thêm, tầm bắn...). Giữ ngón tay ~0.5s lên **bất kỳ** ô nào (kể cả ô đang trong vùng di chuyển) để xem.
 Chọn cung thủ: vùng xanh lá là tầm bắn. Chạm vào địch: vùng đỏ nhạt là nơi nó có thể đánh tới lượt sau.
+
+## Quy ước hiển thị
+
+Mỗi ô một địa hình, sprite nằm gọn trong ô. Màu ô: **vàng** đi được · **đỏ** đánh được · **tím** gộp quân · **xanh dương** chỗ đặt đội tách ·
+**ô xanh lá nhỏ ở giữa** tầm bắn (chồng lên ô vàng vẫn đọc được cả hai) · **đỏ nhạt** vùng địch có thể đánh tới.
+Khi chạm: ô đang là hành động hợp lệ (đi / đánh / gộp / tách) được ưu tiên, nên quân đứng phía trước che ô không cản việc chọn ô phía sau.
