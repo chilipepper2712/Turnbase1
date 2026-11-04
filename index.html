@@ -27,8 +27,23 @@
     <div id="toast" hidden></div>
   </div>
   <div id="modal" hidden></div>
-  <div id="rotate" hidden>↻</div>
   <div id="loading">…</div>
+  <script>
+    // Chẩn đoán: hiện lỗi / thông tin trình duyệt ngay trên màn hình nếu game không tải được
+    (function () {
+      var l = document.getElementById('loading');
+      function show(msg) { l.classList.remove('done'); l.style.cssText += ';font-size:15px;padding:20px;text-align:left;white-space:pre-wrap;overflow:auto;align-items:flex-start'; l.textContent = msg; }
+      window.addEventListener('error', function (e) {
+        show('Lỗi: ' + (e.message || (e.target && (e.target.src || e.target.href)) || '?') + '\nUA: ' + navigator.userAgent);
+      }, true);
+      window.addEventListener('unhandledrejection', function (e) { show('Lỗi (promise): ' + (e.reason && e.reason.message || e.reason)); });
+      setTimeout(function () {
+        if (l.classList.contains('done')) return;
+        var gl = null; try { gl = document.createElement('canvas').getContext('webgl2'); } catch (x) {}
+        show('Chưa tải xong sau 10s.\nWebGL2: ' + (gl ? 'có' : 'KHÔNG') + '\nUA: ' + navigator.userAgent);
+      }, 10000);
+    })();
+  </script>
   <script src="vendor/pixi.min.js"></script>
   <script type="module" src="src/main.js"></script>
 </body>

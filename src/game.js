@@ -458,8 +458,8 @@ export class Game {
       if (e.key === 'Escape') this.cancel();
       if (e.key === 'Enter' && this.pending) this.confirmAttack();
     });
-    const rot = () => { $('rotate').hidden = !(window.innerHeight > window.innerWidth * 1.15 && window.innerWidth < 700); $('rotate').textContent = '↻ ' + t('ui.rotate'); };
-    window.addEventListener('resize', rot); rot();
+    // cầm dọc vẫn chơi được; chỉ nhắc một lần
+    if (window.innerHeight > window.innerWidth) setTimeout(() => this.toast(t('ui.rotate')), 1500);
   }
 
   onAct(e) {
