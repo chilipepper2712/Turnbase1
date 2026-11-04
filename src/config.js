@@ -21,19 +21,45 @@ export const CONFIG = {
   startMorale: 100,
 };
 
-// Địa hình. nat = phòng thủ thiên nhiên (%), str = phòng thủ công trình (%).
+// Địa hình. nat = phòng thủ thiên nhiên (%), str = phòng thủ công trình (%), mod = cộng/trừ phòng thủ cho mọi phe,
+// atk = cộng/trừ sát thương cho quân đứng ở ô đó (thế cao / sa lầy).
 export const TERRAIN = {
   plain:      { cost: 1, nat: 0,  str: 0 },
   field:      { cost: 1, nat: 0,  str: 0 },            // đất cày: như đồng bằng
   forest:     { cost: 2, nat: 15, str: 0 },
-  hill:       { cost: 2, nat: 20, str: 0, rangeBonus: 1 },
-  mountain:   { cost: 3, nat: 30, str: 0, noCavalry: true },
+  hill:       { cost: 2, nat: 20, str: 0, atk: 8, rangeBonus: 1 },
+  mountain:   { cost: 3, nat: 30, str: 0, atk: 12, noCavalry: true },   // núi thấp: đi được
+  peak:       { cost: Infinity, nat: 0, str: 0 },                       // núi cao: không leo, không vượt, phải đi vòng
+  swamp:      { cost: 3, nat: 0,  str: 0, mod: -10, atk: -10, noCavalry: true },  // đầm lầy: bất lợi cho mọi phe
   river:      { cost: Infinity, nat: 0, str: 0 },
   bridge:     { cost: 1, nat: 0,  str: 0 },
   village:    { cost: 1, nat: 0,  str: 15, heal: true },
   mine:       { cost: 1, nat: 0,  str: 20 },            // hầm mỏ: chỉ là địa hình ở bản test
   fort:       { cost: 1, nat: 0,  str: 25 },            // tháp / cứ điểm
   stronghold: { cost: 1, nat: 0,  str: 30 },            // thành
+};
+
+// Hạ trại phòng thủ: lượt ra lệnh chỉ chuẩn bị, bắt đầu từ đầu lượt sau của phe đó thì có hiệu lực.
+// Mức cố định (không tăng theo thời gian); nhân với hệ số địa hình: ô cộng thủ nhiều thì mạnh hơn, ô trừ thủ thì yếu đi.
+export const FORTIFY = { human: 15, orc: 12, scaleMin: 0.5, scaleMax: 1.6 };
+
+// Kinh nghiệm và cấp bậc (có trần). Cấp = số mốc xp đã đạt.
+export const LEVEL = {
+  xp: [12, 30, 55],             // mốc lên cấp 1, 2, 3 (cấp tối đa 3)
+  atkPerLevel: 0.08,            // +8% sát thương mỗi cấp
+  defPerLevel: 4,               // +4% phòng thủ mỗi cấp
+  perDamage: 1,                 // xp = sát thương gây ra
+  kill: 4,                      // thưởng khi hạ một squad
+  survive: 1,                   // xp khi bị đánh mà còn sống
+};
+
+// Ràng buộc khi sinh map, để không ra map toàn núi / toàn rừng / thành bị nhốt
+export const MAPGEN = {
+  maxPeakShare: 0.05,           // tỉ lệ núi cao (không đi được) tối đa trên toàn map
+  maxRoughShare: 0.28,          // đồi + núi thấp + núi cao tối đa
+  forestMin: 0.06, forestMax: 0.24,
+  sideDiff: 0.12,               // chênh lệch tỉ lệ rừng / địa hình gồ ghề giữa hai phe tối đa
+  minOpenNearHold: 26,          // số ô đi được trong tầm 8 điểm di chuyển quanh thành (chống bị nhốt)
 };
 
 export const FACTIONS = {
@@ -69,10 +95,10 @@ export const STATS = {
     cavalry:  { atk: 7,   def: 10, move: 7, range: [1, 1] },
   },
   orc: {
-    militia:  { atk: 4.4, def: 3,  move: 4, range: [1, 1] },
-    infantry: { atk: 6.8, def: 20, move: 4, range: [1, 1] },
-    archer:   { atk: 5.4, def: 6,  move: 4, range: [2, 3] },
-    cavalry:  { atk: 7.7, def: 11, move: 7, range: [1, 1] },
+    militia:  { atk: 4.2, def: 3,  move: 4, range: [1, 1] },
+    infantry: { atk: 6.5, def: 20, move: 4, range: [1, 1] },
+    archer:   { atk: 5.2, def: 6,  move: 4, range: [2, 3] },
+    cavalry:  { atk: 7.4, def: 11, move: 7, range: [1, 1] },
   },
 };
 

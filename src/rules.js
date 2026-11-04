@@ -1,7 +1,7 @@
 // Luật chơi thuần logic (không đụng DOM/Pixi). Mọi hàm đổi state đều trả về mảng sự kiện
 // để lớp hiển thị diễn lại bằng animation.
 import {
-  CONFIG, TERRAIN, FACTIONS, FORMATION_MAX, STATS, MATCHUP, ROSTER,
+  CONFIG, TERRAIN, FACTIONS, FORMATION_MAX, STATS, MATCHUP, ROSTER, FORTIFY, LEVEL,
 } from './config.js';
 
 export const key = (x, y) => x + ',' + y;
@@ -27,6 +27,7 @@ export function addUnit(state, faction, role, x, y, strength = CONFIG.maxStrengt
     id: state.nextId++, faction, role, x, y, strength,
     morale: CONFIG.startMorale, status: 'ok',
     moved: false, acted: false, movedDist: 0,
+    xp: 0, fort: 0,          // fort: 0 không, 1 đang chuẩn bị, 2 đã dựng trại (có hiệu lực)
   };
   state.units.push(u);
   return u;
@@ -83,12 +84,13 @@ export function moveCost(s, u, x, y) {
 // Mô tả hiệu ứng địa hình cho UI (mọi con số lấy từ config, không hard-code)
 export function terrainFacts(tid) {
   const t = TERRAIN[tid];
-  const defOf = (f) => Math.round(t.nat * FACTIONS[f].natAffinity + t.str * FACTIONS[f].strAffinity);
+  const defOf = (f) => Math.round(t.nat * FACTIONS[f].natAffinity + t.str * FACTIONS[f].strAffinity + (t.mod || 0));
   return {
     passable: isFinite(t.cost),
     cost: { human: moveCostFor(tid, 'human', 'infantry'), orc: moveCostFor(tid, 'orc', 'infantry'),
       cavHuman: moveCostFor(tid, 'human', 'cavalry'), cavOrc: moveCostFor(tid, 'orc', 'cavalry') },
     def: { human: defOf('human'), orc: defOf('orc') },
+    atk: t.atk || 0,
     rangeBonus: t.rangeBonus || 0,
     heal: t.heal ? CONFIG.healVillage : 0,
     noCavalry: !!t.noCavalry,
@@ -96,18 +98,34 @@ export function terrainFacts(tid) {
   };
 }
 
-// % giảm sát thương unit nhận được khi đứng ở (x,y)
+export const levelOf = (xp) => LEVEL.xp.filter((t) => xp >= t).length;
+export const nextLevelXp = (u) => LEVEL.xp[levelOf(u.xp)] ?? null;
+
+// Phòng thủ do địa hình (thiên nhiên/công trình theo phe, cộng/trừ chung) tại (x,y)
+export function terrainDefense(s, faction, x, y) {
+  const fac = FACTIONS[faction];
+  const t = terrainAt(s, x, y);
+  return t.nat * fac.natAffinity + t.str * fac.strAffinity + (t.mod || 0);
+}
+
+// Mức cộng của hạ trại: cố định theo phe, nhân hệ số địa hình
+export function fortifyBonus(s, u, x = u.x, y = u.y) {
+  const scale = Math.min(FORTIFY.scaleMax, Math.max(FORTIFY.scaleMin, 1 + terrainDefense(s, u.faction, x, y) / 100));
+  return FORTIFY[u.faction] * scale;
+}
+
+// % giảm sát thương unit nhận được khi đứng ở (x,y) (âm = chịu thêm sát thương)
 export function defensePct(s, u, x, y) {
   const st = statsOf(u);
   const fac = FACTIONS[u.faction];
-  const t = terrainAt(s, x, y);
-  let pct = st.def + t.nat * fac.natAffinity + t.str * fac.strAffinity;
+  let pct = st.def + levelOf(u.xp || 0) * LEVEL.defPerLevel + terrainDefense(s, u.faction, x, y);
   if (fac.formation) {
     let n = 0;
     for (const a of adjacentUnits(s, x, y)) if (a.faction === u.faction && a.id !== u.id) n++;
     pct += Math.min(n, FORMATION_MAX) * fac.formation;
   }
-  return Math.min(pct, CONFIG.defCap);
+  if (u.fort === 2) pct += fortifyBonus(s, u, x, y);
+  return Math.max(-30, Math.min(pct, CONFIG.defCap));
 }
 
 export function rangeAt(s, u, x, y) {
@@ -226,9 +244,11 @@ export function calcDamage(s, atk, def, fx = atk.x, fy = atk.y, movedDist = atk.
   const flank = melee ? flankCount(s, atk, def, fx, fy) : 0;
   const charge = atk.role === 'cavalry' && movedDist >= CONFIG.chargeDist ? 1 + CONFIG.chargeBonus : 1;
   const defPct = defensePct(s, def, def.x, def.y);
-  const raw = st.atk * ratio * match * (1 + flank * CONFIG.flankBonus) * charge * (1 - defPct / 100);
+  const lvl = 1 + levelOf(atk.xp || 0) * LEVEL.atkPerLevel;
+  const high = 1 + (terrainAt(s, fx, fy).atk || 0) / 100;
+  const raw = st.atk * lvl * high * ratio * match * (1 + flank * CONFIG.flankBonus) * charge * (1 - defPct / 100);
   const dmg = raw <= 0 ? 0 : Math.max(1, Math.round(raw));
-  return { dmg, raw, match, flank, charge, defPct, ratio };
+  return { dmg, raw, match, flank, charge, defPct, ratio, lvl, high };
 }
 
 // Xem trước kết quả: sát thương + phản công
@@ -284,6 +304,14 @@ function removeIfDead(s, u, events) {
   return true;
 }
 
+function gainXp(u, amount, events) {
+  if (amount <= 0 || u.strength <= 0) return;
+  const before = levelOf(u.xp);
+  u.xp += amount;
+  const after = levelOf(u.xp);
+  if (after > before) events.push({ type: 'levelup', unit: u.id, level: after });
+}
+
 function checkElimination(s) {
   for (const f of ['human', 'orc']) {
     if (!s.units.some((u) => u.faction === f)) {
@@ -298,17 +326,22 @@ export function attackUnit(s, atk, def) {
   const events = [];
   const pv = previewAttack(s, atk, def);
   events.push({ type: 'attack', attacker: atk.id, defender: def.id, attackerRole: atk.role, preview: pv });
+  atk.fort = 0;                         // ra đòn thì phá trại
   damageUnit(s, def, pv.dmg, events);
   atk.morale = Math.min(100, atk.morale + CONFIG.moraleHit);
+  gainXp(atk, pv.dmg * LEVEL.perDamage, events);
   const dead = removeIfDead(s, def, events);
   if (dead) {
     atk.morale = Math.min(100, atk.morale + CONFIG.moraleKill);
+    gainXp(atk, LEVEL.kill, events);
   } else {
+    gainXp(def, LEVEL.survive, events);
     checkRout(def, events);
     if (pv.counter > 0) {
       events.push({ type: 'counter', attacker: def.id, defender: atk.id, attackerRole: def.role });
       damageUnit(s, atk, pv.counter, events);
-      removeIfDead(s, atk, events);
+      gainXp(def, pv.counter * LEVEL.perDamage, events);
+      if (removeIfDead(s, atk, events)) gainXp(def, LEVEL.kill, events);
     }
   }
   if (s.units.some((u) => u.id === atk.id)) {
@@ -330,7 +363,7 @@ export function moveUnit(s, u, x, y) {
   if (!node || u.moved) return null;
   const path = pathTo(node);
   const events = [{ type: 'move', unit: u.id, path }];
-  u.x = x; u.y = y; u.moved = true; u.movedDist = node.cost;
+  u.x = x; u.y = y; u.moved = true; u.movedDist = node.cost; u.fort = 0;
   return events;
 }
 
@@ -349,6 +382,8 @@ export function mergeUnits(s, u, tgt) {
   const move = Math.min(room, u.strength);
   // morale trung bình có trọng số
   tgt.morale = Math.round((tgt.morale * tgt.strength + u.morale * move) / (tgt.strength + move));
+  tgt.xp = Math.round((tgt.xp * tgt.strength + u.xp * move) / (tgt.strength + move));
+  u.fort = 0;
   tgt.strength += move;
   u.strength -= move;
   events.push({ type: 'merge', unit: u.id, target: tgt.id, amount: move });
@@ -359,6 +394,17 @@ export function mergeUnits(s, u, tgt) {
     u.moved = true; u.acted = true;
   }
   return events;
+}
+
+// Hạ trại: thay cho cả lượt hành động (không di chuyển, không tấn công). Có hiệu lực từ đầu lượt sau của phe này.
+export function canFortify(s, u) {
+  return !u.moved && !u.acted && u.status === 'ok' && u.fort === 0;
+}
+
+export function fortifyUnit(s, u) {
+  if (!canFortify(s, u)) return null;
+  u.fort = 1; u.moved = true; u.acted = true;
+  return [{ type: 'fortify', unit: u.id }];
 }
 
 export function canSplit(s, u) {
@@ -382,8 +428,8 @@ export function splitUnit(s, u, x, y) {
   const give = Math.floor(u.strength / 2);
   u.strength -= give;
   const n = addUnit(s, u.faction, u.role, x, y, give);
-  n.morale = u.morale; n.moved = true; n.acted = true;
-  u.moved = true; u.acted = true;
+  n.morale = u.morale; n.xp = u.xp; n.moved = true; n.acted = true;
+  u.moved = true; u.acted = true; u.fort = 0;
   return [{ type: 'split', unit: u.id, newUnit: n.id, x, y }];
 }
 
@@ -429,6 +475,8 @@ export function endTurn(s) {
       events.push({ type: 'recover', unit: u.id });
     }
     u.moved = false; u.acted = false; u.movedDist = 0;
+    if (u.status === 'routed') u.fort = 0;
+    else if (u.fort === 1) { u.fort = 2; events.push({ type: 'entrench', unit: u.id }); }
   }
   // tan vỡ: tự rút lui
   for (const u of alliesOf(s, next)) {

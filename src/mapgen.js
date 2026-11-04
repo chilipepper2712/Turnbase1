@@ -3,7 +3,7 @@
 //  - "vùng ảnh hưởng" (ô nào tới thành nào trước) chia gần đều,
 //  - mỗi bên có làng và chỗ ẩn nấp thiên nhiên trong vùng của mình.
 // Quy ước: orc ở phía trên (y nhỏ), người ở phía dưới (y lớn).
-import { CONFIG, TERRAIN, ROSTER } from './config.js';
+import { CONFIG, TERRAIN, ROSTER, MAPGEN } from './config.js';
 import { makeRng, hash2 } from './rng.js';
 
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -55,33 +55,56 @@ export function connected(map, cavalry) {
 }
 
 const COVER = new Set(['forest', 'hill', 'mountain']);
+const ROUGH = new Set(['hill', 'mountain', 'peak']);
 
 // Đánh giá độ cân bằng của map (không phụ thuộc đối xứng)
 export function assess(map) {
   const { w, h, tiles } = map;
   const dh = costField(map, map.strongholds.human);
   const dorc = costField(map, map.strongholds.orc);
-  const side = { human: { tiles: 0, village: 0, cover: 0, structure: 0 }, orc: { tiles: 0, village: 0, cover: 0, structure: 0 } };
+  const mk = () => ({ tiles: 0, village: 0, cover: 0, structure: 0, forest: 0, rough: 0, open: 0 });
+  const side = { human: mk(), orc: mk() };
+  const all = { forest: 0, rough: 0, peak: 0 };
   for (let i = 0; i < w * h; i++) {
+    const t = tiles[i];
+    if (t === 'forest') all.forest++;
+    if (ROUGH.has(t)) all.rough++;
+    if (t === 'peak') all.peak++;
+    if (isFinite(dh[i]) && dh[i] <= 8) side.human.open++;
+    if (isFinite(dorc[i]) && dorc[i] <= 8) side.orc.open++;
     if (!isFinite(dh[i]) || !isFinite(dorc[i])) continue;
     const f = dh[i] < dorc[i] ? 'human' : dorc[i] < dh[i] ? 'orc' : null;
     if (!f) continue;
-    const s = side[f], t = tiles[i];
-    s.tiles++;
-    if (t === 'village') s.village++;
-    if (COVER.has(t)) s.cover++;
-    if (t === 'village' || t === 'mine' || t === 'fort') s.structure++;
+    const s2 = side[f];
+    s2.tiles++;
+    if (t === 'village') s2.village++;
+    if (COVER.has(t)) s2.cover++;
+    if (t === 'village' || t === 'mine' || t === 'fort') s2.structure++;
+    if (t === 'forest') s2.forest++;
+    if (ROUGH.has(t)) s2.rough++;
   }
   const total = side.human.tiles + side.orc.tiles || 1;
   const share = side.human.tiles / total;
-  const ok = connected(map, false) && connected(map, true)
-    && share >= 0.42 && share <= 0.58
-    && side.human.village >= 1 && side.orc.village >= 1
-    && side.human.cover >= 4 && side.orc.cover >= 4;
-  return { ok, share, side };
+  const N = w * h;
+  const comp = { peak: all.peak / N, rough: all.rough / N, forest: all.forest / N };
+  const frac = (f, k) => side[f][k] / (side[f].tiles || 1);
+  const diffForest = Math.abs(frac('human', 'forest') - frac('orc', 'forest'));
+  const diffRough = Math.abs(frac('human', 'rough') - frac('orc', 'rough'));
+  const reasons = [];
+  if (!connected(map, false) || !connected(map, true)) reasons.push('không thông đường');
+  if (share < 0.42 || share > 0.58) reasons.push('vùng ảnh hưởng lệch');
+  if (side.human.village < 1 || side.orc.village < 1) reasons.push('thiếu làng');
+  if (side.human.cover < 4 || side.orc.cover < 4) reasons.push('thiếu chỗ ẩn nấp');
+  if (comp.peak > MAPGEN.maxPeakShare) reasons.push('quá nhiều núi cao');
+  if (comp.rough > MAPGEN.maxRoughShare) reasons.push('quá nhiều đồi núi');
+  if (comp.forest < MAPGEN.forestMin || comp.forest > MAPGEN.forestMax) reasons.push('tỉ lệ rừng lệch');
+  if (diffForest > MAPGEN.sideDiff) reasons.push('rừng dồn một phía');
+  if (diffRough > MAPGEN.sideDiff) reasons.push('đồi núi dồn một phía');
+  if (side.human.open < MAPGEN.minOpenNearHold || side.orc.open < MAPGEN.minOpenNearHold) reasons.push('thành bị nhốt');
+  return { ok: reasons.length === 0, reasons, share, side, comp };
 }
 
-function generateOnce(seed, w, h) {
+export function generateOnce(seed, w, h) {
   const rng = makeRng(seed);
   const tiles = new Array(w * h).fill('plain');
   const at = (x, y) => tiles[y * w + x];
@@ -94,9 +117,10 @@ function generateOnce(seed, w, h) {
     for (let x = 0; x < w; x++) {
       const f = noise(nF, x, y, 3.4), hh = noise(nH, x, y, 4.5), m = noise(nM, x, y, 2.6);
       let t = 'plain';
-      if (hh > 0.7 && m > 0.6) t = 'mountain';
-      else if (hh > 0.62) t = 'hill';
-      else if (f > 0.64) t = 'forest';
+      if (hh > 0.76 && m > 0.66) t = 'peak';          // núi cao: không đi qua được
+      else if (hh > 0.7 && m > 0.58) t = 'mountain';  // núi thấp
+      else if (hh > 0.63) t = 'hill';
+      else if (f > 0.66) t = 'forest';
       set(x, y, t);
     }
   }
@@ -141,6 +165,16 @@ function generateOnce(seed, w, h) {
     }
   }
 
+  // đầm lầy: lấn ra bờ sông và vài vùng trũng
+  const nS = rng.int(1e9);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (at(x, y) !== 'plain' || nearHold(x, y, 4)) continue;
+    let byRiver = false;
+    for (const [dx, dy] of DIRS) if (inb(x + dx, y + dy) && at(x + dx, y + dy) === 'river') byRiver = true;
+    const n = noise(nS, x, y, 2.8);
+    if ((byRiver && n > 0.55) || n > 0.8) set(x, y, 'swamp');
+  }
+
   const free = (x, y) => inb(x, y) && ['plain', 'forest', 'hill'].includes(at(x, y));
   const fieldsAround = (x, y) => {
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [-1, -1], [1, -1]]) {
@@ -183,7 +217,8 @@ function generateOnce(seed, w, h) {
     const cands = [];
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const t = at(x, y);
-      if (['river', 'mountain', 'stronghold', 'bridge'].includes(t)) continue;
+      const tt = TERRAIN[t];
+      if (!isFinite(tt.cost) || tt.noCavalry || t === 'stronghold' || t === 'bridge') continue;
       const d = Math.abs(x - me.x) + Math.abs(y - me.y);
       if (d >= 2 && d <= 5) cands.push({ x, y, d, e: Math.abs(x - foe.x) + Math.abs(y - foe.y) });
     }
@@ -206,7 +241,7 @@ export function generateMap(seed = 1, w = CONFIG.map.w, h = CONFIG.map.h) {
     m.fairness = a;
     if (a.ok) return m;
     if (connected(m, false) && connected(m, true)) {
-      const score = Math.abs(a.share - 0.5);
+      const score = a.reasons.length + Math.abs(a.share - 0.5);
       if (score < bestScore) { best = m; bestScore = score; }
     }
   }

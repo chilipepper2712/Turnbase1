@@ -19,9 +19,15 @@ Không cần build; PixiJS được vendor sẵn ở `vendor/pixi.min.js`.
 - **Squad**: một hình vẽ = một squad, quân số 1–10. Quân số càng thấp, đòn đánh càng yếu.
 - **4 loại**: dân quân, bộ binh, cung thủ (tầm 2–3, không đánh được khi bị áp sát), kỵ binh (xung phong +20% nếu đi ≥3 ô).
 - **Chiến đấu deterministic** (không random): xem trước kết quả trước khi xác nhận. Có phản công, giáp công (+15%/đồng đội kề mục tiêu, tối đa 2), khắc chế loại quân.
-- **Địa hình**: rừng/đồi/núi (thiên nhiên) lợi cho **Orc**; làng/hầm mỏ/tháp/thành (công trình) lợi cho **người**. Sông chỉ qua cầu. Kỵ binh không lên núi. Cung thủ trên đồi bắn xa thêm 1 ô.
+- **Địa hình**:
+  - Thiên nhiên (rừng, đồi, núi thấp) lợi cho **Orc**; công trình (làng, hầm mỏ, tháp, thành) lợi cho **người**.
+  - **Núi cao**: không leo, không vượt, phải đi vòng. **Núi thấp / đồi**: đi được, thủ cao, đứng trên đó đánh mạnh hơn (thế cao).
+  - **Đầm lầy**: bất lợi cho cả hai phe (đi chậm, giảm thủ, giảm sức đánh, kỵ binh không vào).
+  - Sông chỉ qua cầu. Cung thủ trên đồi bắn xa thêm 1 ô.
 - **Kỷ luật & tinh thần**: người có bonus đội hình, ngưỡng tan vỡ thấp; Orc không có đội hình, dễ tan vỡ. Squad tan vỡ tự rút lui cho tới khi hồi tinh thần.
-- **Gộp / tách**: dân quân gộp vào bộ binh/cung thủ để bù quân; tách một squad làm đôi.
+- **Kinh nghiệm**: gây sát thương, hạ địch, sống sót sau khi bị đánh đều cho xp. 3 cấp (có trần): mỗi cấp +8% sát thương, +4% thủ.
+- **Hạ trại**: thay cho cả lượt hành động. Có hiệu lực từ đầu lượt sau. Mức cố định (người +15%, Orc +12%) nhân với hệ số địa hình (ô cộng thủ thì mạnh hơn, ô trừ thủ thì yếu hơn). Di chuyển hoặc tấn công thì mất trại. Cấp bậc không đổi mức này.
+- **Gộp / tách**: dân quân gộp vào bộ binh/cung thủ để bù quân (xp lấy trung bình theo quân số); tách một squad làm đôi.
 - **Làng** hồi 2 quân/lượt cho squad đứng trong. **Thắng** khi giữ thành địch đủ 2 lượt (hoặc diệt hết địch).
 
 Mọi con số cân bằng nằm trong `src/config.js`.
@@ -79,11 +85,12 @@ Cân bằng hiện chỉ được kiểm bằng AI đấu AI; cần chơi thử 
 
 ## Map & công bằng
 
-Map **không đối xứng**: sông uốn lượn, thành đặt ngẫu nhiên trong dải của mỗi phe. Sau khi sinh, `assess()` kiểm tra
-(1) đường bộ thông cho cả kỵ binh, (2) vùng "ai tới ô nào trước" chia 42–58%, (3) mỗi bên có làng và >= 4 ô địa hình ẩn nấp.
-Map lệch quá sẽ bị bỏ và sinh lại. Đây là bộ lọc thô; seed vẫn có thể hơi lệch, hãy báo seed nếu thấy bất công.
+Map **không đối xứng**: sông uốn lượn, thành đặt ngẫu nhiên trong dải của mỗi phe. Sau khi sinh, `assess()` loại map vi phạm bất kỳ điều nào:
+đường bộ không thông (cả kỵ binh) · vùng ảnh hưởng lệch ngoài 42–58% · thiếu làng / chỗ ẩn nấp · quá nhiều núi cao hoặc đồi núi · rừng quá ít / quá nhiều ·
+rừng hoặc đồi núi dồn về một phía · thành bị nhốt (ít ô đi được quanh thành). Các ngưỡng nằm ở `MAPGEN` trong `src/config.js`.
+Khoảng 80% map sinh thô bị loại; sinh lại cho tới khi đạt (trung bình vài ms). Đây là bộ lọc thô, seed vẫn có thể hơi lệch.
 
 ## Xem thông tin trên cảm ứng
 
 Chạm ô trống để xem địa hình (tốn di chuyển, phòng thủ cộng thêm, tầm bắn...). Giữ ngón tay ~0.5s lên **bất kỳ** ô nào (kể cả ô đang trong vùng di chuyển) để xem.
-Chọn cung thủ: vùng cam là tầm bắn. Chạm vào địch: vùng đỏ nhạt là nơi nó có thể đánh tới lượt sau.
+Chọn cung thủ: vùng xanh lá là tầm bắn. Chạm vào địch: vùng đỏ nhạt là nơi nó có thể đánh tới lượt sau.

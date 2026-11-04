@@ -1,10 +1,11 @@
 // Thực thi một action của AI (composite: di chuyển rồi đánh/gộp/đứng yên) lên state.
-import { moveUnit, attackUnit, waitUnit, mergeUnits, unitAt } from './rules.js';
+import { moveUnit, attackUnit, waitUnit, mergeUnits, fortifyUnit } from './rules.js';
 
 export function executeAction(s, a) {
   const u = s.units.find((x) => x.id === a.unit.id);
   if (!u) return [];
   let events = [];
+  if (a.fortify) return fortifyUnit(s, u) || waitUnit(s, u);
   if (a.merge) {
     const tgt = s.units.find((x) => x.id === a.merge.id);
     return tgt ? (mergeUnits(s, u, tgt) || waitUnit(s, u)) : waitUnit(s, u);

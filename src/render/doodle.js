@@ -170,7 +170,7 @@ export function drawMine(seed, S = 2) {
 // ---------- Nền ô (bake vào chunk) ----------
 export const GROUND = {
   plain: '#f5f4ee', field: '#f1f0e6', forest: '#efeee7', hill: '#f0efe8', mountain: '#ecebe4',
-  river: '#dfe2e3', bridge: '#dfe2e3', village: '#f2f0e6', mine: '#efeee7', fort: '#f1f0e8', stronghold: '#eeeadf',
+  peak: '#ecebe4', swamp: '#e2e7dc', river: '#dfe2e3', bridge: '#dfe2e3', village: '#f2f0e6', mine: '#efeee7', fort: '#f1f0e8', stronghold: '#eeeadf',
 };
 
 function diamond(ctx, cx, cy, TW, TH) {
@@ -220,6 +220,16 @@ export function drawGroundTile(ctx, cx, cy, tid, ctxInfo) {
       const b = [cx + e2[0] * o + e1[0] * (s + 0.16), cy + e2[1] * o + e1[1] * (s + 0.16)];
       const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 - 3];
       inkLine(ctx, [a, m, b], { rng, width: 1.2, color: '#7b8083', amp: 0.3, step: 5 });
+    }
+  } else if (tid === 'swamp') {
+    // đầm lầy: gợn nước ngắn + bụi lau
+    for (let i = 0; i < 4; i++) {
+      const px = cx + (rng() - 0.5) * TW * 0.6, py = cy + (rng() - 0.5) * TH * 0.55;
+      inkLine(ctx, [[px - 7, py], [px - 2, py - 2], [px + 3, py], [px + 8, py - 1]], { rng, width: 1.1, color: '#6f7b74', amp: 0.3, step: 4 });
+    }
+    for (let i = 0; i < 3; i++) {
+      const px = cx + (rng() - 0.5) * TW * 0.55, py = cy + (rng() - 0.5) * TH * 0.4 + 4;
+      for (const dx of [-3, 0, 3]) inkLine(ctx, [[px + dx, py], [px + dx * 1.4, py - 8 - rng() * 3]], { rng, width: 1.2, color: '#4d5a50', amp: 0.2, step: 4 });
     }
   } else if (tid === 'stronghold' || tid === 'village') {
     for (let i = 0; i < 6; i++) {

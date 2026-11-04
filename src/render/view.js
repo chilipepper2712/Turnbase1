@@ -2,13 +2,13 @@
 // Render-on-demand: không có gì thay đổi thì không vẽ lại (đỡ nóng máy).
 import { CONFIG, FACTIONS } from '../config.js';
 import { hash2, makeRng } from '../rng.js';
-import { terrainId } from '../rules.js';
+import { terrainId, levelOf } from '../rules.js';
 import { RES } from './assets.js';
 import { drawGroundTile, makeCanvas, INK } from './doodle.js';
 
 export const TW = 96, TH = 48;
 const CHUNK = 8;
-const FONT = '"Patrick Hand","Segoe Print","Comic Sans MS","Chalkboard SE",cursive';
+const FONT = '-apple-system,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif';
 
 export const tileToWorld = (x, y) => ({ x: ((x - y) * TW) / 2, y: ((x + y) * TH) / 2 });
 export function worldToTile(wx, wy) {
@@ -194,10 +194,13 @@ export class GameView {
         const [px, py] = uv((rng() - 0.5) * 0.45, (rng() - 0.5) * 0.45);
         this.place(this.mk(A.deco('hill', rng.int(3)), 0.95 + rng() * 0.3), px, py + 12, c.y + 2);
       }
+    } else if (t === 'peak') {
+      const [px, py] = uv((rng() - 0.5) * 0.15, (rng() - 0.5) * 0.15);
+      this.place(this.mk(A.deco('mountain', rng.int(3)), 1.12), px, py + 18);
     } else if (t === 'mountain') {
       const [px, py] = uv((rng() - 0.5) * 0.2, (rng() - 0.5) * 0.2);
       // núi hạ thấp và nằm sau quân đứng cùng ô, để quân vẫn lấp ló khi đi vào
-      this.place(this.mk(A.deco('mountain', rng.int(3)), 0.78), px, py + 14, c.y + 2);
+      this.place(this.mk(A.deco('mountain', rng.int(3)), 0.58), px, py + 12, c.y + 2);
     } else if (t === 'mine') {
       this.place(this.mk(A.deco('mine', 0), 1.0), c.x, c.y + 14, c.y + 2);
     } else if (t === 'village') {
@@ -261,18 +264,38 @@ export class GameView {
     txt.anchor.set(0.5);
     badge.addChild(bg, txt);
     badge.position.set(24, -8);
+    const fortG = new PIXI.Graphics();
+    const stars = new PIXI.Text({ text: '', style: { fontFamily: FONT, fontSize: 13, fill: 0xffd54a, fontWeight: 'bold', stroke: { color: 0x1b1b1b, width: 3 } } });
+    stars.anchor.set(0.5, 1);
+    stars.position.set(24, -22);
     const flag = new PIXI.Text({ text: '', style: { fontFamily: FONT, fontSize: 18, fill: 0xd8402f, fontWeight: 'bold', stroke: { color: 0xffffff, width: 4 } } });
     flag.anchor.set(0.5, 1);
     flag.position.set(0, -(sprite.height) - 4);
-    root.addChild(shadow, body, badge, flag);
+    root.addChild(shadow, fortG, body, badge, stars, flag);
     const c = tileToWorld(u.x, u.y);
     root.position.set(c.x, c.y + 8);
     root.zIndex = c.y + 8 + 0.1;
     this.objects.addChild(root);
-    const us = { id: u.id, root, body, sprite, badge, txt, flag, shown: u.strength, facing: u.faction === 'human' ? 1 : -1, bx: 0, by: 0 };
+    const us = { id: u.id, root, body, sprite, badge, txt, flag, fortG, stars, fort: -1, shown: u.strength, facing: u.faction === 'human' ? 1 : -1, bx: 0, by: 0 };
     us.sprite.scale.x = Math.abs(us.sprite.scale.x) * (us.facing < 0 ? -1 : 1);
     this.sprites.set(u.id, us);
     return us;
+  }
+
+  // Cọc rào dưới chân: nét đứt khi đang chuẩn bị, đặc khi đã dựng xong
+  drawFort(us, mode) {
+    if (us.fort === mode) return;
+    us.fort = mode;
+    const g = us.fortG;
+    g.clear();
+    if (!mode) return;
+    const col = mode === 2 ? 0x1b1b1b : 0x8a8a80;
+    for (let i = -3; i <= 3; i++) {
+      const x = i * 6.5, y = 5 + Math.abs(i) * -0.0;
+      g.moveTo(x, y + 4).lineTo(x - 0.8, y - (mode === 2 ? 9 : 5)).lineTo(x + 2.2, y + 4);
+    }
+    g.stroke({ width: 1.8, color: col, join: 'round' });
+    if (mode === 2) g.moveTo(-21, -1).lineTo(21, -1).stroke({ width: 1.6, color: col });
   }
 
   setShown(us, n) {
@@ -304,6 +327,8 @@ export class GameView {
       const mine = u.faction === s.current;
       us.body.alpha = mine && u.acted && u.status === 'ok' && !s.winner ? 0.55 : 1;
       us.flag.text = u.status === 'routed' ? this.t('ui.routed') : '';
+      us.stars.text = '★'.repeat(levelOf(u.xp || 0));
+      this.drawFort(us, u.fort || 0);
     }
     this.setHold(s);
     this.requestRender();
@@ -347,10 +372,10 @@ export class GameView {
     };
     paint(o.move, 0xf2c200, 0.2, 0xd9a800);
     paint(o.split, 0x3a78d8, 0.25, 0x2a5aa8);
-    paint(o.merge, 0x3aa86a, 0.28, 0x23844f);
+    paint(o.merge, 0x8a5cd6, 0.26, 0x6b3fb8);
     paint(o.attack, 0xd8402f, 0.28, 0xb02a1c, false);
     paint(o.threat, 0xd8402f, 0.12, 0xd8402f);
-    paint(o.range, 0xf08a24, 0.2, 0xd9731a);
+    paint(o.range, 0x2fb36a, 0.22, 0x1f8f50);
     if (o.dest) paint([o.dest], 0xf2c200, 0.4, 0x1b1b1b, false);
     if (o.selected) {
       g.poly(dia(o.selected.x, o.selected.y, 1), true).stroke({ width: 3.2, color: 0xf2c200 });
@@ -635,6 +660,26 @@ export class GameView {
           const us = this.sprites.get(ev.unit);
           if (us) { us.flag.text = this.t('ui.routed'); this.float(this.t('ui.routed'), us.root.x, us.root.y - 56, 0xffd54a, 22); }
           await wait(250 / this.speed);
+          break;
+        }
+        case 'fortify': {
+          const us = this.sprites.get(ev.unit);
+          if (us) { this.drawFort(us, 1); this.float(this.t('float.fortify'), us.root.x, us.root.y - 52, 0xd9d9cf, 20); }
+          await wait(220 / this.speed);
+          break;
+        }
+        case 'entrench': {
+          const us = this.sprites.get(ev.unit);
+          if (us) { this.drawFort(us, 2); this.float(this.t('float.entrench'), us.root.x, us.root.y - 52, 0xd9d9cf, 20); }
+          break;
+        }
+        case 'levelup': {
+          const us = this.sprites.get(ev.unit);
+          if (us) {
+            us.stars.text = '★'.repeat(ev.level);
+            this.float(this.t('float.levelup', { n: ev.level }), us.root.x, us.root.y - 58, 0xffd54a, 22);
+            await wait(260 / this.speed);
+          }
           break;
         }
         case 'recover': {

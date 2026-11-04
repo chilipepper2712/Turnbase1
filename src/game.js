@@ -1,10 +1,10 @@
 // Điều khiển ván chơi: thao tác người chơi, vòng lặp AI, panel/preview/menu.
-import { CONFIG, FACTIONS, TERRAIN } from './config.js';
+import { CONFIG, FACTIONS, TERRAIN, STATS, LEVEL } from './config.js';
 import { generateMap } from './mapgen.js';
 import {
   createState, reachable, targetsFrom, previewAttack, moveUnit, attackUnit, waitUnit, mergeUnits,
   splitUnit, splitTiles, canSplit, endTurn, unitAt, key, pathTo, defensePct, statsOf, terrainId,
-  alliesOf, rangeAt, inEnemyZoc, terrainFacts, tilesInRange, threatTiles, moveCostFor,
+  alliesOf, rangeAt, inEnemyZoc, terrainFacts, tilesInRange, threatTiles, moveCostFor, canFortify, fortifyUnit, fortifyBonus, levelOf, nextLevelXp,
 } from './rules.js';
 import { planNextAction } from './ai.js';
 import { executeAction } from './actions.js';
@@ -346,6 +346,15 @@ export class Game {
     this.afterAction();
   }
 
+  async doFortify() {
+    const u = this.sel;
+    if (!u || this.busy || !canFortify(this.state, u)) return;
+    this.busy = true; this.hidePreview(); this.view.setOverlay({});
+    const ev = fortifyUnit(this.state, u);
+    if (ev) await this.view.playEvents(ev);
+    this.afterAction();
+  }
+
   async doWait() {
     const u = this.sel;
     if (!u || this.busy) return;
@@ -409,6 +418,7 @@ export class Game {
     if (this.splitting) h = btn('cancel', t('ui.cancel'));
     else {
       h += btn('wait', t('ui.wait'), this.mode === 'moved' ? 'primary' : '');
+      if (canFortify(s, u)) h += btn('fortify', t('ui.fortify'));
       if (canSplit(s, u)) h += btn('split', t('ui.split'));
       if (this.mode === 'moved' && this.origin && this.origin.id === u.id) h += btn('undo', t('ui.undo'));
       h += btn('cancel', t('ui.cancel'));
@@ -430,15 +440,17 @@ export class Game {
   }
 
   costText(c) { return isFinite(c) ? String(c) : '✕'; }
+  sg(n) { return n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : '0'; }
 
-  // Hiệu ứng địa hình dạng danh sách ngắn, dễ quyết định
+  // Hiệu ứng địa hình: mỗi dòng một icon, đọc lướt được
   terrainLines(tid) {
     const f = terrainFacts(tid);
     const L = [];
     if (!f.passable) { L.push(t('fx.blocked')); return L; }
     const cav = f.cost.cavHuman === f.cost.cavOrc ? this.costText(f.cost.cavHuman) : `${this.costText(f.cost.cavHuman)}/${this.costText(f.cost.cavOrc)}`;
     L.push(t('fx.cost', { h: this.costText(f.cost.human), o: this.costText(f.cost.orc), c: cav }));
-    if (f.def.human || f.def.orc) L.push(t('fx.def', { h: f.def.human, o: f.def.orc }));
+    if (f.def.human || f.def.orc) L.push(t('fx.def', { h: this.sg(f.def.human) + '%', o: this.sg(f.def.orc) + '%' }));
+    if (f.atk) L.push(t('fx.atk', { n: this.sg(f.atk) + '%' }));
     if (f.rangeBonus) L.push(t('fx.range', { n: f.rangeBonus }));
     if (f.heal) L.push(t('fx.heal', { n: f.heal }));
     if (f.noCavalry) L.push(t('fx.nocav'));
@@ -452,10 +464,11 @@ export class Game {
     const nk = 'terrain.note.' + tid, note = t(nk);
     let you = '';
     const u = this.sel;
-    if (u && u.faction === s.current && s.units.some((x) => x.id === u.id)) {
+    if (u && u.faction === s.current && s.units.some((x) => x.id === u.id) && isFinite(moveCostFor(tid, u.faction, u.role))) {
       const def = Math.round(defensePct(s, u, tile.x, tile.y));
       const cost = moveCostFor(tid, u.faction, u.role);
-      you = `<div class="you">${esc(t('fx.forYou', { unit: t(`unit.${u.faction}.${u.role}`), def, cost: this.costText(cost) }))}</div>`;
+      const fb = Math.round(fortifyBonus(s, u, tile.x, tile.y));
+      you = `<div class="you">${esc(t('fx.forYou', { unit: t(`unit.${u.faction}.${u.role}`), def, cost: this.costText(cost) }))}<br>${esc(t('fx.fort', { n: fb }))}</div>`;
     }
     return `<h3>${esc(t('terrain.' + tid))}</h3><ul class="fx">${L}</ul>${you}${note === nk ? '' : `<div class="note">${esc(note)}</div>`}`;
   }
@@ -464,7 +477,8 @@ export class Game {
     const s = this.state, st = statsOf(u), f = FACTIONS[u.faction];
     const tid = terrainId(s, u.x, u.y);
     const def = Math.round(defensePct(s, u, u.x, u.y));
-    const tdef = terrainFacts(tid).def[u.faction];
+    const lvl = levelOf(u.xp || 0);
+    const atk = (st.atk * (1 + lvl * LEVEL.atkPerLevel)).toFixed(1).replace(/\.0$/, '');
     const [mn, mx] = rangeAt(s, u, u.x, u.y);
     let status = t('ui.status.ready');
     if (u.status === 'routed') status = t('ui.status.routed');
@@ -473,14 +487,21 @@ export class Game {
     const pips = Array.from({ length: CONFIG.maxStrength }, (_, i) => `<b class="${i < u.strength ? 'on ' + u.faction : ''}"></b>`).join('');
     const mor = Math.round(u.morale);
     const morCol = mor <= f.routAt ? '#d8402f' : mor <= f.routAt + 25 ? '#e6a800' : '#4aa86a';
-    return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(t(`unit.${u.faction}.${u.role}`))}</h3>
-      <div class="pips">${pips}</div>
-      <div class="line"><span>${esc(t('ui.strength'))} <b>${u.strength}/${CONFIG.maxStrength}</b></span><span>${esc(t('ui.morale'))} <b>${mor}</b></span></div>
-      <div class="bar"><i style="width:${mor}%;background:${morCol}"></i></div>
-      <div class="stats"><span>${esc(t('ui.stat.def'))} <b>${def}%</b></span><span>${esc(t('ui.stat.move'))} <b>${st.move}</b></span><span>${esc(t('ui.stat.range'))} <b>${mn === mx ? mx : mn + '–' + mx}</b></span></div>
-      <div class="terr">${esc(t('terrain.' + tid))}${tdef ? ` · +${tdef}% ${esc(t('ui.stat.def').toLowerCase())}` : ''}</div>
+    const nx = nextLevelXp(u);
+    const xpTxt = nx ? `${u.xp}/${nx}` : t('ui.xpmax');
+    const tdef = terrainFacts(tid).def[u.faction];
+    const fort = u.fort === 2 ? `<div class="fortline">${esc(t('ui.fort.on', { n: Math.round(fortifyBonus(s, u)) }))}</div>`
+      : u.fort === 1 ? `<div class="fortline">${esc(t('ui.fort.prep'))}</div>` : '';
+    const ic = (k) => t('ic.' + k);
+    return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(t(`unit.${u.faction}.${u.role}`))}<span class="stars">${'★'.repeat(lvl)}</span></h3>
+      <div class="pips" title="${esc(t('ui.strength'))}">${pips}</div>
+      <div class="line"><span title="${esc(t('ui.strength'))}">${ic('strength')} <b>${u.strength}/${CONFIG.maxStrength}</b></span><span title="${esc(t('ui.morale'))}">${ic('morale')} <b>${mor}</b></span><span title="${esc(t('ui.xp'))}">${ic('xp')} <b>${xpTxt}</b></span></div>
+      <div class="bar" title="${esc(t('ui.morale'))}"><i style="width:${mor}%;background:${morCol}"></i></div>
+      <div class="stats"><span title="${esc(t('ui.defense'))}">${ic('def')} <b>${def}%</b></span><span title="${esc(t('ui.atk'))}">${ic('atk')} <b>${atk}</b></span><span title="${esc(t('ui.move'))}">${ic('move')} <b>${st.move}</b></span><span title="${esc(t('ui.range'))}">${ic('range')} <b>${mn === mx ? mx : mn + '–' + mx}</b></span></div>
+      <div class="terr">${esc(t('terrain.' + tid))}${tdef ? ` · ${ic('def')}${this.sg(tdef)}%` : ''}</div>
+      ${fort}
       <span class="tag">${esc(status)}</span>
-      <details><summary>${esc(t('ui.info'))}</summary><div class="desc">${esc(t('unit.desc.' + u.role))}</div></details>`;
+      <details><summary>${esc(lvl ? t('ui.rank.' + lvl) : t('ui.info'))}</summary><div class="desc">${esc(t('unit.desc.' + u.role))}</div></details>`;
   }
 
   showPreview(opt, withButtons) {
@@ -528,6 +549,7 @@ export class Game {
     const a = b.dataset.act;
     if (a === 'wait') this.doWait();
     else if (a === 'split') this.startSplit();
+    else if (a === 'fortify') this.doFortify();
     else if (a === 'undo') this.doUndo();
     else if (a === 'cancel') this.cancel();
     else if (a === 'confirm') this.confirmAttack();

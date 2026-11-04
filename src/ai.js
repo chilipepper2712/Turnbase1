@@ -5,6 +5,7 @@ import { CONFIG, UNIT_VALUE, FACTIONS } from './config.js';
 import {
   key, dist, reachable, targetsFrom, previewAttack, calcDamage, defensePct, statsOf,
   enemiesOf, alliesOf, moveCost, inBounds, DIRS, unitAt, other, terrainAt,
+  canFortify, fortifyBonus, terrainDefense,
 } from './rules.js';
 
 // ----- trường khoảng cách tới mục tiêu (Dijkstra nhiều nguồn) -----
@@ -103,15 +104,34 @@ function unitOptions(s, u, level, ctx) {
   const out = [];
   const reach = reachable(s, u);
   const field = ctx.fieldFor(u);
+  // quân đã dựng trại thì rời chỗ là mất lợi thế: trừ điểm các lựa chọn đi nơi khác
+  let leavePenalty = 0;
+  if (level === 'tactical' && u.fort === 2) {
+    const th = threatAt(s, u, u.x, u.y, null);
+    leavePenalty = (fortifyBonus(s, u) / 100) * th * UNIT_VALUE[u.role] * 2 + 1;
+  }
   for (const node of reach.tiles.values()) {
     const tgts = targetsFrom(s, u, node.x, node.y);
     const base = scoreOption(s, u, node, null, w, field, ctx.ownHold, ctx.enemyHold, ctx.danger);
-    out.push({ unit: u, to: { x: node.x, y: node.y }, score: base - 0.01 * node.cost });
+    const away = node.x !== u.x || node.y !== u.y;
+    out.push({ unit: u, to: { x: node.x, y: node.y }, score: base - 0.01 * node.cost - (away ? leavePenalty : 0) });
     for (const t of tgts) {
       out.push({
         unit: u, to: { x: node.x, y: node.y }, target: t,
-        score: scoreOption(s, u, node, t, w, field, ctx.ownHold, ctx.enemyHold, ctx.danger) + 2,
+        score: scoreOption(s, u, node, t, w, field, ctx.ownHold, ctx.enemyHold, ctx.danger) + 2 - (away ? leavePenalty : 0),
       });
+    }
+  }
+  if (level === 'tactical' && canFortify(s, u)) {
+    // hạ trại khi địch có thể đánh tới mình và đứng chỗ đáng giữ
+    const th = threatAt(s, u, u.x, u.y, null);
+    if (th >= 0.5) {
+      const here = { x: u.x, y: u.y, cost: 0 };
+      const base = scoreOption(s, u, here, null, w, field, ctx.ownHold, ctx.enemyHold, ctx.danger);
+      let gain = (fortifyBonus(s, u) / 100) * th * UNIT_VALUE[u.role] * 2;
+      if (terrainDefense(s, u.faction, u.x, u.y) >= 10) gain += 0.8;
+      if (ctx.danger && Math.abs(u.x - ctx.ownHold.x) + Math.abs(u.y - ctx.ownHold.y) <= 3) gain += 1.2;
+      out.push({ unit: u, to: { x: u.x, y: u.y }, fortify: true, score: base + gain - 0.4 });
     }
   }
   if (level === 'tactical') {

@@ -1,0 +1,120 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { generateMap, assess } from '../src/mapgen.js';
+import {
+  createState, addUnit, reachable, key, attackUnit, endTurn, fortifyUnit, canFortify, defensePct, calcDamage,
+  moveUnit, levelOf, terrainFacts, moveCost, fortifyBonus, mergeUnits, splitUnit, waitUnit,
+} from '../src/rules.js';
+import { CONFIG, LEVEL, FORTIFY, MAPGEN, TERRAIN } from '../src/config.js';
+
+function flat(over = {}, w = 12, h = 12) {
+  const tiles = new Array(w * h).fill('plain');
+  for (const [k, v] of Object.entries(over)) { const [x, y] = k.split(',').map(Number); tiles[y * w + x] = v; }
+  return createState({ w, h, tiles, strongholds: { human: { x: 5, y: 11 }, orc: { x: 6, y: 0 } }, spawns: { human: [], orc: [] } });
+}
+
+test('núi cao: không đi qua được (kể cả leo), núi thấp thì đi được', () => {
+  const s = flat({ '4,5': 'peak', '3,5': 'mountain' });
+  const u = addUnit(s, 'human', 'infantry', 3, 6);
+  const r = reachable(s, u);
+  assert.ok(!r.tiles.has(key(4, 5)), 'núi cao chặn hẳn');
+  assert.ok(r.tiles.has(key(3, 5)), 'núi thấp đi được');
+  assert.equal(moveCost(s, u, 4, 5), Infinity);
+  assert.equal(terrainFacts('peak').passable, false);
+});
+
+test('địa hình: thế cao cộng sát thương, đầm lầy trừ thủ + trừ sát thương, kỵ binh không vào đầm lầy', () => {
+  const s = flat({ '5,5': 'hill', '2,2': 'swamp' });
+  const a = addUnit(s, 'human', 'infantry', 5, 5);
+  const d = addUnit(s, 'orc', 'infantry', 5, 6);
+  const onHill = calcDamage(s, a, d, 5, 5).raw;
+  const onPlain = calcDamage(s, a, d, 7, 7).raw;
+  assert.ok(onHill > onPlain, 'đánh từ đồi mạnh hơn');
+  const swampDef = defensePct(s, addUnit(s, 'human', 'militia', 2, 2), 2, 2);
+  assert.ok(swampDef < 0, 'đầm lầy làm chịu thêm sát thương: ' + swampDef);
+  const cav = addUnit(s, 'human', 'cavalry', 2, 3);
+  assert.ok(!reachable(s, cav).tiles.has(key(2, 2)), 'kỵ binh không vào đầm lầy');
+  assert.equal(TERRAIN.swamp.nat, 0, 'orc không được hưởng gì từ đầm lầy');
+});
+
+test('kinh nghiệm: gây sát thương -> lên cấp, có trần, cấp cao đánh mạnh và thủ cao hơn', () => {
+  const s = flat();
+  const a = addUnit(s, 'human', 'infantry', 5, 5);
+  const base = calcDamage(s, a, addUnit(s, 'orc', 'militia', 5, 6), 5, 5);
+  const d0 = defensePct(s, a, 5, 5);
+  a.xp = LEVEL.xp[0];
+  assert.equal(levelOf(a.xp), 1);
+  assert.ok(defensePct(s, a, 5, 5) > d0, 'cấp cao thủ cao hơn');
+  assert.ok(calcDamage(s, a, s.units.find((u) => u.faction === 'orc'), 5, 5).raw > base.raw);
+  a.xp = 9999;
+  assert.equal(levelOf(a.xp), LEVEL.xp.length, 'có cấp tối đa');
+  // lên cấp qua chiến đấu
+  const s2 = flat();
+  const x = addUnit(s2, 'human', 'cavalry', 5, 5);
+  const y = addUnit(s2, 'orc', 'militia', 5, 6);
+  x.xp = LEVEL.xp[0] - 2;
+  const ev = attackUnit(s2, x, y);
+  assert.ok(x.xp > LEVEL.xp[0] - 2, 'nhận xp');
+  assert.ok(ev.some((e) => e.type === 'levelup' && e.unit === x.id) || levelOf(x.xp) >= 1, 'lên cấp');
+});
+
+test('kinh nghiệm: gộp lấy trung bình theo quân số, tách chép xp', () => {
+  const s = flat();
+  const inf = addUnit(s, 'human', 'infantry', 5, 5, 5); inf.xp = 30;
+  const mil = addUnit(s, 'human', 'militia', 5, 7, 5); mil.xp = 0;
+  mergeUnits(s, mil, inf);
+  assert.equal(inf.xp, 15, 'xp trung bình theo số quân');
+  const big = addUnit(s, 'human', 'infantry', 1, 1, 10); big.xp = 20;
+  splitUnit(s, big, 1, 2);
+  assert.equal(s.units.find((u) => u.x === 1 && u.y === 2).xp, 20);
+});
+
+test('hạ trại: có hiệu lực từ đầu lượt sau, cố định 15%/12%, phá khi di chuyển', () => {
+  const s = flat();
+  const u = addUnit(s, 'human', 'infantry', 5, 5);
+  addUnit(s, 'orc', 'infantry', 9, 9);
+  const d0 = defensePct(s, u, 5, 5);
+  assert.ok(canFortify(s, u));
+  fortifyUnit(s, u);
+  assert.equal(u.fort, 1);
+  assert.equal(u.acted, true, 'hạ trại dùng hết lượt');
+  assert.equal(defensePct(s, u, 5, 5), d0, 'chưa có hiệu lực trong lúc chuẩn bị');
+  endTurn(s);                       // sang orc: chưa dựng xong
+  assert.equal(u.fort, 1);
+  endTurn(s);                       // đầu lượt người: dựng xong
+  assert.equal(u.fort, 2);
+  assert.equal(Math.round(defensePct(s, u, 5, 5) - d0), FORTIFY.human, 'cộng đúng 15% trên đồng bằng');
+  const keep = defensePct(s, u, 5, 5);
+  waitUnit(s, u);
+  assert.equal(u.fort, 2, 'đứng yên thì giữ trại');
+  assert.equal(defensePct(s, u, 5, 5), keep);
+  endTurn(s); endTurn(s);
+  moveUnit(s, u, 6, 5);
+  assert.equal(u.fort, 0, 'di chuyển thì mất trại');
+  // orc thấp hơn người
+  const so = flat();
+  const o = addUnit(so, 'orc', 'infantry', 5, 5); addUnit(so, 'human', 'infantry', 9, 9);
+  assert.ok(fortifyBonus(so, o) < fortifyBonus(so, addUnit(so, 'human', 'infantry', 6, 6)));
+});
+
+test('hạ trại: mạnh hơn ở địa hình cộng thủ, yếu hơn ở địa hình trừ thủ; tấn công phá trại', () => {
+  const s = flat({ '3,3': 'fort', '4,4': 'swamp' });
+  const on = (x, y) => { const u = addUnit(s, 'human', 'infantry', x, y); u.fort = 2; return fortifyBonus(s, u); };
+  const plain = on(8, 8), fort = on(3, 3), swamp = on(4, 4);
+  assert.ok(fort > plain && plain > swamp, `${fort} > ${plain} > ${swamp}`);
+  const a = addUnit(s, 'human', 'cavalry', 9, 9); a.fort = 2;
+  attackUnit(s, a, addUnit(s, 'orc', 'militia', 9, 10));
+  assert.equal(a.fort, 0, 'ra đòn thì phá trại');
+});
+
+test('mapgen: có ràng buộc thành phần địa hình, không nhốt thành, không dồn về một phía', () => {
+  for (let seed = 1; seed <= 60; seed++) {
+    const m = generateMap(seed);
+    const a = assess(m);
+    assert.ok(a.ok, `seed ${seed}: ${a.reasons.join(', ')}`);
+    assert.ok(a.comp.peak <= MAPGEN.maxPeakShare, 'núi cao quá nhiều');
+    assert.ok(a.comp.rough <= MAPGEN.maxRoughShare, 'đồi núi quá nhiều');
+    assert.ok(a.comp.forest >= MAPGEN.forestMin && a.comp.forest <= MAPGEN.forestMax, 'rừng lệch');
+    assert.ok(a.side.human.open >= MAPGEN.minOpenNearHold && a.side.orc.open >= MAPGEN.minOpenNearHold, 'thành bị nhốt');
+  }
+});
