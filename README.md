@@ -26,7 +26,7 @@ Không cần build; PixiJS được vendor sẵn ở `vendor/pixi.min.js`.
   - Sông chỉ qua cầu. Cung thủ trên đồi bắn xa thêm 1 ô.
 - **Kỷ luật & tinh thần**: người có bonus đội hình, ngưỡng tan vỡ thấp; Orc không có đội hình, dễ tan vỡ. Squad tan vỡ tự rút lui cho tới khi hồi tinh thần.
 - **Kinh nghiệm**: gây sát thương, hạ địch, sống sót sau khi bị đánh đều cho xp. 3 cấp (có trần): mỗi cấp +8% sát thương, +4% thủ.
-- **Hạ trại**: thay cho cả lượt hành động. Có hiệu lực từ đầu lượt sau. Mức cố định (người +15%, Orc +12%) nhân với hệ số địa hình (ô cộng thủ thì mạnh hơn, ô trừ thủ thì yếu hơn). Di chuyển hoặc tấn công thì mất trại. Cấp bậc không đổi mức này.
+- **Hạ trại**: thay cho cả lượt hành động, **có hiệu lực ngay**. Mức cố định (người +15%, Orc +12%) nhân với hệ số địa hình (ô cộng thủ thì mạnh hơn, ô trừ thủ thì yếu hơn). Di chuyển hoặc tấn công thì mất trại. Cấp bậc không đổi mức này; hạ trại giữ nguyên cho tới khi quân di chuyển, tấn công, gộp/tách hoặc tan vỡ.
 - **Gộp / tách**: dân quân gộp vào bộ binh/cung thủ để bù quân (xp lấy trung bình theo quân số); tách một squad làm đôi.
 - **Làng** hồi 2 quân/lượt cho squad đứng trong. **Thắng** khi giữ thành địch đủ 2 lượt (hoặc diệt hết địch).
 

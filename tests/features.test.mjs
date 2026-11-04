@@ -69,21 +69,21 @@ test('kinh nghiệm: gộp lấy trung bình theo quân số, tách chép xp', (
   assert.equal(s.units.find((u) => u.x === 1 && u.y === 2).xp, 20);
 });
 
-test('hạ trại: có hiệu lực từ đầu lượt sau, cố định 15%/12%, phá khi di chuyển', () => {
+test('hạ trại: có hiệu lực ngay, cố định 15%/12%, giữ khi đứng yên, phá khi di chuyển', () => {
   const s = flat();
   const u = addUnit(s, 'human', 'infantry', 5, 5);
   addUnit(s, 'orc', 'infantry', 9, 9);
   const d0 = defensePct(s, u, 5, 5);
   assert.ok(canFortify(s, u));
   fortifyUnit(s, u);
-  assert.equal(u.fort, 1);
+  assert.equal(u.fort, 2, 'hiệu lực ngay lập tức');
   assert.equal(u.acted, true, 'hạ trại dùng hết lượt');
-  assert.equal(defensePct(s, u, 5, 5), d0, 'chưa có hiệu lực trong lúc chuẩn bị');
-  endTurn(s);                       // sang orc: chưa dựng xong
-  assert.equal(u.fort, 1);
-  endTurn(s);                       // đầu lượt người: dựng xong
-  assert.equal(u.fort, 2);
   assert.equal(Math.round(defensePct(s, u, 5, 5) - d0), FORTIFY.human, 'cộng đúng 15% trên đồng bằng');
+  assert.ok(!canFortify(s, u), 'không hạ trại hai lần');
+  endTurn(s);                       // pha địch: vẫn đang được bảo vệ
+  assert.equal(u.fort, 2);
+  endTurn(s);                       // lượt mình: giữ nguyên, không tự mất
+  assert.equal(u.fort, 2);
   const keep = defensePct(s, u, 5, 5);
   waitUnit(s, u);
   assert.equal(u.fort, 2, 'đứng yên thì giữ trại');
@@ -95,6 +95,16 @@ test('hạ trại: có hiệu lực từ đầu lượt sau, cố định 15%/12
   const so = flat();
   const o = addUnit(so, 'orc', 'infantry', 5, 5); addUnit(so, 'human', 'infantry', 9, 9);
   assert.ok(fortifyBonus(so, o) < fortifyBonus(so, addUnit(so, 'human', 'infantry', 6, 6)));
+});
+
+test('hạ trại: địch đánh ngay sau lệnh đã bị giảm sát thương', () => {
+  const s = flat();
+  const t = addUnit(s, 'human', 'infantry', 5, 5);
+  const atk = addUnit(s, 'orc', 'infantry', 5, 6);
+  const before = calcDamage(s, atk, t).raw;
+  fortifyUnit(s, t);
+  endTurn(s);                       // sang pha orc
+  assert.ok(calcDamage(s, atk, t).raw < before, 'sát thương nhận vào giảm ngay trong pha địch kế tiếp');
 });
 
 test('hạ trại: mạnh hơn ở địa hình cộng thủ, yếu hơn ở địa hình trừ thủ; tấn công phá trại', () => {

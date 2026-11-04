@@ -277,20 +277,20 @@ export class GameView {
     return us;
   }
 
-  // Cọc rào dưới chân: nét đứt khi đang chuẩn bị, đặc khi đã dựng xong
+  // Cọc rào dưới chân khi đã hạ trại
   drawFort(us, mode) {
     if (us.fort === mode) return;
     us.fort = mode;
     const g = us.fortG;
     g.clear();
     if (!mode) return;
-    const col = mode === 2 ? 0x1b1b1b : 0x8a8a80;
+    const col = 0x1b1b1b;
     for (let i = -3; i <= 3; i++) {
       const x = i * 6.5, y = 5 + Math.abs(i) * -0.0;
-      g.moveTo(x, y + 4).lineTo(x - 0.8, y - (mode === 2 ? 9 : 5)).lineTo(x + 2.2, y + 4);
+      g.moveTo(x, y + 4).lineTo(x - 0.8, y - 9).lineTo(x + 2.2, y + 4);
     }
     g.stroke({ width: 1.8, color: col, join: 'round' });
-    if (mode === 2) g.moveTo(-21, -1).lineTo(21, -1).stroke({ width: 1.6, color: col });
+    g.moveTo(-21, -1).lineTo(21, -1).stroke({ width: 1.6, color: col });
   }
 
   setShown(us, n) {
@@ -652,13 +652,8 @@ export class GameView {
         }
         case 'fortify': {
           const us = this.sprites.get(ev.unit);
-          if (us) { this.drawFort(us, 1); this.float(this.t('float.fortify'), us.root.x, us.root.y - 52, 0xd9d9cf, 20); }
+          if (us) { this.drawFort(us, 2); this.float(this.t('float.fortify'), us.root.x, us.root.y - 52, 0xd9d9cf, 20); }
           await wait(220 / this.speed);
-          break;
-        }
-        case 'entrench': {
-          const us = this.sprites.get(ev.unit);
-          if (us) { this.drawFort(us, 2); this.float(this.t('float.entrench'), us.root.x, us.root.y - 52, 0xd9d9cf, 20); }
           break;
         }
         case 'levelup': {

@@ -504,8 +504,7 @@ export class Game {
     const nx = nextLevelXp(u);
     const xpTxt = nx ? `${u.xp}/${nx}` : t('ui.xpmax');
     const tdef = terrainFacts(tid).def[u.faction];
-    const fort = u.fort === 2 ? `<div class="fortline">${esc(t('ui.fort.on', { n: Math.round(fortifyBonus(s, u)) }))}</div>`
-      : u.fort === 1 ? `<div class="fortline">${esc(t('ui.fort.prep'))}</div>` : '';
+    const fort = u.fort === 2 ? `<div class="fortline">${esc(t('ui.fort.on', { n: Math.round(fortifyBonus(s, u)) }))}</div>` : '';
     const ic = (k) => t('ic.' + k);
     return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(t(`unit.${u.faction}.${u.role}`))}<span class="stars">${'★'.repeat(lvl)}</span></h3>
       <div class="pips" title="${esc(t('ui.strength'))}">${pips}</div>

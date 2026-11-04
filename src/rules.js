@@ -27,7 +27,7 @@ export function addUnit(state, faction, role, x, y, strength = CONFIG.maxStrengt
     id: state.nextId++, faction, role, x, y, strength,
     morale: CONFIG.startMorale, status: 'ok',
     moved: false, acted: false, movedDist: 0,
-    xp: 0, fort: 0,          // fort: 0 không, 1 đang chuẩn bị, 2 đã dựng trại (có hiệu lực)
+    xp: 0, fort: 0,          // fort: 2 = đã hạ trại (có hiệu lực), 0 = không
   };
   state.units.push(u);
   return u;
@@ -396,14 +396,15 @@ export function mergeUnits(s, u, tgt) {
   return events;
 }
 
-// Hạ trại: thay cho cả lượt hành động (không di chuyển, không tấn công). Có hiệu lực từ đầu lượt sau của phe này.
+// Hạ trại: thay cho cả lượt hành động (không di chuyển, không tấn công). Có hiệu lực ngay lập tức,
+// giữ nguyên cho tới khi quân di chuyển, tấn công, gộp/tách hoặc tan vỡ.
 export function canFortify(s, u) {
   return !u.moved && !u.acted && u.status === 'ok' && u.fort === 0;
 }
 
 export function fortifyUnit(s, u) {
   if (!canFortify(s, u)) return null;
-  u.fort = 1; u.moved = true; u.acted = true;
+  u.fort = 2; u.moved = true; u.acted = true;
   return [{ type: 'fortify', unit: u.id }];
 }
 
@@ -476,7 +477,6 @@ export function endTurn(s) {
     }
     u.moved = false; u.acted = false; u.movedDist = 0;
     if (u.status === 'routed') u.fort = 0;
-    else if (u.fort === 1) { u.fort = 2; events.push({ type: 'entrench', unit: u.id }); }
   }
   // tan vỡ: tự rút lui
   for (const u of alliesOf(s, next)) {
