@@ -192,24 +192,25 @@ export class GameView {
       const n = 1 + rng.int(2);
       for (let i = 0; i < n; i++) {
         const [px, py] = uv((rng() - 0.5) * 0.45, (rng() - 0.5) * 0.45);
-        this.place(this.mk(A.deco('hill', rng.int(3)), 0.95 + rng() * 0.3), px, py + 12);
+        this.place(this.mk(A.deco('hill', rng.int(3)), 0.95 + rng() * 0.3), px, py + 12, c.y + 2);
       }
     } else if (t === 'mountain') {
       const [px, py] = uv((rng() - 0.5) * 0.2, (rng() - 0.5) * 0.2);
-      this.place(this.mk(A.deco('mountain', rng.int(3)), 1.0), px, py + 16);
+      // núi hạ thấp và nằm sau quân đứng cùng ô, để quân vẫn lấp ló khi đi vào
+      this.place(this.mk(A.deco('mountain', rng.int(3)), 0.78), px, py + 14, c.y + 2);
     } else if (t === 'mine') {
-      this.place(this.mk(A.deco('mine', 0), 1.0), c.x, c.y + 14);
+      this.place(this.mk(A.deco('mine', 0), 1.0), c.x, c.y + 14, c.y + 2);
     } else if (t === 'village') {
       const name = ['village_a', 'village_b', 'cottages'][rng.int(3)];
-      this.place(this.mk(A.building(name)), c.x, c.y + 14);
+      this.place(this.mk(A.building(name)), c.x, c.y + 14, c.y + 2);
     } else if (t === 'fort') {
-      this.place(this.mk(A.building(rng() < 0.5 ? 'tower_a' : 'tower_b')), c.x, c.y + 16);
+      this.place(this.mk(A.building(rng() < 0.5 ? 'tower_a' : 'tower_b')), c.x, c.y + 16, c.y + 2);
     } else if (t === 'stronghold') {
       const own = this.state.map.strongholds;
       const isHuman = own.human.x === x && own.human.y === y;
       const f = isHuman ? 'human' : 'orc';
       const sp = this.mk(A.building(isHuman ? 'castle_town' : 'stronghold', FACTIONS[f].fill), 1.0);
-      this.place(sp, c.x, c.y + 20);
+      this.place(sp, c.x, c.y + 20, c.y + 2);
       // cờ tiến độ chiếm
       const label = new PIXI.Text({ text: '', style: { fontFamily: FONT, fontSize: 20, fill: 0xffffff, stroke: { color: 0x1b1b1b, width: 4 }, fontWeight: 'bold' } });
       label.anchor.set(0.5, 1);
@@ -348,7 +349,8 @@ export class GameView {
     paint(o.split, 0x3a78d8, 0.25, 0x2a5aa8);
     paint(o.merge, 0x3aa86a, 0.28, 0x23844f);
     paint(o.attack, 0xd8402f, 0.28, 0xb02a1c, false);
-    paint(o.threat, 0xd8402f, 0.1, 0xd8402f);
+    paint(o.threat, 0xd8402f, 0.12, 0xd8402f);
+    paint(o.range, 0xf08a24, 0.2, 0xd9731a);
     if (o.dest) paint([o.dest], 0xf2c200, 0.4, 0x1b1b1b, false);
     if (o.selected) {
       g.poly(dia(o.selected.x, o.selected.y, 1), true).stroke({ width: 3.2, color: 0xf2c200 });
@@ -430,13 +432,15 @@ export class GameView {
   // Chọn đơn vị theo thân sprite (người chơi chạm vào hình lính chứ không phải ô dưới chân)
   pickUnit(sx, sy) {
     const wx = (sx - this.world.position.x) / this.zoom, wy = (sy - this.world.position.y) / this.zoom;
-    let best = null;
+    let best = null, bestD = Infinity;
     for (const us of this.sprites.values()) {
       const hw = Math.max(us.sprite.width / 2, 20) + 4, top = us.sprite.height + 6;
       const dx = wx - us.root.x, dy = wy - us.root.y;
-      if (Math.abs(dx) <= hw && dy >= -top && dy <= 12) {
-        if (!best || us.root.zIndex > best.root.zIndex) best = us;
-      }
+      if (Math.abs(dx) > hw || dy < -top || dy > 12) continue;
+      // nhiều quân đứng chồng lên nhau: chọn quân có tâm thân gần điểm chạm nhất
+      const cy = -us.sprite.height * 0.5;
+      const d = Math.hypot(dx, (dy - cy) * 0.8);
+      if (d < bestD) { best = us; bestD = d; }
     }
     if (!best) return null;
     const t = worldToTile(best.root.x, best.root.y - 8);
@@ -453,14 +457,24 @@ export class GameView {
   bindInput() {
     const el = this.app.canvas;
     const ptrs = new Map();
-    let drag = null, pinch = null, moved = false;
+    let drag = null, pinch = null, moved = false, lpTimer = 0;
+    const clearLp = () => { clearTimeout(lpTimer); lpTimer = 0; };
     const rect = () => el.getBoundingClientRect();
     const pos = (e) => ({ x: e.clientX - rect().left, y: e.clientY - rect().top });
     el.addEventListener('contextmenu', (e) => { e.preventDefault(); this.hooks.onCancel?.(); });
     el.addEventListener('pointerdown', (e) => {
       el.setPointerCapture(e.pointerId);
       ptrs.set(e.pointerId, pos(e));
-      if (ptrs.size === 1) { drag = { ...pos(e), cam: { ...this.cam }, id: e.pointerId, btn: e.button }; moved = false; }
+      if (ptrs.size === 1) {
+        drag = { ...pos(e), cam: { ...this.cam }, id: e.pointerId, btn: e.button }; moved = false;
+        // giữ ngón tay ~0.45s trên một ô = xem thông tin địa hình/đơn vị (không có chuột để hover)
+        clearLp();
+        if (e.pointerType !== 'mouse') {
+          lpTimer = setTimeout(() => {
+            if (drag && !moved) { moved = true; this.hooks.onLongPress?.(this.pickUnit(drag.x, drag.y) || this.screenToTile(drag.x, drag.y)); }
+          }, 450);
+        }
+      }
       if (ptrs.size === 2) {
         const [a, b] = [...ptrs.values()];
         pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), zoom: this.zoom };
@@ -478,13 +492,14 @@ export class GameView {
       }
       if (drag && e.pointerId === drag.id && ptrs.size === 1) {
         const dx = p.x - drag.x, dy = p.y - drag.y;
-        if (!moved && Math.hypot(dx, dy) > 6) moved = true;
+        if (!moved && Math.hypot(dx, dy) > 8) { moved = true; clearLp(); }
         if (moved) this.setCamera(this.zoom, drag.cam.x - dx / this.zoom, drag.cam.y - dy / this.zoom);
       } else if (e.pointerType === 'mouse' && !ptrs.size) {
         this.hooks.onHover?.(this.pickUnit(p.x, p.y) || this.screenToTile(p.x, p.y));
       }
     });
     const up = (e) => {
+      clearLp();
       const had = ptrs.has(e.pointerId);
       ptrs.delete(e.pointerId);
       if (ptrs.size < 2) pinch = null;

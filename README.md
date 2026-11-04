@@ -31,7 +31,7 @@ Mọi con số cân bằng nằm trong `src/config.js`.
 ```
 src/config.js      số liệu (địa hình, chỉ số, hệ số)
 src/rules.js       luật thuần logic, không đụng DOM/Pixi (có test)
-src/mapgen.js      map procedural đối xứng xoay 180° (hai phe công bằng), có seed
+src/mapgen.js      map procedural không đối xứng, có seed; công bằng được kiểm tra sau khi sinh (assess)
 src/ai.js          AI 2 mức: easy / tactical
 src/actions.js     thực thi một hành động AI lên state
 src/game.js        điều khiển ván, UI, preview, menu
@@ -76,3 +76,14 @@ node tools/simulate.mjs 60 tactical tactical   # AI vs AI headless: số ván, t
 ```
 
 Cân bằng hiện chỉ được kiểm bằng AI đấu AI; cần chơi thử bằng tay để chỉnh số.
+
+## Map & công bằng
+
+Map **không đối xứng**: sông uốn lượn, thành đặt ngẫu nhiên trong dải của mỗi phe. Sau khi sinh, `assess()` kiểm tra
+(1) đường bộ thông cho cả kỵ binh, (2) vùng "ai tới ô nào trước" chia 42–58%, (3) mỗi bên có làng và >= 4 ô địa hình ẩn nấp.
+Map lệch quá sẽ bị bỏ và sinh lại. Đây là bộ lọc thô; seed vẫn có thể hơi lệch, hãy báo seed nếu thấy bất công.
+
+## Xem thông tin trên cảm ứng
+
+Chạm ô trống để xem địa hình (tốn di chuyển, phòng thủ cộng thêm, tầm bắn...). Giữ ngón tay ~0.5s lên **bất kỳ** ô nào (kể cả ô đang trong vùng di chuyển) để xem.
+Chọn cung thủ: vùng cam là tầm bắn. Chạm vào địch: vùng đỏ nhạt là nơi nó có thể đánh tới lượt sau.

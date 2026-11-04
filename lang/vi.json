@@ -42,8 +42,8 @@
   "ui.status.moved": "Đã di chuyển",
   "ui.status.done": "Xong lượt",
   "ui.status.routed": "Tan vỡ, tự rút lui",
-  "ui.hint.empty": "Chạm vào đội quân của mình để chọn.",
-  "ui.hint.selected": "Chạm ô vàng để di chuyển, chạm địch (viền đỏ) để tấn công.",
+  "ui.hint.empty": "Chạm vào đội quân của mình để chọn. Chạm ô trống, hoặc giữ ngón tay lên một ô, để xem địa hình.",
+  "ui.hint.selected": "Chạm ô vàng để di chuyển, chạm địch (viền đỏ) để tấn công. Ô cam là tầm bắn.",
   "ui.hint.confirm": "Chạm lần nữa vào mục tiêu hoặc bấm Tấn công để xác nhận.",
   "ui.preview.title": "{attacker} → {defender}",
   "ui.preview.deal": "Gây {n} thiệt hại",
@@ -103,5 +103,16 @@
   "terrain.note.mine": "Công trình: người phòng thủ tốt hơn.",
   "terrain.note.fort": "Công trình: người phòng thủ tốt hơn.",
   "terrain.note.stronghold": "Hồi quân cho chủ thành. Chiếm giữ 2 lượt để thắng.",
-  "ui.rotate": "Xoay ngang màn hình sẽ dễ chơi hơn"
+  "ui.rotate": "Xoay ngang màn hình sẽ dễ chơi hơn",
+  "ui.stat.def": "Thủ",
+  "ui.stat.move": "Đi",
+  "ui.stat.range": "Tầm",
+  "ui.info": "Mô tả",
+  "fx.blocked": "Không đi qua được. Cần có cầu.",
+  "fx.cost": "Tốn di chuyển: người {h} · orc {o} · kỵ binh {c}",
+  "fx.def": "Phòng thủ cộng thêm: người +{h}% · orc +{o}%",
+  "fx.range": "Cung thủ bắn xa thêm {n} ô",
+  "fx.heal": "Squad đứng đây cuối lượt hồi {n} quân",
+  "fx.nocav": "Kỵ binh không vào được",
+  "fx.forYou": "{unit} đang chọn đứng đây: thủ {def}%, tốn {cost} điểm đi"
 }

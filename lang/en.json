@@ -42,8 +42,8 @@
   "ui.status.moved": "Moved",
   "ui.status.done": "Done",
   "ui.status.routed": "Routed, retreating",
-  "ui.hint.empty": "Tap one of your squads to select it.",
-  "ui.hint.selected": "Tap a gold tile to move, tap an enemy (red outline) to attack.",
+  "ui.hint.empty": "Tap one of your squads to select it. Tap an empty tile, or press and hold a tile, to inspect terrain.",
+  "ui.hint.selected": "Tap a gold tile to move, tap an enemy (red outline) to attack. Orange tiles show firing range.",
   "ui.hint.confirm": "Tap the target again or press Attack to confirm.",
   "ui.preview.title": "{attacker} → {defender}",
   "ui.preview.deal": "Deals {n} damage",
@@ -103,5 +103,16 @@
   "terrain.note.mine": "Structure: humans defend better here.",
   "terrain.note.fort": "Structure: humans defend better here.",
   "terrain.note.stronghold": "Heals its owner's squads. Hold it for 2 turns to win.",
-  "ui.rotate": "Landscape is easier to play in"
+  "ui.rotate": "Landscape is easier to play in",
+  "ui.stat.def": "Def",
+  "ui.stat.move": "Mov",
+  "ui.stat.range": "Rng",
+  "ui.info": "Info",
+  "fx.blocked": "Impassable. Needs a bridge.",
+  "fx.cost": "Move cost: human {h} · orc {o} · cavalry {c}",
+  "fx.def": "Extra defense: human +{h}% · orc +{o}%",
+  "fx.range": "Archers shoot {n} tile farther",
+  "fx.heal": "A squad here at turn end recovers {n} strength",
+  "fx.nocav": "Cavalry cannot enter",
+  "fx.forYou": "Selected {unit} here: defense {def}%, costs {cost} move"
 }

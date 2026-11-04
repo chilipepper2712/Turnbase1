@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateMap, connected } from '../src/mapgen.js';
+import { generateMap, connected, assess } from '../src/mapgen.js';
 import {
   createState, addUnit, reachable, key, previewAttack, attackUnit, mergeUnits,
   splitUnit, moveUnit, endTurn, unitAt, defensePct, calcDamage,
@@ -19,21 +19,31 @@ function flatMap(w = 12, h = 12, over = {}) {
 }
 const blank = (over) => createState(flatMap(12, 12, over));
 
-test('mapgen: đối xứng xoay 180° và có đường đi, nhiều seed', () => {
-  for (let seed = 1; seed <= 60; seed++) {
+test('mapgen: không đối xứng, nhưng thông đường, cân bằng theo vùng, spawn hợp lệ', () => {
+  let asym = 0, okCount = 0;
+  const N = 80;
+  for (let seed = 1; seed <= N; seed++) {
     const m = generateMap(seed);
     assert.equal(m.tiles.length, m.w * m.h);
-    for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
-      const a = m.tiles[y * m.w + x];
-      const b = m.tiles[(m.h - 1 - y) * m.w + (m.w - 1 - x)];
-      assert.equal(a, b, `seed ${seed} lệch đối xứng tại ${x},${y}`);
+    assert.ok(connected(m, false) && connected(m, true), 'seed ' + seed + ' không thông đường');
+    for (const f of ['human', 'orc']) {
+      assert.equal(m.spawns[f].length, 7);
+      for (const p of m.spawns[f]) {
+        const t = TERRAIN[m.tiles[p.y * m.w + p.x]];
+        assert.ok(isFinite(t.cost) && !t.noCavalry, 'spawn ở ô không đi được: seed ' + seed);
+      }
     }
-    assert.ok(connected(m, false) && connected(m, true), 'seed ' + seed);
-    assert.equal(m.spawns.human.length, 7);
-    assert.equal(m.spawns.orc.length, 7);
     const keys = new Set([...m.spawns.human, ...m.spawns.orc].map((p) => key(p.x, p.y)));
     assert.equal(keys.size, 14, 'spawn không được trùng');
+    if (assess(m).ok) okCount++;
+    let sym = true;
+    for (let y = 0; y < m.h && sym; y++) for (let x = 0; x < m.w; x++) {
+      if (m.tiles[y * m.w + x] !== m.tiles[(m.h - 1 - y) * m.w + (m.w - 1 - x)]) { sym = false; break; }
+    }
+    if (!sym) asym++;
   }
+  assert.ok(asym >= N * 0.95, 'map phải hầu như không đối xứng: ' + asym + '/' + N);
+  assert.ok(okCount >= N * 0.9, 'đa số map phải qua kiểm tra công bằng: ' + okCount + '/' + N);
 });
 
 test('mapgen: cùng seed cho cùng map', () => {

@@ -4,7 +4,7 @@ import { generateMap } from './mapgen.js';
 import {
   createState, reachable, targetsFrom, previewAttack, moveUnit, attackUnit, waitUnit, mergeUnits,
   splitUnit, splitTiles, canSplit, endTurn, unitAt, key, pathTo, defensePct, statsOf, terrainId,
-  alliesOf, rangeAt, inEnemyZoc,
+  alliesOf, rangeAt, inEnemyZoc, terrainFacts, tilesInRange, threatTiles, moveCostFor,
 } from './rules.js';
 import { planNextAction } from './ai.js';
 import { executeAction } from './actions.js';
@@ -31,6 +31,7 @@ export class Game {
       onTap: (tile) => this.onTap(tile),
       onHover: (tile) => this.onHover(tile),
       onCancel: () => this.cancel(),
+      onLongPress: (tile) => this.inspect(tile),
     };
     this.bindChrome();
   }
@@ -127,9 +128,12 @@ export class Game {
   }
 
   // ---------- Chọn / hành động ----------
+  clearInfo() { this.inspectTile = null; this.rangeTiles = null; this.hoverRange = null; this.threat = null; }
+
   deselect() {
     this.sel = null; this.pending = null; this.attackOpts = null; this.reach = null; this.origin = null;
     this.mode = 'idle';
+    this.clearInfo();
     this.refreshOverlay();
     this.refreshActions();
     this.hidePreview();
@@ -146,6 +150,7 @@ export class Game {
   select(u) {
     const s = this.state;
     this.sel = u; this.pending = null; this.splitting = false;
+    this.clearInfo();
     const own = u.faction === s.current && !u.acted && u.status === 'ok';
     if (!own) {
       this.reach = { tiles: new Map(), merges: new Map() };
@@ -155,7 +160,11 @@ export class Game {
       this.reach = u.moved ? { tiles: new Map([[key(u.x, u.y), { x: u.x, y: u.y, cost: 0 }]]), merges: new Map() } : reachable(s, u);
       this.attackOpts = this.computeAttackOpts(u);
       this.mode = u.moved ? 'moved' : 'selected';
+      // cung thủ (và sau này pháo binh): hiện vùng tầm bắn từ chỗ đang đứng
+      if (statsOf(u).range[1] > 1) this.rangeTiles = tilesInRange(s, u, u.x, u.y);
     }
+    // xem một đơn vị địch: hiện vùng nó có thể đánh tới ở lượt sau
+    if (u.faction !== s.current) this.threat = threatTiles(s, u);
     this.refreshOverlay();
     this.refreshActions();
     this.hidePreview();
@@ -195,9 +204,12 @@ export class Game {
       if (this.pending) {
         const n = this.pending.node;
         if (n.x !== u.x || n.y !== u.y) { o.dest = { x: n.x, y: n.y }; o.path = pathTo(this.reach.tiles.get(key(n.x, n.y))); }
+        if (statsOf(u).range[1] > 1) o.range = tilesInRange(s, u, n.x, n.y);
       }
     }
-    if (this.hoverTile) o.hover = this.hoverTile;
+    if (!o.range && !this.splitting) o.range = this.hoverRange || this.rangeTiles || undefined;
+    if (this.threat) o.threat = this.threat;
+    o.hover = this.inspectTile || this.hoverTile || undefined;
     this.view.setOverlay(o);
   }
 
@@ -208,6 +220,11 @@ export class Game {
     if (same || (!tile && !this.hoverTile)) return;
     this.hoverTile = tile;
     this.hoverUnit = tile ? unitAt(this.state, tile.x, tile.y) : null;
+    this.hoverRange = null;
+    const u = this.sel;
+    if (tile && u && this.mode === 'selected' && statsOf(u).range[1] > 1 && this.reach.tiles.has(key(tile.x, tile.y))) {
+      this.hoverRange = tilesInRange(this.state, u, tile.x, tile.y);
+    }
     this.refreshOverlay();
     if (!this.pending) {
       this.refreshPanel();
@@ -248,7 +265,23 @@ export class Game {
     if (sel && this.mode === 'selected' && this.reach.tiles.has(key(tile.x, tile.y))) {
       return this.doMove(tile);
     }
-    this.deselect();
+    this.inspect(tile);
+  }
+
+  // Xem thông tin một ô (chạm vào ô trống, hoặc giữ ngón tay lên bất kỳ ô nào). Không đổi đơn vị đang chọn.
+  inspect(tile) {
+    const s = this.state;
+    if (this.busy || !tile || s.winner) return;
+    if (this.inspectTile && this.inspectTile.x === tile.x && this.inspectTile.y === tile.y) {
+      this.inspectTile = null; this.threat = null;
+    } else {
+      this.inspectTile = tile;
+      const u = unitAt(s, tile.x, tile.y);
+      this.threat = u && u.faction !== s.current ? threatTiles(s, u) : null;
+    }
+    this.pending = null; this.hidePreview();
+    this.refreshOverlay();
+    this.refreshPanel();
   }
 
   proposeAttack(enemy) {
@@ -383,27 +416,55 @@ export class Game {
     el.innerHTML = h;
   }
 
-  refreshPanel(forceUnit) {
+  // Panel thông tin: ưu tiên ô đang inspect/hover; nếu trên ô có quân thì hiện thẻ quân, ô trống thì hiện địa hình
+  refreshPanel() {
     const s = this.state, el = $('panel');
-    const u = forceUnit || (this.hoverUnit && !this.sel ? this.hoverUnit : this.sel || this.hoverUnit);
-    if (u) {
-      const live = s.units.find((x) => x.id === u.id);
-      if (live) return (el.innerHTML = this.unitCard(live));
+    const at = this.inspectTile || this.hoverTile;
+    const atUnit = at && unitAt(s, at.x, at.y);
+    let html;
+    if (atUnit) html = this.unitCard(atUnit);
+    else if (at) html = this.terrainCard(at);
+    else if (this.sel && s.units.some((x) => x.id === this.sel.id)) html = this.unitCard(this.sel);
+    else html = `<div class="hint">${esc(t(this.sel ? 'ui.hint.selected' : 'ui.hint.empty'))}</div>`;
+    el.innerHTML = html;
+  }
+
+  costText(c) { return isFinite(c) ? String(c) : '✕'; }
+
+  // Hiệu ứng địa hình dạng danh sách ngắn, dễ quyết định
+  terrainLines(tid) {
+    const f = terrainFacts(tid);
+    const L = [];
+    if (!f.passable) { L.push(t('fx.blocked')); return L; }
+    const cav = f.cost.cavHuman === f.cost.cavOrc ? this.costText(f.cost.cavHuman) : `${this.costText(f.cost.cavHuman)}/${this.costText(f.cost.cavOrc)}`;
+    L.push(t('fx.cost', { h: this.costText(f.cost.human), o: this.costText(f.cost.orc), c: cav }));
+    if (f.def.human || f.def.orc) L.push(t('fx.def', { h: f.def.human, o: f.def.orc }));
+    if (f.rangeBonus) L.push(t('fx.range', { n: f.rangeBonus }));
+    if (f.heal) L.push(t('fx.heal', { n: f.heal }));
+    if (f.noCavalry) L.push(t('fx.nocav'));
+    return L;
+  }
+
+  terrainCard(tile) {
+    const s = this.state;
+    const tid = terrainId(s, tile.x, tile.y);
+    const L = this.terrainLines(tid).map((l) => `<li>${esc(l)}</li>`).join('');
+    const nk = 'terrain.note.' + tid, note = t(nk);
+    let you = '';
+    const u = this.sel;
+    if (u && u.faction === s.current && s.units.some((x) => x.id === u.id)) {
+      const def = Math.round(defensePct(s, u, tile.x, tile.y));
+      const cost = moveCostFor(tid, u.faction, u.role);
+      you = `<div class="you">${esc(t('fx.forYou', { unit: t(`unit.${u.faction}.${u.role}`), def, cost: this.costText(cost) }))}</div>`;
     }
-    const tl = this.hoverTile;
-    if (tl) {
-      const id = terrainId(s, tl.x, tl.y);
-      const noteKey = 'terrain.note.' + id;
-      const note = t(noteKey);
-      return (el.innerHTML = `<h3>${esc(t('terrain.' + id))}</h3><div class="desc">${note === noteKey ? '' : esc(note)}</div>`);
-    }
-    el.innerHTML = `<div class="hint">${esc(t(this.sel ? 'ui.hint.selected' : 'ui.hint.empty'))}</div>`;
+    return `<h3>${esc(t('terrain.' + tid))}</h3><ul class="fx">${L}</ul>${you}${note === nk ? '' : `<div class="note">${esc(note)}</div>`}`;
   }
 
   unitCard(u) {
     const s = this.state, st = statsOf(u), f = FACTIONS[u.faction];
     const tid = terrainId(s, u.x, u.y);
     const def = Math.round(defensePct(s, u, u.x, u.y));
+    const tdef = terrainFacts(tid).def[u.faction];
     const [mn, mx] = rangeAt(s, u, u.x, u.y);
     let status = t('ui.status.ready');
     if (u.status === 'routed') status = t('ui.status.routed');
@@ -412,15 +473,14 @@ export class Game {
     const pips = Array.from({ length: CONFIG.maxStrength }, (_, i) => `<b class="${i < u.strength ? 'on ' + u.faction : ''}"></b>`).join('');
     const mor = Math.round(u.morale);
     const morCol = mor <= f.routAt ? '#d8402f' : mor <= f.routAt + 25 ? '#e6a800' : '#4aa86a';
-    return `<h3>${esc(t(`unit.${u.faction}.${u.role}`))}</h3>
-      <div class="sub">${esc(t('faction.' + u.faction))} · <span class="tag">${esc(status)}</span></div>
-      <div class="row"><span>${esc(t('ui.strength'))}</span><b>${u.strength}/${CONFIG.maxStrength}</b></div><div class="pips">${pips}</div>
-      <div class="row"><span>${esc(t('ui.morale'))}</span><b>${mor}</b></div><div class="bar"><i style="width:${mor}%;background:${morCol}"></i></div>
-      <div class="row"><span>${esc(t('ui.defense'))}</span><b>${def}%</b></div>
-      <div class="row extra"><span>${esc(t('ui.move'))}</span><b>${st.move}</b></div>
-      <div class="row extra"><span>${esc(t('ui.range'))}</span><b>${mn === mx ? mx : mn + '–' + mx}</b></div>
-      <div class="row extra"><span>${esc(t('ui.terrain'))}</span><b>${esc(t('terrain.' + tid))}</b></div>
-      <div class="desc">${esc(t('unit.desc.' + u.role))}</div>`;
+    return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(t(`unit.${u.faction}.${u.role}`))}</h3>
+      <div class="pips">${pips}</div>
+      <div class="line"><span>${esc(t('ui.strength'))} <b>${u.strength}/${CONFIG.maxStrength}</b></span><span>${esc(t('ui.morale'))} <b>${mor}</b></span></div>
+      <div class="bar"><i style="width:${mor}%;background:${morCol}"></i></div>
+      <div class="stats"><span>${esc(t('ui.stat.def'))} <b>${def}%</b></span><span>${esc(t('ui.stat.move'))} <b>${st.move}</b></span><span>${esc(t('ui.stat.range'))} <b>${mn === mx ? mx : mn + '–' + mx}</b></span></div>
+      <div class="terr">${esc(t('terrain.' + tid))}${tdef ? ` · +${tdef}% ${esc(t('ui.stat.def').toLowerCase())}` : ''}</div>
+      <span class="tag">${esc(status)}</span>
+      <details><summary>${esc(t('ui.info'))}</summary><div class="desc">${esc(t('unit.desc.' + u.role))}</div></details>`;
   }
 
   showPreview(opt, withButtons) {

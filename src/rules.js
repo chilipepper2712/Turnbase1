@@ -64,16 +64,36 @@ export function inEnemyZoc(s, f, x, y) {
   return adjacentUnits(s, x, y).some((u) => u.faction !== f);
 }
 
+// Chi phí vào một loại địa hình theo phe + vai trò (không cần state)
+export function moveCostFor(tid, faction, role) {
+  const t = TERRAIN[tid];
+  if (!isFinite(t.cost)) return Infinity;
+  if (role === 'cavalry' && t.noCavalry) return Infinity;
+  let c = t.cost;
+  if (t.nat > 0) c = Math.max(1, c - FACTIONS[faction].natMoveDiscount);
+  if (role === 'cavalry' && tid === 'forest') c += 1;
+  return c;
+}
+
 // Chi phí vào một ô cho một unit
 export function moveCost(s, u, x, y) {
-  const id = terrainId(s, x, y);
-  const t = TERRAIN[id];
-  if (!isFinite(t.cost)) return Infinity;
-  if (u.role === 'cavalry' && t.noCavalry) return Infinity;
-  let c = t.cost;
-  if (t.nat > 0) c = Math.max(1, c - FACTIONS[u.faction].natMoveDiscount);
-  if (u.role === 'cavalry' && id === 'forest') c += 1;
-  return c;
+  return moveCostFor(terrainId(s, x, y), u.faction, u.role);
+}
+
+// Mô tả hiệu ứng địa hình cho UI (mọi con số lấy từ config, không hard-code)
+export function terrainFacts(tid) {
+  const t = TERRAIN[tid];
+  const defOf = (f) => Math.round(t.nat * FACTIONS[f].natAffinity + t.str * FACTIONS[f].strAffinity);
+  return {
+    passable: isFinite(t.cost),
+    cost: { human: moveCostFor(tid, 'human', 'infantry'), orc: moveCostFor(tid, 'orc', 'infantry'),
+      cavHuman: moveCostFor(tid, 'human', 'cavalry'), cavOrc: moveCostFor(tid, 'orc', 'cavalry') },
+    def: { human: defOf('human'), orc: defOf('orc') },
+    rangeBonus: t.rangeBonus || 0,
+    heal: t.heal ? CONFIG.healVillage : 0,
+    noCavalry: !!t.noCavalry,
+    structure: t.str > 0,
+  };
 }
 
 // % giảm sát thương unit nhận được khi đứng ở (x,y)
@@ -434,4 +454,33 @@ export function endTurn(s) {
   }
   checkElimination(s);
   return events;
+}
+
+// Các ô nằm trong tầm đánh của unit nếu nó đứng ở (x,y)
+export function tilesInRange(s, u, x, y) {
+  const [mn, mx] = rangeAt(s, u, x, y);
+  if (mx <= 1) return [];
+  const out = [];
+  for (let yy = y - mx; yy <= y + mx; yy++) for (let xx = x - mx; xx <= x + mx; xx++) {
+    if (!inBounds(s, xx, yy)) continue;
+    const d = Math.abs(xx - x) + Math.abs(yy - y);
+    if (d >= mn && d <= mx) out.push({ x: xx, y: yy });
+  }
+  return out;
+}
+
+// Vùng một unit (thường là địch) có thể đánh tới ở lượt của nó: đi tối đa rồi bắn/đánh
+export function threatTiles(s, u) {
+  const seen = new Map();
+  const probe = { ...u, moved: false };
+  const reach = reachable(s, probe);
+  for (const n of reach.tiles.values()) {
+    const [mn, mx] = rangeAt(s, u, n.x, n.y);
+    for (let yy = n.y - mx; yy <= n.y + mx; yy++) for (let xx = n.x - mx; xx <= n.x + mx; xx++) {
+      if (!inBounds(s, xx, yy)) continue;
+      const d = Math.abs(xx - n.x) + Math.abs(yy - n.y);
+      if (d >= mn && d <= mx) seen.set(key(xx, yy), { x: xx, y: yy });
+    }
+  }
+  return [...seen.values()];
 }
