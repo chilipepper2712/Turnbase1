@@ -43,7 +43,7 @@
   "ui.status.done": "Xong lượt",
   "ui.status.routed": "Tan vỡ, tự rút lui",
   "ui.hint.empty": "Chạm quân ta để chọn. Chạm ô trống hoặc giữ ngón tay lên ô để xem địa hình.",
-  "ui.hint.selected": "Ô vàng: đi được. Viền đỏ: đánh được. Ô xanh lá: tầm bắn. Ô tím: gộp quân.",
+  "ui.hint.selected": "Ô vàng: đi được. Ô đỏ: đánh được. Chấm đỏ: tầm bắn. Ô xanh lá: gộp quân.",
   "ui.hint.confirm": "Chạm lần nữa vào mục tiêu hoặc bấm Tấn công để xác nhận.",
   "ui.preview.title": "{attacker} → {defender}",
   "ui.preview.deal": "Gây {n} thiệt hại",

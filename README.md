@@ -97,6 +97,6 @@ Chọn cung thủ: vùng xanh lá là tầm bắn. Chạm vào địch: vùng đ
 
 ## Quy ước hiển thị
 
-Mỗi ô một địa hình, sprite nằm gọn trong ô. Màu ô: **vàng** đi được · **đỏ** đánh được · **tím** gộp quân · **xanh dương** chỗ đặt đội tách ·
-**ô xanh lá nhỏ ở giữa** tầm bắn (chồng lên ô vàng vẫn đọc được cả hai) · **đỏ nhạt** vùng địch có thể đánh tới.
+Mỗi ô một địa hình, sprite nằm gọn trong ô. Màu ô: **vàng** đi được · **đỏ** đánh được · **xanh lá** gộp quân · **xanh dương** chỗ đặt đội tách ·
+**chấm tròn đỏ ở giữa ô** tầm bắn (chồng lên ô vàng vẫn đọc được cả hai) · **đỏ nhạt** vùng địch có thể đánh tới.
 Khi chạm: ô đang là hành động hợp lệ (đi / đánh / gộp / tách) được ưu tiên, nên quân đứng phía trước che ô không cản việc chọn ô phía sau.

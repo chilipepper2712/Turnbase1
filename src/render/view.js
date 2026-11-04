@@ -337,8 +337,8 @@ export class GameView {
   }
 
   // Quy ước màu (chỉ tô ô, không viền nét đứt):
-  //   vàng = đi được · đỏ = đánh được · tím = gộp quân · xanh dương = chỗ đặt đội tách
-  //   xanh lá (ô nhỏ ở giữa) = tầm bắn, nằm chồng lên ô vàng mà vẫn đọc được cả hai
+  //   vàng = đi được · đỏ = đánh được · xanh lá = gộp quân · xanh dương = chỗ đặt đội tách
+  //   chấm tròn đỏ ở giữa ô = tầm bắn, nằm chồng lên ô vàng mà vẫn đọc được cả hai
   drawOverlay() {
     const g = this.hl;
     g.clear();
@@ -353,9 +353,12 @@ export class GameView {
     paint(o.threat, 0xd8402f, 0.16);
     paint(o.move, 0xf2c200, 0.38);
     paint(o.split, 0x3a78d8, 0.38);
-    paint(o.merge, 0x8a5cd6, 0.4);
+    paint(o.merge, 0x3aa86a, 0.42);
     paint(o.attack, 0xd8402f, 0.42);
-    paint(o.range, 0x2fb36a, 0.7, 0.5);
+    for (const p of o.range || []) {
+      const c = tileToWorld(p.x, p.y);
+      g.circle(c.x, c.y, 8).fill({ color: 0xd8402f, alpha: 0.88 });
+    }
     if (o.dest) paint([o.dest], 0xf2c200, 0.6);
     if (o.selected) g.poly(dia(o.selected.x, o.selected.y, 1), true).stroke({ width: 3, color: 0xf2c200 });
     if (o.hover) g.poly(dia(o.hover.x, o.hover.y, 0.9), true).stroke({ width: 1.6, color: 0x1b1b1b, alpha: 0.55 });

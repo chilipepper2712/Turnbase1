@@ -43,7 +43,7 @@
   "ui.status.done": "Done",
   "ui.status.routed": "Routed, retreating",
   "ui.hint.empty": "Tap a squad to select. Tap an empty tile or press and hold a tile to inspect terrain.",
-  "ui.hint.selected": "Gold: can move. Red outline: can attack. Green: firing range. Purple: merge.",
+  "ui.hint.selected": "Gold: can move. Red tile: can attack. Red dot: firing range. Green tile: merge.",
   "ui.hint.confirm": "Tap the target again or press Attack to confirm.",
   "ui.preview.title": "{attacker} → {defender}",
   "ui.preview.deal": "Deals {n} damage",
