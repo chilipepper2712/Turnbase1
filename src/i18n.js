@@ -3,7 +3,10 @@
 export const LANGS = ['vi', 'en'];
 let dict = {}, fallback = {}, current = 'vi';
 
+// Bản đóng gói một file nhúng sẵn chuỗi vào window.__LANG_DATA__ (không cần fetch)
 async function load(code) {
+  const emb = globalThis.__LANG_DATA__;
+  if (emb && emb[code]) return emb[code];
   const res = await fetch(`lang/${code}.json`);
   if (!res.ok) throw new Error('Không tải được ngôn ngữ ' + code);
   return res.json();
