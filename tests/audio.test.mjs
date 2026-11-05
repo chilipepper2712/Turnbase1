@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { resolveSfx, FALLBACK } from '../src/audio.js';
+import { resolveSfx, FALLBACK, sfxRate } from '../src/audio.js';
 import { buildIndex } from '../tools/build_audio_index.mjs';
 
 test('resolveSfx: biến thể _N, thay thế theo chuỗi, không có gì thì rỗng', () => {
@@ -34,4 +34,14 @@ test('buildIndex: quét sfx và nhạc, ưu tiên mp3 hơn wav cùng tên, bỏ 
   const idx = buildIndex(d);
   assert.deepEqual(idx.sfx, { a: 'sfx/a.mp3', b: 'sfx/b.ogg' });
   assert.deepEqual(idx.music, { battle_1: 'music/battle_1.mp3' });
+});
+
+test('sfxRate: luôn dương (không bao giờ tắt tiếng), thay thế thì nâng cao độ, có file riêng thì lệch ±4%', () => {
+  for (const own of [true, false]) for (const n of ['turn_player', 'turn_enemy', 'attack_melee']) for (const r of [0, 0.5, 0.999]) {
+    const v = sfxRate(n, own, undefined, () => r);
+    assert.ok(v > 0.9 && v < 1.5, `${n} own=${own} rnd=${r} -> ${v}`);
+  }
+  assert.equal(sfxRate('turn_player', false, undefined, () => 0.5), 1.3);
+  assert.ok(sfxRate('turn_player', true, undefined, () => 0.5) < 1.05, 'có file riêng thì không nâng cao độ');
+  assert.equal(sfxRate('x', true, 1.1), 1.1);
 });

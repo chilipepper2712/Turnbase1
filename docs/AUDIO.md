@@ -55,7 +55,9 @@ Nhập bằng `python3 tools/import_audio_pack.py <thư mục|zip>` (bảng ánh
 
 **Dùng tiếng thay thế (3):** `rout` (dùng `hit_flesh`), `ui_deny` (dùng `ui_cancel`), `heal` (dùng `levelup`).
 
-**Đang im lặng vì thay thế của chúng là `ui_confirm` đã bị tắt (5):** `turn_player` (đầu lượt của mày, nên có một tiếng riêng), `end_turn`, `merge`, `split`, `capture`.
+**Đang im lặng vì thay thế của chúng là `ui_confirm` đã bị tắt (4):** `end_turn`, `merge`, `split`, `capture`.
+
+**`turn_player` (đầu lượt của mày):** chưa có file riêng, tạm dùng `turn_enemy` nâng cao độ ×1.3 để khác lượt Orc. Thả `turn_player.*` vào là dùng thẳng, không cần sửa code.
 
 **Chưa dùng:** `Bow Blocked 1..3` (game chưa có cơ chế đỡ đòn).
 

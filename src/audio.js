@@ -9,7 +9,6 @@ export const FALLBACK = {
   attack_spear: ['attack_melee'],
   attack_charge: ['attack_melee'],
   arrow_hit: ['hit_flesh'],
-  turn_enemy: ['turn_player'],
   ui_deny: ['ui_cancel'],
   rout: ['hit_flesh'],
   heal: ['levelup'],
@@ -18,7 +17,7 @@ export const FALLBACK = {
   capture: ['ui_confirm'],
   defeat: ['unit_die'],
   end_turn: ['ui_confirm'],
-  turn_player: ['ui_confirm'],
+  turn_player: ['turn_enemy', 'ui_confirm'],
   levelup: ['ui_confirm'],
   fortify: ['ui_confirm'],
 };
@@ -42,6 +41,14 @@ export function resolveSfx(name, available) {
 
 // Nhạc nền to thêm ~2.6 dB (khoảng +35% biên độ) so với thang âm lượng gốc, vì mặc định nghe hơi nhỏ
 const MUSIC_BOOST = 1.35;
+// Khi một tiếng phải dùng tiếng thay thế, chỉnh cao độ để người nghe vẫn phân biệt được (vd. lượt của mày vs lượt Orc)
+const FALLBACK_RATE = { turn_player: 1.3 };
+// Tốc độ phát: chỉ định tay > cao độ cố định khi dùng tiếng thay thế > lệch ngẫu nhiên ±4%. Luôn trả về số dương.
+export function sfxRate(name, own, explicit, rnd = Math.random) {
+  if (typeof explicit === 'number' && explicit > 0) return explicit;
+  if (!own && FALLBACK_RATE[name]) return FALLBACK_RATE[name];
+  return 0.96 + rnd() * 0.08;
+}
 const EXT_PREF = ['mp3', 'ogg', 'm4a', 'wav'];
 const b64ToBuf = (uri) => {
   const bin = atob(uri.slice(uri.indexOf(',') + 1)), u = new Uint8Array(bin.length);
@@ -136,6 +143,7 @@ export class AudioManager {
     if (!this.ready || this.s.muted) return;
     const vs = resolveSfx(name, this.index.sfx);
     if (!vs.length) return;
+    const own = variantsOf(name, this.index.sfx).length > 0;
     const lastKey = 'v:' + name;
     let pick = vs[Math.floor(Math.random() * vs.length)];
     if (vs.length > 1 && pick === this.last.get(lastKey)) pick = vs[(vs.indexOf(pick) + 1) % vs.length];    // không lặp đúng bản vừa phát
@@ -146,7 +154,7 @@ export class AudioManager {
     const b = this.buf.get('sfx:' + pick);
     if (!b) { this.load('sfx', pick); return; }
     const src = this.ctx.createBufferSource(); src.buffer = b;
-    src.playbackRate.value = opts.rate ?? (0.96 + Math.random() * 0.08);   // lệch nhẹ để không nghe lặp máy móc
+    src.playbackRate.value = sfxRate(name, own, opts.rate);   // lệch nhẹ để không nghe lặp máy móc
     const g = this.ctx.createGain(); g.gain.value = opts.vol ?? 1;
     src.connect(g); g.connect(this.sfxBus); src.start();
   }
