@@ -9,7 +9,12 @@ import { makeCanvas, drawTree, drawHill, drawMountain, drawMine, drawFallbackUni
 
 export const RES = 2; // texture dựng ở độ phân giải gấp đôi, sprite scale 1/RES
 
-const UNIT_HEIGHT = { militia: 60, infantry: 66, archer: 62, cavalry: 70 };
+// Chiều cao thân mong muốn (đơn vị thế giới). Kỵ binh giữ nguyên cả ngựa lẫn cờ vì to hơn sẽ che hết ô.
+const UNIT_HEIGHT = { militia: 62, infantry: 62, archer: 62, cavalry: 70 };
+const BODY_FRAC = {
+  human: { militia: 0.92, infantry: 0.89, archer: 1.0, cavalry: 1.0 },
+  orc:   { militia: 0.92, infantry: 1.0,  archer: 1.0, cavalry: 1.0 },
+};
 
 // Chi tiết orc vẽ thêm lên sprite người (toạ độ chuẩn hoá theo ảnh sprite)
 const ORC_FEATURES = {
@@ -135,7 +140,9 @@ export class Assets {
     const ownFill = this.imgs.get(`assets/units/${faction}_${role}_fill.png`);
     const base = this.imgs.get(`assets/units/${role}.png`);
     const baseFill = this.imgs.get(`assets/units/${role}_fill.png`);
-    const H = UNIT_HEIGHT[role] * (faction === 'orc' ? 0.95 : 1.1) * RES;   // Orc nhỏ lại ~12% so với trước (1.08 -> 0.95), người to thêm 10%
+    // Chiều cao thân (đầu tới chân) là thứ phải đồng đều giữa các quân; giáo/kiếm nhô cao hơn đầu không được tính.
+    // BODY_FRAC = phần thân chiếm trong chiều cao toàn ảnh, nên ảnh có vũ khí dài được phóng to bù lại.
+    const H = (UNIT_HEIGHT[role] / (BODY_FRAC[faction]?.[role] ?? 1)) * (faction === 'orc' ? 0.95 : 1.1) * RES;   // Orc nhỏ lại ~12% so với trước (1.08 -> 0.95), người to thêm 10%
     const color = FACTIONS[faction].fill;
     if (own) {
       const W = Math.round(own.width * (H / own.height));
