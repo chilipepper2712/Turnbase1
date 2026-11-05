@@ -23,14 +23,15 @@ MAP = {
     "bow impact hit 1": "arrow_hit_1", "bow impact hit 2": "arrow_hit_2", "bow impact hit 3": "arrow_hit_3",
     "unit_die_1": "unit_die_1", "unit_die_2": "unit_die_2", "unit_die_3": "unit_die_3",
     "build_camp": "fortify", "victory": "victory", "defeat": "defeat",
+    "turn_player": "turn_player",
     "levelup": "levelup", "horse_attack_charge": "attack_charge", "horse_step": "step_horse", "turn_enemy": "turn_enemy",
 }
 # Tiếng click giao diện bị bỏ (gây khó chịu): file có tên này sẽ bị XOÁ khỏi assets/audio/sfx khi chạy nhập
 SILENT = ["ui_select", "ui_confirm"]
 # cắt dài tối đa (giây) + mờ đuôi: tiếng gốc có đuôi vang quá dài cho một hiệu ứng phát liên tục / theo sự kiện
-TRIM = {"levelup": (1.6, 0.6), "step_horse": (0.42, 0.1)}
+TRIM = {"levelup": (1.6, 0.6), "step_horse": (0.42, 0.1), "turn_player": (3.4, 0.5)}
 # đỉnh mong muốn (dBFS) theo tiền tố tên SFX; tiếng giao diện nhỏ, bước chân nhỏ nhất vì phát liên tục
-PEAK = [("ui_", -12), ("step_", -15), ("fortify", -10), ("victory", -10), ("defeat", -10), ("turn_", -9), ("levelup", -10), ("", -8)]
+PEAK = [("ui_", -12), ("step_", -15), ("fortify", -10), ("victory", -10), ("defeat", -10), ("turn_player", -14), ("turn_", -9), ("levelup", -10), ("", -8)]
 # nhạc: số thứ tự theo thời lượng giảm dần được đặt tên battle_1..N
 MUSIC_LUFS = -20
 

@@ -22,6 +22,7 @@
   "step_foot_2": "sfx/step_foot_2.wav",
   "step_horse": "sfx/step_horse.wav",
   "turn_enemy": "sfx/turn_enemy.wav",
+  "turn_player": "sfx/turn_player.wav",
   "ui_cancel": "sfx/ui_cancel.wav",
   "unit_die_1": "sfx/unit_die_1.wav",
   "unit_die_2": "sfx/unit_die_2.wav",
