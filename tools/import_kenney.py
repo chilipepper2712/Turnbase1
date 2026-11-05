@@ -29,7 +29,26 @@ NAMES = [
 ]
 
 
-def fill_mask(alpha):
+ROCKY = {"rocks", "rocksA", "rocksB", "rocksMountain", "rocksTall"}
+
+
+def contour_fill(ink):
+    """Lót nền cho đá/núi hở đáy: với mỗi mỏm (cụm nét liền nhau), tô mỗi cột từ nét cao nhất của cột xuống tới
+    điểm thấp nhất của mỏm. Khớp hình bóng của núi mà không lấp thung lũng giữa các mỏm."""
+    comp, n = ndi.label(ndi.binary_dilation(ink, iterations=4))
+    out = np.zeros_like(ink)
+    for c in range(1, n + 1):
+        m = (comp == c) & ink
+        if not m.any():
+            continue
+        ybot = np.where(m.any(1))[0].max()
+        for x in np.where(m.any(0))[0]:
+            ytop = np.where(m[:, x])[0].min()
+            out[ytop: ybot + 1, x] = True
+    return out
+
+
+def fill_mask(alpha, name=""):
     """Hình bóng đặc của icon, để lót một lớp nền giấy solid che đường lưới phía sau.
 
     Icon của Kenney chỉ là nét; nhiều icon hở đáy (hầm mỏ, núi, đá) hoặc có khe hở nhỏ trên nét nên
@@ -46,6 +65,8 @@ def fill_mask(alpha):
         closed[ybot, bx.min(): bx.max() + 1] = True
     closed = ndi.binary_closing(closed, structure=np.ones((3, 3), bool), iterations=3)
     filled = ndi.binary_fill_holes(closed)
+    if name in ROCKY:
+        filled |= contour_fill(ink)
     return ndi.binary_dilation(filled, iterations=1)
 
 
@@ -70,7 +91,7 @@ def main(zip_path):
         line[..., 3] = (alpha * 255).astype(np.uint8)
         fill = np.zeros_like(line)
         fill[..., :3] = 255
-        fill[..., 3] = (fill_mask(alpha) * 255).astype(np.uint8)
+        fill[..., 3] = (fill_mask(alpha, name) * 255).astype(np.uint8)
         Image.fromarray(line).save(os.path.join(OUT, name + ".png"), optimize=True)
         Image.fromarray(fill).save(os.path.join(OUT, name + "_fill.png"), optimize=True)
         done += 1
