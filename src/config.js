@@ -114,11 +114,11 @@ export const MATCHUP = {
 export const UNIT_VALUE = { militia: 1, infantry: 2, archer: 2, cavalry: 2.5 };
 
 // Đội hình xuất phát (theo thứ tự các ô spawn do mapgen sinh ra)
-// Cỡ bản đồ người chơi chọn. Giữ nguyên tỉ lệ khung chữ nhật 4:5. Quân, làng, tháp, mỏ tăng theo diện tích.
+// Cỡ bản đồ người chơi chọn. Khung chữ nhật dọc. Quân, làng, tháp, mỏ tăng theo diện tích.
 export const MAP_SIZES = {
   small:  { w: 16, h: 20 },
-  medium: { w: 24, h: 30 },
-  large:  { w: 32, h: 40 },
+  medium: { w: 22, h: 28 },
+  large:  { w: 26, h: 36 },
 };
 export const BASE_AREA = 16 * 20;
 export const mapScale = (w, h) => (w * h) / BASE_AREA;

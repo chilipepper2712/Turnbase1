@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateMap, assess, bridgeEndsClear } from '../src/mapgen.js';
+import { generateMap, assess, bridgeEndsClear, bridgesValid } from '../src/mapgen.js';
 import {
   createState, addUnit, reachable, key, attackUnit, endTurn, fortifyUnit, canFortify, defensePct, calcDamage,
   moveUnit, levelOf, terrainFacts, moveCost, fortifyBonus, mergeUnits, splitUnit, waitUnit,
@@ -150,9 +150,9 @@ test('mapgen: đầu cầu thông thoáng (không đầm lầy / đồi / núi /
 
 import { MAP_SIZES, armySize, mapScale } from '../src/config.js';
 
-test('cỡ bản đồ: giữ tỉ lệ 4:5, quân tăng theo diện tích, mọi cỡ qua bộ lọc công bằng', () => {
+test('cỡ bản đồ: khung dọc, quân tăng theo diện tích, mọi cỡ qua bộ lọc công bằng', () => {
   for (const [name, { w, h }] of Object.entries(MAP_SIZES)) {
-    assert.equal(w / h, 0.8, name + ' phải giữ tỉ lệ 4:5');
+    assert.ok(h > w, name + ' phải là khung dọc');
     for (let seed = 1; seed <= 25; seed++) {
       const m = generateMap(seed, w, h);
       assert.equal(m.w, w); assert.equal(m.h, h);
@@ -164,6 +164,7 @@ test('cỡ bản đồ: giữ tỉ lệ 4:5, quân tăng theo diện tích, mọ
   }
   assert.ok(armySize(24, 30) > armySize(16, 20) && armySize(32, 40) > armySize(24, 30));
   assert.equal(armySize(16, 20), 7);
+  assert.deepEqual([MAP_SIZES.medium.w, MAP_SIZES.medium.h, MAP_SIZES.large.w, MAP_SIZES.large.h], [22, 28, 26, 36]);
 });
 
 test('nước ngẫu nhiên: có map không nước, có map rẽ nhánh/hồ, sông không luôn nằm giữa ngang', () => {
@@ -181,4 +182,34 @@ test('nước ngẫu nhiên: có map không nước, có map rẽ nhánh/hồ, s
   assert.ok(some >= 120 * 0.5, 'đa số có nước');
   assert.ok(centers.size >= 6, 'vị trí nước phải đa dạng, thấy ' + centers.size + ' vị trí');
   assert.ok(vertical.v >= 10, 'phải có sông chạy dọc: ' + vertical.v);
+});
+
+test('cầu: không bao giờ nằm trơ giữa nước, mọi cầu có đất ở cả hai đầu (mọi cỡ)', () => {
+  let bridges = 0;
+  for (const { w, h } of Object.values(MAP_SIZES)) {
+    for (let seed = 1; seed <= 80; seed++) {
+      const m = generateMap(seed, w, h);
+      assert.ok(bridgesValid(m), `cầu sai: ${w}x${h} seed ${seed}`);
+      bridges += m.tiles.filter((t) => t === 'bridge').length;
+    }
+  }
+  assert.ok(bridges > 300, 'phải thực sự có cầu để kiểm: ' + bridges);
+});
+
+test('cù lao: làng/tháp/mỏ chỉ tồn tại trên đất liền hoặc cù lao có cầu nối, không có công trình bị cô lập', () => {
+  let islandsSeen = 0;
+  for (const { w, h } of Object.values(MAP_SIZES)) {
+    for (let seed = 1; seed <= 80; seed++) {
+      const m = generateMap(seed, w, h);
+      const pass = (x, y) => x >= 0 && y >= 0 && x < w && y < h && isFinite(TERRAIN[m.tiles[y * w + x]].cost);
+      const seen = new Set(), start = m.strongholds.human; const q = [[start.x, start.y]]; seen.add(start.x + ',' + start.y);
+      while (q.length) { const [x, y] = q.pop(); for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) { const nx = x + dx, ny = y + dy; const k = nx + ',' + ny; if (pass(nx, ny) && !seen.has(k)) { seen.add(k); q.push([nx, ny]); } } }
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const t = m.tiles[y * w + x];
+        if (['village', 'fort', 'mine'].includes(t)) assert.ok(seen.has(x + ',' + y), `${t} bị cô lập tại ${x},${y} (${w}x${h} seed ${seed})`);
+        if (pass(x, y) && !seen.has(x + ',' + y)) islandsSeen++;
+      }
+    }
+  }
+  assert.ok(islandsSeen > 0, 'phải có cù lao hoang trong tập mẫu (đất đi được nhưng không nối)');
 });

@@ -58,6 +58,25 @@ const COVER = new Set(['forest', 'hill', 'mountain']);
 const ROUGH = new Set(['hill', 'mountain', 'peak']);
 const BRIDGE_BLOCKERS = new Set(['swamp', 'hill', 'mountain', 'peak', 'mine']);
 
+// Mỗi ô cầu phải nằm trong một dải cầu có đất đi được ở cả hai đầu (không bao giờ nằm trơ giữa nước)
+export function bridgesValid(map) {
+  const { w, h, tiles } = map;
+  const t = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? null : tiles[y * w + x]);
+  const land = (x, y) => { const v = t(x, y); return v && v !== 'river' && v !== 'bridge' && v !== 'peak' && isFinite(TERRAIN[v].cost); };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (t(x, y) !== 'bridge') continue;
+    let ok = false;
+    for (const [dx, dy] of [[1, 0], [0, 1]]) {
+      let a = 0, b = 0;
+      while (t(x - dx * (a + 1), y - dy * (a + 1)) === 'bridge') a++;
+      while (t(x + dx * (b + 1), y + dy * (b + 1)) === 'bridge') b++;
+      if (land(x - dx * (a + 1), y - dy * (a + 1)) && land(x + dx * (b + 1), y + dy * (b + 1))) ok = true;
+    }
+    if (!ok) return false;
+  }
+  return true;
+}
+
 export function bridgeEndsClear(map) {
   const { w, h, tiles } = map;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -114,6 +133,7 @@ export function assess(map) {
   if (diffForest > MAPGEN.sideDiff) reasons.push('rừng dồn một phía');
   if (diffRough > MAPGEN.sideDiff) reasons.push('đồi núi dồn một phía');
   if (!bridgeEndsClear(map)) reasons.push('đầu cầu bị chắn');
+  if (!bridgesValid(map)) reasons.push('cầu trơ giữa nước');
   if (side.human.open < MAPGEN.minOpenNearHold || side.orc.open < MAPGEN.minOpenNearHold) reasons.push('thành bị nhốt');
   return { ok: reasons.length === 0, reasons, share, side, comp };
 }
@@ -215,25 +235,6 @@ export function generateOnce(seed, w, h) {
       }
     }
   }
-  // cầu: dọc mỗi sông, cách nhau >= 5 ô đường sông, ít nhất 2 cầu cho mỗi sông dài
-  for (const rv of rivers) {
-    const want = Math.max(2, Math.round(rv.path.length / 9));
-    const used = [];
-    for (let tries = 0; used.length < want && tries < 80; tries++) {
-      const i = 1 + rng.int(Math.max(1, rv.path.length - 2));
-      if (used.some((u) => Math.abs(u - i) < 5)) continue;
-      const here = rv.cells.filter((c) => c.idx === i);
-      if (!here.length || here.some((c) => at(c.x, c.y) !== 'river')) continue;
-      used.push(i);
-      for (const c of here) set(c.x, c.y, 'bridge');
-      // hai đầu cầu phải là đất đi được
-      for (const c of here) for (const [dx, dy] of DIRS) {
-        const nx = c.x + dx, ny = c.y + dy;
-        if (inb(nx, ny) && ['mountain', 'peak', 'swamp'].includes(at(nx, ny))) set(nx, ny, 'plain');
-      }
-    }
-  }
-
   // đầm lầy: lấn ra bờ sông và vài vùng trũng
   const nS = rng.int(1e9);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -278,6 +279,121 @@ export function generateOnce(seed, w, h) {
   for (let i = 0; i < Math.round(2 * scale) && spots.length; i++) {
     const p = spots.splice(rng.int(spots.length), 1)[0];
     set(p.x, p.y, 'mine');
+  }
+
+  // ---- Cầu ----
+  // Chỉ bắc cầu ở chỗ nước hẹp (<= 3 ô) mà HAI ĐẦU đều là đất đi được; cầu nằm dọc theo hướng cắt ngang dòng nước.
+  // 1) nối hai phe (đi theo đồ thị các vùng đất); 2) nối cù lao có làng/công trình vào đất liền, không nối được thì dọn công trình đi;
+  // 3) thêm vài cầu phụ cho sông dài. Cù lao hoang không công trình thì để nguyên (không ai tới được, đúng nghĩa "đất hoang").
+  const landOK = (x, y) => inb(x, y) && at(x, y) !== 'river' && at(x, y) !== 'bridge' && at(x, y) !== 'peak';
+  const passable = (x, y) => inb(x, y) && isFinite(TERRAIN[at(x, y)].cost);
+  const labelLand = () => {
+    const comp = new Int32Array(w * h).fill(-1); let n = 0;
+    for (let y0 = 0; y0 < h; y0++) for (let x0 = 0; x0 < w; x0++) {
+      if (comp[y0 * w + x0] >= 0 || !passable(x0, y0)) continue;
+      const q = [[x0, y0]]; comp[y0 * w + x0] = n;
+      while (q.length) {
+        const [x, y] = q.pop();
+        for (const [dx, dy] of DIRS) {
+          const nx = x + dx, ny = y + dy;
+          if (!passable(nx, ny) || comp[ny * w + nx] >= 0) continue;
+          comp[ny * w + nx] = n; q.push([nx, ny]);
+        }
+      }
+      n++;
+    }
+    return { comp, n };
+  };
+  const findCandidates = () => {
+    const out = [], seen = new Set();
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (at(x, y) !== 'river') continue;
+      let best = null;
+      for (const [dx, dy] of [[1, 0], [0, 1]]) {                       // trục chạy của cầu
+        let a = 0, b = 0;
+        while (inb(x - dx * (a + 1), y - dy * (a + 1)) && at(x - dx * (a + 1), y - dy * (a + 1)) === 'river') a++;
+        while (inb(x + dx * (b + 1), y + dy * (b + 1)) && at(x + dx * (b + 1), y + dy * (b + 1)) === 'river') b++;
+        const len = a + b + 1;
+        const e1 = [x - dx * (a + 1), y - dy * (a + 1)], e2 = [x + dx * (b + 1), y + dy * (b + 1)];
+        if (len > 3 || !landOK(e1[0], e1[1]) || !landOK(e2[0], e2[1]) || !passable(e1[0], e1[1]) && !['mountain', 'swamp'].includes(at(e1[0], e1[1]))) continue;
+        if (!landOK(e2[0], e2[1]) || !passable(e2[0], e2[1]) && !['mountain', 'swamp'].includes(at(e2[0], e2[1]))) continue;
+        const cells = []; for (let k = -a; k <= b; k++) cells.push([x + dx * k, y + dy * k]);
+        // bắc ngang qua dòng: hai bên cạnh dải phải là nước hoặc mép bản đồ, không phải bờ chạy dọc
+        const side = (c, sx, sy) => !inb(c[0] + sx, c[1] + sy) || at(c[0] + sx, c[1] + sy) === 'river' || at(c[0] + sx, c[1] + sy) === 'bridge';
+        const across = cells.every((c) => side(c, dy, dx) || side(c, -dy, -dx));
+        if (!across && len > 1) continue;
+        if (!best || len < best.len) best = { cells, len, e1, e2 };
+      }
+      if (best) {
+        const key = best.cells.map((c) => c.join(',')).join(';');
+        if (!seen.has(key)) { seen.add(key); out.push(best); }
+      }
+    }
+    return out;
+  };
+  const place = (c) => { for (const [x, y] of c.cells) set(x, y, 'bridge'); };
+  const tooClose = (c, placed) => placed.some((p) => c.cells.some((a) => p.cells.some((b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) < 4)));
+  const placed = [];
+  const compOf = (L, p) => L.comp[p[1] * w + p[0]];
+  // 1) nối hai phe: BFS trên đồ thị vùng đất, cạnh = ứng viên cầu
+  {
+    const L = labelLand();
+    const cands = findCandidates().filter((c) => compOf(L, c.e1) >= 0 && compOf(L, c.e2) >= 0 && compOf(L, c.e1) !== compOf(L, c.e2));
+    const src = compOf(L, [human.x, human.y]), dst = compOf(L, [orc.x, orc.y]);
+    if (src !== dst) {
+      const prev = new Map([[src, null]]), queue = [src];
+      while (queue.length && !prev.has(dst)) {
+        const u = queue.shift();
+        const nb = cands.filter((c) => compOf(L, c.e1) === u || compOf(L, c.e2) === u);
+        for (let i = nb.length - 1; i > 0; i--) { const j = rng.int(i + 1); [nb[i], nb[j]] = [nb[j], nb[i]]; }
+        for (const c of nb) {
+          const v = compOf(L, c.e1) === u ? compOf(L, c.e2) : compOf(L, c.e1);
+          if (!prev.has(v)) { prev.set(v, { from: u, c }); queue.push(v); }
+        }
+      }
+      for (let v = dst; prev.get(v); v = prev.get(v).from) { const c = prev.get(v).c; place(c); placed.push(c); }
+    }
+  }
+  // 2) cù lao có người ở / công trình
+  {
+    let L = labelLand();
+    const mainComps = new Set([compOf(L, [human.x, human.y]), compOf(L, [orc.x, orc.y])]);
+    const withStruct = new Map();
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const t = at(x, y), c = L.comp[y * w + x];
+      if (c >= 0 && !mainComps.has(c) && ['village', 'fort', 'mine', 'field'].includes(t)) { if (!withStruct.has(c)) withStruct.set(c, []); withStruct.get(c).push([x, y]); }
+    }
+    for (const [c, cells] of withStruct) {
+      L = labelLand();
+      const all = findCandidates().filter((k) => !tooClose(k, placed));
+      const links = all.filter((k) => { const a = compOf(L, k.e1), b = compOf(L, k.e2); return (a === c && mainComps.has(b)) || (b === c && mainComps.has(a)); });
+      if (links.length) { const k = links[rng.int(links.length)]; place(k); placed.push(k); }
+      else for (const [x, y] of cells) set(x, y, at(x, y) === 'field' ? 'plain' : 'forest');   // không nối được: bỏ công trình, để đất hoang
+    }
+  }
+  // 3) cầu phụ cho nước dài
+  {
+    const waterComp = new Map(); let wn = 0;
+    for (let y0 = 0; y0 < h; y0++) for (let x0 = 0; x0 < w; x0++) {
+      if (at(x0, y0) !== 'river' && at(x0, y0) !== 'bridge') continue;
+      if (waterComp.has(y0 * w + x0)) continue;
+      const q = [[x0, y0]]; waterComp.set(y0 * w + x0, wn);
+      while (q.length) { const [x, y] = q.pop(); for (const [dx, dy] of DIRS) { const nx = x + dx, ny = y + dy; if (inb(nx, ny) && (at(nx, ny) === 'river' || at(nx, ny) === 'bridge') && !waterComp.has(ny * w + nx)) { waterComp.set(ny * w + nx, wn); q.push([nx, ny]); } } }
+      wn++;
+    }
+    const sizes = new Array(wn).fill(0); for (const v of waterComp.values()) sizes[v]++;
+    const cands = findCandidates().filter((k) => !tooClose(k, placed));
+    for (let wc = 0; wc < wn; wc++) {
+      if (sizes[wc] < 8) continue;
+      const want = Math.min(4, Math.max(1, Math.round(sizes[wc] / 14)));
+      const mine = cands.filter((k) => waterComp.get(k.cells[0][1] * w + k.cells[0][0]) === wc);
+      let have = placed.filter((k) => waterComp.get(k.cells[0][1] * w + k.cells[0][0]) === wc).length;
+      for (let tries = 0; have < want && tries < 40 && mine.length; tries++) {
+        const k = mine[rng.int(mine.length)];
+        if (tooClose(k, placed) || k.cells.some(([x, y]) => at(x, y) !== 'river')) continue;
+        place(k); placed.push(k); have++;
+      }
+    }
   }
 
   // đầu cầu phải thông thoáng: đầm lầy / đồi / núi / hầm mỏ không được nằm ngay cạnh cầu
