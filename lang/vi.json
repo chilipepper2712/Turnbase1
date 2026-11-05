@@ -146,5 +146,10 @@
   "ui.size.medium": "Vừa",
   "ui.size.large": "Lớn",
   "ui.clouds": "Mây trôi trên bản đồ",
-  "ui.moveHere": "Tới đây"
+  "ui.moveHere": "Tới đây",
+  "ui.start": "Bắt đầu",
+  "ui.splash.sub": "Chiến thuật theo lượt trên bản đồ vẽ tay",
+  "ui.splash.note": "Bật âm thanh để có trải nghiệm tốt nhất",
+  "ui.musicVol": "Âm lượng nhạc nền",
+  "ui.sfxVol": "Âm lượng hiệu ứng"
 }

@@ -35,6 +35,7 @@ export class GameView {
     this.tweens = [];
     this.raf = 0;
     this.hooks = {};
+    this.snd = () => {};            // Game gắn hàm phát âm thanh vào đây
     this.overlay = {};
     this.speed = 1;
   }
@@ -745,9 +746,32 @@ export class GameView {
     us.sprite.tint = 0xffffff;
   }
 
+  // Âm thanh cho từng sự kiện luật (tiếng bước gắn riêng theo từng ô trong 'move')
+  soundFor(ev) {
+    const role = ev.attackerRole;
+    switch (ev.type) {
+      case 'attack': case 'counter':
+        this._shooter = role === 'archer';
+        this.snd(role === 'archer' ? 'bow_shoot' : role === 'militia' ? 'attack_spear'
+          : role === 'cavalry' && ev.preview?.detail?.charge > 1 ? 'attack_charge' : 'attack_melee');
+        break;
+      case 'damage': this.snd(this._shooter ? 'arrow_hit' : 'hit_flesh'); break;
+      case 'die': this.snd('unit_die'); break;
+      case 'rout': this.snd('rout'); break;
+      case 'heal': this.snd('heal'); break;
+      case 'merge': this.snd('merge'); break;
+      case 'split': this.snd('split'); break;
+      case 'fortify': this.snd('fortify'); break;
+      case 'levelup': this.snd('levelup'); break;
+      case 'capture': this.snd('capture'); break;
+      default: break;
+    }
+  }
+
   async playEvents(events) {
     const s = this.state;
     for (const ev of events) {
+      this.soundFor(ev);
       switch (ev.type) {
         case 'turn': break;
         case 'move': {
@@ -761,6 +785,7 @@ export class GameView {
           let elapsed = 0;                                   // ms đã đi, quyết định frame bước
           for (let i = 1; i < pts.length; i++) {
             const a = pts[i - 1], b = pts[i];
+            this.snd(u && u.role === 'cavalry' ? 'step_horse' : 'step_foot');
             this.face(us, b.x - a.x);
             const bob = (k) => Math.abs(Math.sin(k * Math.PI)) * 5;
             await this.tween(per, (k) => {

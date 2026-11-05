@@ -90,6 +90,12 @@ Giới hạn: tool chỉ làm gọn những gì ảnh gốc đã có. Nếu ngư
 Sửa/dịch chuỗi ở `lang/vi.json`. Thêm ngôn ngữ: tạo `lang/<mã>.json` (copy `vi.json`), thêm mã vào `LANGS` trong `src/i18n.js`.
 Chuỗi thiếu key sẽ lùi về tiếng Việt.
 
+## Âm thanh
+
+Nhạc nền loop và 25 hiệu ứng, danh sách tên file và quy cách ở **`docs/AUDIO.md`**. Thả file vào `assets/audio/sfx/` và `assets/audio/music/` rồi chạy
+`node tools/build_audio_index.mjs`. Thiếu file thì im lặng hoặc dùng tiếng thay thế, không lỗi. Có màn mở đầu với nút Bắt đầu (trình duyệt chỉ cho phát
+âm thanh sau một cú bấm); thanh 🔊 tắt/bật, menu ☰ chỉnh âm lượng. `?autostart=1` bỏ qua màn mở đầu (chỉ dùng khi test).
+
 ## Hiệu năng
 
 Nền bản đồ được bake thành texture theo chunk 8×8 ô; chỉ vẽ lại khi có thay đổi (render-on-demand, không chạy vòng lặp liên tục).

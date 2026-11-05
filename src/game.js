@@ -44,7 +44,8 @@ export class Game {
   get speed() { return SPEEDS[this.settings.speed] || 1; }
 
   // ---------- Vòng đời ----------
-  newGame(seed) {
+  // hold = true: dựng bản đồ nhưng chưa bắt đầu lượt (màn mở đầu đang che phía trước)
+  newGame(seed, hold = false) {
     this.seed = seed >>> 0;
     const size = MAP_SIZES[this.settings.mapSize] || MAP_SIZES.small;
     const map = generateMap(this.seed, size.w, size.h);
@@ -55,11 +56,14 @@ export class Game {
     const st = createState(map);
     this.view.reset(st);
     this.refreshAll();
-    this.beginTurn();
+    if (!hold) this.beginTurn();
   }
+
+  snd(name, opts) { this.audio?.play(name, opts); }
 
   async beginTurn() {
     const f = this.state.current;
+    this.snd(f === 'human' ? 'turn_player' : 'turn_enemy');
     this.banner(t(f === 'human' ? 'ui.yourTurn' : 'ui.enemyTurn'), f);
     this.refreshAll();
     if (this.players[f].type === 'ai') await this.runAI(f);
@@ -124,6 +128,7 @@ export class Game {
       return;
     }
     this.confirmEnd = false;
+    this.snd('end_turn');
     this.deselect();
     this.busy = true;
     this.refreshAll();
@@ -147,6 +152,7 @@ export class Game {
 
   cancel() {
     if (this.busy) return;
+    this.snd('ui_cancel');
     if (this.moveTarget) { this.moveTarget = null; this.refreshOverlay(); return; }
     if (this.pending) { this.pending = null; this.hidePreview(); this.refreshOverlay(); return; }
     if (this.splitting) { this.splitting = false; this.select(this.sel); return; }
@@ -155,6 +161,7 @@ export class Game {
 
   select(u) {
     const s = this.state;
+    this.snd('ui_select');
     this.sel = u; this.pending = null; this.splitting = false;
     this.clearInfo();
     const own = u.faction === s.current && !u.acted && u.status === 'ok';
@@ -323,6 +330,7 @@ export class Game {
   async confirmAttack() {
     const s = this.state, u = this.sel, p = this.pending;
     if (!u || !p) return;
+    this.snd('ui_confirm');
     this.busy = true;
     this.hidePreview();
     this.view.setOverlay({});
@@ -338,6 +346,7 @@ export class Game {
   // Bước xác nhận di chuyển: chạm ô chỉ đánh dấu đích; quân chỉ đi khi bấm nút "Tới đây" ngay trên ô (đỡ trượt tay)
   proposeMove(tile) {
     if (this.moveTarget && this.moveTarget.x === tile.x && this.moveTarget.y === tile.y) return;
+    this.snd('ui_select');
     this.moveTarget = { x: tile.x, y: tile.y };
     this.hidePreview(); this.pending = null;
     this.refreshOverlay();
@@ -356,6 +365,7 @@ export class Game {
   async confirmMove() {
     const t0 = this.moveTarget;
     if (!t0 || this.busy || !this.sel) return;
+    this.snd('ui_confirm');
     this.moveTarget = null; $('movebtn').hidden = true;
     return this.doMove(t0);
   }
@@ -377,13 +387,13 @@ export class Game {
     const s = this.state, u = this.sel;
     this.busy = true; this.hidePreview(); this.view.setOverlay({});
     const ev = mergeUnits(s, u, tgt);
-    if (ev) { await this.view.playEvents(ev); this.toast(t('ui.toast.merged')); } else this.toast(t('ui.toast.mergeFail'));
+    if (ev) { await this.view.playEvents(ev); this.toast(t('ui.toast.merged')); } else (this.snd('ui_deny'), this.toast(t('ui.toast.mergeFail')));
     this.afterAction();
   }
 
   startSplit() {
     const u = this.sel;
-    if (!u || !canSplit(this.state, u)) return this.toast(t('ui.toast.noSplit'));
+    if (!u || !canSplit(this.state, u)) { this.snd('ui_deny'); return this.toast(t('ui.toast.noSplit')); };
     this.splitting = true;
     this.pending = null;
     this.refreshOverlay(); this.refreshActions(); this.hidePreview();
@@ -417,6 +427,7 @@ export class Game {
   }
 
   doUndo() {
+    this.snd('ui_cancel');
     const u = this.sel, o = this.origin;
     if (!u || !o || o.id !== u.id || u.acted) return;
     u.x = o.x; u.y = o.y; u.moved = false; u.movedDist = 0;
@@ -587,6 +598,10 @@ export class Game {
     $('endturn').addEventListener('click', () => this.onEndTurn());
     $('movebtn').addEventListener('click', () => this.confirmMove());
     $('btn-fit').addEventListener('click', () => this.view.fit());
+    const soundBtn = $('btn-sound');
+    const paint = () => { soundBtn.textContent = this.settings.muted ? '🔇' : '🔊'; };
+    soundBtn.addEventListener('click', () => { this.audio?.setMuted(!this.settings.muted); if (!this.audio) this.settings.muted = !this.settings.muted; this.save(); paint(); });
+    paint();
     $('btn-menu').addEventListener('click', () => this.openMenu());
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') this.cancel();
@@ -619,6 +634,10 @@ export class Game {
       <select id="m-diff">${['easy', 'tactical'].map((d) => opt(d, t('diff.' + d), this.settings.difficulty)).join('')}</select>
       <label>${esc(t('ui.speed'))}</label>
       <select id="m-speed">${Object.keys(SPEEDS).map((d) => opt(d, t('ui.speed.' + (d === 'normal' ? 'normal' : d === 'fast' ? 'fast' : 'instant')), this.settings.speed)).join('')}</select>
+      <label>${esc(t('ui.musicVol'))}</label>
+      <input id="m-music" type="range" min="0" max="100" value="${Math.round((this.settings.musicVol ?? 0.5) * 100)}">
+      <label>${esc(t('ui.sfxVol'))}</label>
+      <input id="m-sfx" type="range" min="0" max="100" value="${Math.round((this.settings.sfxVol ?? 0.8) * 100)}">
       <label>${esc(t('ui.idle'))}</label>
       <select id="m-idle"><option value="1" ${this.settings.idle === true ? 'selected' : ''}>${esc(t('ui.on'))}</option><option value="0" ${this.settings.idle !== true ? 'selected' : ''}>${esc(t('ui.off'))}</option></select>
       <label>${esc(t('ui.clouds'))}</label>
@@ -638,6 +657,9 @@ export class Game {
     const apply = async () => {
       this.settings.difficulty = $('m-diff').value;
       this.settings.speed = $('m-speed').value;
+      this.settings.musicVol = +$('m-music').value / 100;
+      this.settings.sfxVol = +$('m-sfx').value / 100;
+      this.audio?.applyVolumes();
       this.settings.idle = $('m-idle').value === '1';
       this.settings.mapSize = $('m-size').value;
       this.view.setIdle(this.settings.idle);
@@ -665,6 +687,7 @@ export class Game {
   gameOver() {
     const s = this.state, m = $('modal');
     const won = s.winner === 'human';
+    this.snd(won ? 'victory' : 'defeat');
     m.innerHTML = `<div class="card">
       <h2 class="${won ? 'win' : 'lose'}">${esc(t(won ? 'ui.win.title' : 'ui.lose.title'))}</h2>
       <p>${esc(t(`ui.${won ? 'win' : 'lose'}.${s.winReason}`))}</p>

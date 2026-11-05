@@ -105,3 +105,12 @@ button.icon { width: 44px; height: 44px; padding: 0; font-size: 22px; }
   #turninfo { font-size: 16px; padding: 4px 10px; }
   #captureinfo { display: none; }
 }
+
+/* Màn mở đầu: bản đồ hiện mờ phía sau, một cú bấm để vào ván (và mở khoá âm thanh) */
+#splash { position: fixed; inset: 0; z-index: 15; display: flex; align-items: center; justify-content: center; background: rgba(233,231,222,.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); transition: opacity .35s; }
+#splash.leaving { opacity: 0; pointer-events: none; }
+#splash .card { text-align: center; padding: 22px 30px 18px; background: rgba(246,245,240,.92); border: 3px solid var(--ink); border-radius: 14px 18px 15px 17px; box-shadow: 4px 6px 0 rgba(0,0,0,.25); max-width: min(420px, 88vw); }
+#splash h1 { margin: 0 0 4px; font-family: var(--font); font-weight: normal; font-size: 40px; line-height: 1.1; }
+#splash p { margin: 0 0 16px; color: #4a4a43; font-size: 15px; }
+#splash button { font-size: 20px; padding: 8px 34px; min-height: 48px; }
+#splash small { display: block; margin-top: 12px; color: #6a6a62; font-size: 12px; }

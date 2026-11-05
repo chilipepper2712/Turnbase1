@@ -146,5 +146,10 @@
   "ui.size.medium": "Medium",
   "ui.size.large": "Large",
   "ui.clouds": "Drifting clouds",
-  "ui.moveHere": "Move here"
+  "ui.moveHere": "Move here",
+  "ui.start": "Start",
+  "ui.splash.sub": "Turn-based tactics on a hand-drawn map",
+  "ui.splash.note": "Turn the sound on for the best experience",
+  "ui.musicVol": "Music volume",
+  "ui.sfxVol": "Effects volume"
 }

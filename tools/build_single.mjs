@@ -4,6 +4,7 @@
 import { build } from 'esbuild';
 import fs from 'node:fs';
 import path from 'node:path';
+import { buildIndex } from './build_audio_index.mjs';
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const rd = (f) => fs.readFileSync(path.join(root, f), 'utf8');
@@ -26,6 +27,19 @@ for (const dir of ['units', 'buildings', 'clouds']) {
   }
 }
 
+// Âm thanh: nhúng dạng data URI (host Artifact trên iOS không tải được file phụ)
+const audioIndex = buildIndex();
+const audioData = {};
+let audioBytes = 0;
+for (const kind of ['sfx', 'music']) {
+  for (const rel of Object.values(audioIndex[kind])) {
+    const buf = fs.readFileSync(path.join(root, 'assets', 'audio', rel));
+    audioBytes += buf.length;
+    audioData[rel] = 'data:audio/' + (rel.endsWith('.mp3') ? 'mpeg' : rel.endsWith('.wav') ? 'wav' : rel.endsWith('.ogg') ? 'ogg' : 'mp4') + ';base64,' + buf.toString('base64');
+  }
+}
+if (audioBytes > 7 * 1024 * 1024) console.warn(`CẢNH BÁO: âm thanh ${(audioBytes / 1048576).toFixed(1)}MB (sau nhúng base64 ~${(audioBytes * 1.34 / 1048576).toFixed(1)}MB); giới hạn một trang Artifact là 16MB.`);
+
 const idx = rd('index.html');
 const body = idx.match(/<body>([\s\S]*)<\/body>/)[1]
   .replace(/\s*<script src="vendor\/pixi\.min\.js"><\/script>/, '')
@@ -34,7 +48,7 @@ const css = rd('style.css');
 const pixi = rd('vendor/pixi.min.js');
 
 const scripts = `
-<script>window.__LANG_DATA__=${safe(JSON.stringify(langs))};window.__ASSET_DATA__=${safe(JSON.stringify(assets))};</script>
+<script>window.__LANG_DATA__=${safe(JSON.stringify(langs))};window.__ASSET_DATA__=${safe(JSON.stringify(assets))};window.__AUDIO_INDEX__=${safe(JSON.stringify(audioIndex))};window.__AUDIO_DATA__=${safe(JSON.stringify(audioData))};</script>
 <script>${safe(pixi)}</script>
 <script>${safe(app)}</script>`;
 

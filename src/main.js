@@ -3,6 +3,7 @@ import { Assets } from './render/assets.js';
 import { GameView } from './render/view.js';
 import { Game } from './game.js';
 import { createState } from './rules.js';
+import { AudioManager } from './audio.js';
 import { generateMap } from './mapgen.js';
 
 const KEY = 'turnbase1.settings';
@@ -30,13 +31,33 @@ async function main() {
   const seed = q.get('seed') ? +q.get('seed') : Math.floor(Math.random() * 1e6);
   const view = new GameView(document.getElementById('stage'), assets, t);
   await view.init(createState(generateMap(seed)));
-  document.getElementById('hud').hidden = false;
   document.getElementById('loading').classList.add('done');
 
   document.getElementById('movebtn').textContent = '✓ ' + t('ui.moveHere');
   const game = new Game(view, settings, save);
-  window.__game = game; // tiện debug / test tự động
-  game.newGame(seed);
+  const audio = new AudioManager(settings);
+  game.audio = audio;
+  view.snd = (n, o) => audio.play(n, o);
+  window.__game = game; window.__audio = audio;       // tiện debug / test tự động
+  game.newGame(seed, true);                           // bản đồ hiện ra phía sau màn mở đầu, lượt chưa bắt đầu
+
+  // Màn mở đầu: cú bấm này vừa mở khoá âm thanh (trình duyệt yêu cầu) vừa bắt đầu ván
+  const splash = document.getElementById('splash');
+  document.getElementById('splash-title').textContent = t('ui.title');
+  document.getElementById('splash-sub').textContent = t('ui.splash.sub');
+  document.getElementById('splash-note').textContent = t('ui.splash.note');
+  const startBtn = document.getElementById('splash-start');
+  startBtn.textContent = '▶ ' + t('ui.start');
+  splash.hidden = false;
+  startBtn.addEventListener('click', async () => {
+    startBtn.disabled = true;
+    splash.classList.add('leaving');
+    await audio.unlock();
+    audio.startPlaylist();
+    audio.play('ui_confirm');
+    setTimeout(() => { splash.hidden = true; document.getElementById('hud').hidden = false; game.beginTurn(); }, 350);
+  });
+  if (q.get('autostart')) startBtn.click();
   if (assets.report.fallback.length) console.info('[assets] đang dùng fallback code cho:', assets.report.fallback.join(', '));
 }
 

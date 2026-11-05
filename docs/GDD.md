@@ -41,6 +41,8 @@ Game chiến thuật theo lượt trên **lưới vuông**, hiển thị **isome
 | Số màn | Một màn trước | CHỐT |
 | Fog of war | Tắt ở bản test | CHỐT |
 | Hiệu năng | Không lag, không nóng máy khi chơi lâu | CHỐT |
+| Âm thanh | Nhạc nền loop (tác giả chuẩn bị, nhiều bài, xoay vòng ~4 phút) và hiệu ứng (checklist 25 tiếng ở `docs/AUDIO.md`, tác giả kiếm bên Kenney). Có thanh âm lượng riêng cho nhạc và hiệu ứng, nút tắt tiếng. Thiếu file thì im lặng | CHỐT |
+| Màn mở đầu | Trước khi vào ván có màn mở đầu với nút **Bắt đầu**, bản đồ hiện mờ phía sau; cú bấm đó mở khoá âm thanh (quy định của trình duyệt) và bắt đầu lượt đầu | CHỐT |
 
 **Phân mốc phát triển:**
 
