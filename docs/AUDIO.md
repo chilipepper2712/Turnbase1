@@ -45,15 +45,41 @@ Sau khi thả file chạy `node tools/build_audio_index.mjs` (lệnh `npm run bu
 - Tiếng bước và tick giao diện phải **rất ngắn** (dưới 0.2s), vì chúng phát liên tục.
 - Game tự lệch cao độ ±4% mỗi lần phát để đỡ lặp, nên không cần nhiều biến thể cùng tên.
 
+## Trạng thái hiện tại (đã nhập từ gói `doodle_battle_field.zip`)
+
+Nhập bằng `python3 tools/import_audio_pack.py <zip>` (bảng ánh xạ tên nằm đầu file). Biến thể cùng tên (`attack_melee_1`, `_2`, `_3`...) được chọn ngẫu nhiên, không lặp liền bản vừa phát.
+
+| Đã có | Nguồn trong gói |
+|---|---|
+| `ui_select`, `ui_confirm`, `ui_cancel` | cùng tên |
+| `step_foot` ×2 | `step_foot_1,2` |
+| `attack_melee` ×3 | `attack_melee_1..3` |
+| `attack_spear` ×3 | `Sword Attack 1..3` |
+| `hit_flesh` ×3 | `Sword Blocked 1..3` (tiếng đập vào khiên/giáp, tạm dùng cho "trúng đòn") |
+| `bow_shoot` ×2 | `Bow Attack 1,2` |
+| `arrow_hit` ×3 | `Bow Impact Hit 1..3` |
+| `unit_die` ×3 | `unit_die_1..3` |
+| `fortify` | `build_camp` |
+| `victory`, `defeat` | cùng tên |
+| nhạc `battle_1..4` | 4 bài dài, xếp theo thời lượng giảm dần |
+
+**Chưa có, đang dùng tiếng thay thế:** `turn_player` và `turn_enemy` (đang dùng `ui_confirm`, rất ngắn nên không nổi bật, nên có một tiếng kèn/chuông riêng), `step_horse` (dùng bước chân), `attack_charge` (dùng `attack_melee`), `end_turn`, `merge`, `split`, `capture`, `levelup`, `heal`, `rout`, `ui_deny` (dùng `ui_confirm`/`hit_flesh`/`ui_cancel`).
+**Chưa dùng:** `Bow Blocked 1..3` (game chưa có cơ chế đỡ đòn).
+
+### Cách xử lý đã áp dụng khi nhập
+- SFX: cắt khoảng lặng đầu (`unit_die_1` có 0.58 giây lặng đầu nên bị trễ), đổi mono, cân đỉnh theo nhóm (giao diện −12 dB, bước chân −15 dB, còn lại −8 dB). `ui_confirm` gốc vượt 0 dB (+4.8) nên bị méo, đã hạ xuống.
+- Nhạc: đổi mono, nén `mp3` 64kbps, hạ về −20 LUFS (nền), tổng gói từ 21MB còn 5.3MB.
+- Nhạc mặc định ở mức 35% còn SFX 80%, để nghe rõ tiếng hiệu ứng; chỉnh trong menu ☰.
+
 ## Nhạc nền (music)
 
 | Tên file | Dùng |
 |---|---|
 | `battle_1`, `battle_2`, `battle_3`, ... | Nhạc trong ván, tên bắt đầu bằng `battle` |
 
-- Mỗi bài **phải loop liền mạch** (đoạn cuối nối đoạn đầu không giật, không có khoảng lặng).
-- Game chọn ngẫu nhiên một bài khi vào ván và **loop bài đó**; nếu có từ 2 bài trở lên thì cứ khoảng 4 phút chuyển sang bài khác bằng cách mờ dần (crossfade 2 giây).
-- Thời lượng mỗi bài 1–3 phút. `mp3` 96–128kbps là đủ.
+- Game **không loop một bài**: phát lần lượt cả danh sách (xáo ngẫu nhiên), đoạn cuối mỗi bài mờ chéo (3.5 giây) sang bài kế. Cách này xử lý được cả những bài có đoạn cuối tắt dần và đầu bài vào nhỏ (4 bài hiện tại đều vậy). Chỉ có một bài thì nó tự nối lại chính nó.
+- Chỉ bài đang phát được giữ trong bộ nhớ (giải mã một bài dài tốn khoảng 45MB), bài trước được giải phóng sau khi mờ xong.
+- Thời lượng tuỳ ý (bài hiện tại 1.7–4.2 phút). Nhúng vào bản một file thì nên mono 64kbps; stereo 128kbps cho chất lượng tốt hơn nhưng tốn gấp 4 dung lượng.
 - **Dung lượng:** bản chơi một file (cái bạn mở trên iPad) nhúng toàn bộ âm thanh vào trang, mà trang tối đa 16MB. Tổng âm thanh nên **dưới 7MB** (ví dụ 3 bài × 2 phút × 128kbps ≈ 5.7MB, cộng SFX). Vượt thì `build:single` sẽ cảnh báo.
 - Lưu ý `mp3` có khoảng đệm ở đầu và cuối do bộ mã hoá, nên có thể nghe một nhịp hụt khi loop. Nếu mày nghe thấy thì đổi sang `ogg` hoặc báo tao thêm cách nối mờ ở điểm loop.
 

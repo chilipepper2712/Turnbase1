@@ -635,7 +635,7 @@ export class Game {
       <label>${esc(t('ui.speed'))}</label>
       <select id="m-speed">${Object.keys(SPEEDS).map((d) => opt(d, t('ui.speed.' + (d === 'normal' ? 'normal' : d === 'fast' ? 'fast' : 'instant')), this.settings.speed)).join('')}</select>
       <label>${esc(t('ui.musicVol'))}</label>
-      <input id="m-music" type="range" min="0" max="100" value="${Math.round((this.settings.musicVol ?? 0.5) * 100)}">
+      <input id="m-music" type="range" min="0" max="100" value="${Math.round((this.settings.musicVol ?? 0.35) * 100)}">
       <label>${esc(t('ui.sfxVol'))}</label>
       <input id="m-sfx" type="range" min="0" max="100" value="${Math.round((this.settings.sfxVol ?? 0.8) * 100)}">
       <label>${esc(t('ui.idle'))}</label>

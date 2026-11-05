@@ -1,4 +1,35 @@
 {
- "sfx": {},
- "music": {}
+ "sfx": {
+  "arrow_hit_1": "sfx/arrow_hit_1.wav",
+  "arrow_hit_2": "sfx/arrow_hit_2.wav",
+  "arrow_hit_3": "sfx/arrow_hit_3.wav",
+  "attack_melee_1": "sfx/attack_melee_1.wav",
+  "attack_melee_2": "sfx/attack_melee_2.wav",
+  "attack_melee_3": "sfx/attack_melee_3.wav",
+  "attack_spear_1": "sfx/attack_spear_1.wav",
+  "attack_spear_2": "sfx/attack_spear_2.wav",
+  "attack_spear_3": "sfx/attack_spear_3.wav",
+  "bow_shoot_1": "sfx/bow_shoot_1.wav",
+  "bow_shoot_2": "sfx/bow_shoot_2.wav",
+  "defeat": "sfx/defeat.wav",
+  "fortify": "sfx/fortify.wav",
+  "hit_flesh_1": "sfx/hit_flesh_1.wav",
+  "hit_flesh_2": "sfx/hit_flesh_2.wav",
+  "hit_flesh_3": "sfx/hit_flesh_3.wav",
+  "step_foot_1": "sfx/step_foot_1.wav",
+  "step_foot_2": "sfx/step_foot_2.wav",
+  "ui_cancel": "sfx/ui_cancel.wav",
+  "ui_confirm": "sfx/ui_confirm.wav",
+  "ui_select": "sfx/ui_select.wav",
+  "unit_die_1": "sfx/unit_die_1.wav",
+  "unit_die_2": "sfx/unit_die_2.wav",
+  "unit_die_3": "sfx/unit_die_3.wav",
+  "victory": "sfx/victory.wav"
+ },
+ "music": {
+  "battle_1": "music/battle_1.mp3",
+  "battle_2": "music/battle_2.mp3",
+  "battle_3": "music/battle_3.mp3",
+  "battle_4": "music/battle_4.mp3"
+ }
 }

@@ -18,13 +18,26 @@ export const FALLBACK = {
   capture: ['ui_confirm'],
   defeat: ['unit_die'],
   end_turn: ['ui_confirm'],
+  turn_player: ['ui_confirm'],
+  levelup: ['ui_confirm'],
+  fortify: ['ui_confirm'],
 };
 
-// Chọn tên file thực sự tồn tại cho một SFX (đi theo chuỗi thay thế). Hàm thuần để test.
+// Các biến thể của một tiếng: chính tên đó và mọi tên dạng <tên>_<số> (vd. attack_melee_1, attack_melee_2).
+export function variantsOf(name, available) {
+  const out = [];
+  if (available[name]) out.push(name);
+  const re = new RegExp('^' + name + '_\\d+$');
+  for (const k of Object.keys(available)) if (re.test(k)) out.push(k);
+  return out;
+}
+
+// Danh sách file có thể phát cho một SFX: biến thể của chính nó, nếu không có thì của tiếng thay thế đầu tiên có file. Hàm thuần để test.
 export function resolveSfx(name, available) {
-  if (available[name]) return name;
-  for (const alt of FALLBACK[name] || []) if (available[alt]) return alt;
-  return null;
+  let v = variantsOf(name, available);
+  if (v.length) return v;
+  for (const alt of FALLBACK[name] || []) { v = variantsOf(alt, available); if (v.length) return v; }
+  return [];
 }
 
 const EXT_PREF = ['mp3', 'ogg', 'm4a', 'wav'];
@@ -110,7 +123,7 @@ export class AudioManager {
     if (!this.ctx) return;
     const sq = (v) => Math.pow(Math.max(0, Math.min(1, v)), 2);           // thang cảm nhận
     this.master.gain.value = this.s.muted ? 0 : 1;
-    this.musicBus.gain.value = sq(this.s.musicVol ?? 0.5);
+    this.musicBus.gain.value = sq(this.s.musicVol ?? 0.35);
     this.sfxBus.gain.value = sq(this.s.sfxVol ?? 0.8);
   }
 
@@ -119,13 +132,17 @@ export class AudioManager {
   // ---- SFX ----
   play(name, opts = {}) {
     if (!this.ready || this.s.muted) return;
-    const real = resolveSfx(name, this.index.sfx);
-    if (!real) return;
+    const vs = resolveSfx(name, this.index.sfx);
+    if (!vs.length) return;
+    const lastKey = 'v:' + name;
+    let pick = vs[Math.floor(Math.random() * vs.length)];
+    if (vs.length > 1 && pick === this.last.get(lastKey)) pick = vs[(vs.indexOf(pick) + 1) % vs.length];    // không lặp đúng bản vừa phát
+    this.last.set(lastKey, pick);
     const now = performance.now();
-    if (now - (this.last.get(real) || 0) < (opts.gap ?? 45)) return;      // chống dồn tiếng
-    this.last.set(real, now);
-    const b = this.buf.get('sfx:' + real);
-    if (!b) { this.load('sfx', real); return; }
+    if (now - (this.last.get(pick) || 0) < (opts.gap ?? 45)) return;      // chống dồn tiếng
+    this.last.set(pick, now);
+    const b = this.buf.get('sfx:' + pick);
+    if (!b) { this.load('sfx', pick); return; }
     const src = this.ctx.createBufferSource(); src.buffer = b;
     src.playbackRate.value = opts.rate ?? (0.96 + Math.random() * 0.08);   // lệch nhẹ để không nghe lặp máy móc
     const g = this.ctx.createGain(); g.gain.value = opts.vol ?? 1;
@@ -133,34 +150,40 @@ export class AudioManager {
   }
 
   // ---- Nhạc ----
+  // Các bài không loop liền mạch (cuối bài tắt dần, đầu bài vào nhỏ) nên KHÔNG loop một bài: phát lần lượt cả danh sách
+  // (xáo trộn), mờ chéo ở đoạn cuối sang bài kế. Chỉ giữ bài đang phát trong bộ nhớ (bài dài giải mã ra hàng chục MB).
   tracks() { return Object.keys(this.index.music).filter((n) => n.startsWith('battle')).sort(); }
 
-  async playMusic(name, fade = 2) {
-    if (!this.ready) return;
-    if (this.cur && this.cur.name === name) return;
-    const b = await this.load('music', name);
-    if (!b) return;
-    const t = this.ctx.currentTime;
-    const src = this.ctx.createBufferSource(); src.buffer = b; src.loop = true;
-    const g = this.ctx.createGain(); g.gain.value = 0;
-    src.connect(g); g.connect(this.musicBus); src.start();
-    g.gain.linearRampToValueAtTime(1, t + fade);
-    if (this.cur) {
-      const old = this.cur;
-      old.gain.gain.cancelScheduledValues(t); old.gain.gain.setValueAtTime(old.gain.gain.value, t);
-      old.gain.gain.linearRampToValueAtTime(0, t + fade);
-      setTimeout(() => { try { old.src.stop(); } catch { /* đã dừng */ } }, fade * 1000 + 200);
-    }
-    this.cur = { name, src, gain: g };
+  startPlaylist() {
+    clearTimeout(this.rotateT);
+    if (!this.ready || !this.tracks().length) return;
+    this.queue = [];
+    this.nextTrack(true);
   }
 
-  // Bắt đầu phát nhạc nền: chọn một bài, mỗi ~4 phút chuyển sang bài khác nếu có nhiều bài
-  startPlaylist() {
-    clearInterval(this.rotateT);
+  async nextTrack(first = false) {
     const list = this.tracks();
     if (!list.length) return;
-    const pick = (avoid) => { const c = list.filter((n) => n !== avoid); return (c.length ? c : list)[Math.floor(Math.random() * (c.length || list.length))]; };
-    this.playMusic(pick(this.cur?.name));
-    if (list.length > 1) this.rotateT = setInterval(() => this.playMusic(pick(this.cur?.name)), 240000);
+    if (!this.queue.length) {
+      this.queue = [...list].sort(() => Math.random() - 0.5);
+      if (list.length > 1 && this.cur && this.queue[0] === this.cur.name) this.queue.push(this.queue.shift());   // không lặp bài vừa phát
+    }
+    const name = this.queue.shift();
+    const b = await this.load('music', name);
+    if (!b) { this.rotateT = setTimeout(() => this.nextTrack(), 5000); return; }
+    const fade = Math.min(first ? 1.5 : 3.5, b.duration / 4);
+    const t = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource(); src.buffer = b;
+    const g = this.ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + fade);
+    src.connect(g); g.connect(this.musicBus); src.start(t);
+    const prev = this.cur;
+    if (prev) {
+      prev.gain.gain.cancelScheduledValues(t); prev.gain.gain.setValueAtTime(prev.gain.gain.value, t);
+      prev.gain.gain.linearRampToValueAtTime(0, t + fade);
+      setTimeout(() => { try { prev.src.stop(); } catch { /* đã dừng */ } if (list.length > 1) this.buf.delete('music:' + prev.name); }, fade * 1000 + 300);
+    }
+    this.cur = { name, src, gain: g };
+    // mờ xuống ở cuối bài này đồng thời bài kế vào
+    this.rotateT = setTimeout(() => this.nextTrack(), Math.max(1000, (b.duration - 3.5) * 1000));
   }
 }
