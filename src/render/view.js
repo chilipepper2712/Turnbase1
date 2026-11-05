@@ -8,6 +8,12 @@ import { drawGroundTile, makeCanvas, INK } from './doodle.js';
 
 export const TW = 96, TH = 48;
 const CHUNK = 8;
+const PAPER = '#f6f5f0';
+// Pha màu phe với giấy: thành tô nhạt để quân cùng màu đứng cạnh không bị lẫn vào
+function mixPaper(hex, t) {
+  const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)), p = [1, 3, 5].map((i) => parseInt(PAPER.slice(i, i + 2), 16));
+  return '#' + c.map((v, i) => Math.round(v * (1 - t) + p[i] * t).toString(16).padStart(2, '0')).join('');
+}
 const FONT = '-apple-system,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif';
 
 export const tileToWorld = (x, y) => ({ x: ((x - y) * TW) / 2, y: ((x + y) * TH) / 2 });
@@ -189,34 +195,53 @@ export class GameView {
       const n = 2 + rng.int(2);
       for (let i = 0; i < n; i++) {
         const [px, py] = uv((rng() - 0.5) * 0.5, (rng() - 0.5) * 0.5);
-        const sc = 0.78 + rng() * 0.2;
-        this.place(this.mk(A.deco('tree', rng.int(4)), sc), px, py + 8);
+        if (A.has('treePine')) {
+          const name = ['treePine', 'treePineLarge', 'treePineLarge', 'treePine'][rng.int(4)];
+          this.place(this.mk(A.building(name, PAPER, 0.97), 0.85 + rng() * 0.25), px, py + 7);
+        } else {
+          this.place(this.mk(A.deco('tree', rng.int(4)), 0.78 + rng() * 0.2), px, py + 8);
+        }
       }
     } else if (t === 'hill') {
       // đúng một nấm đồi nằm gọn giữa ô
       this.place(this.mk(A.deco('hill', rng.int(3)), 0.72), c.x, c.y + 12, c.y + 2, { x, y });
     } else if (t === 'peak') {
-      this.place(this.mk(A.deco('mountain', rng.int(3)), 0.66), c.x, c.y + 16, undefined, { x, y });
+      if (A.has('rocksMountain')) this.place(this.mk(A.building(['rocksMountain', 'rocksTall', 'rocksA'][rng.int(3)], PAPER, 0.97), 1), c.x, c.y + 14, undefined, { x, y });
+      else this.place(this.mk(A.deco('mountain', rng.int(3)), 0.66), c.x, c.y + 16, undefined, { x, y });
     } else if (t === 'mountain') {
       // núi thấp: nhỏ, nằm sau quân đứng cùng ô để quân vẫn lấp ló khi đi vào
-      this.place(this.mk(A.deco('mountain', rng.int(3)), 0.46), c.x, c.y + 11, c.y + 2, { x, y });
+      if (A.has('rocks')) this.place(this.mk(A.building(['rocks', 'rocksB'][rng.int(2)], PAPER, 0.97), 0.9), c.x, c.y + 11, c.y + 2, { x, y });
+      else this.place(this.mk(A.deco('mountain', rng.int(3)), 0.46), c.x, c.y + 11, c.y + 2, { x, y });
     } else if (t === 'mine') {
-      this.place(this.mk(A.deco('mine', 0), 0.72), c.x, c.y + 12, c.y + 2, { x, y });
+      if (A.has('mine')) this.place(this.mk(A.building('mine', PAPER, 0.97), 1), c.x, c.y + 12, c.y + 2, { x, y });
+      else this.place(this.mk(A.deco('mine', 0), 0.72), c.x, c.y + 12, c.y + 2, { x, y });
     } else if (t === 'village') {
-      const name = ['village_a', 'village_b', 'cottages'][rng.int(3)];
-      this.place(this.mk(A.building(name)), c.x, c.y + 14, c.y + 2, { x, y });
+      if (A.has('houses')) {
+        const kname = ['houses', 'houseChimney', 'houseViking', 'houseTall', 'houses', 'mill'][rng.int(6)];
+        this.place(this.mk(A.building(kname, PAPER, 0.97), 1), c.x, c.y + 12, c.y + 2, { x, y });
+      } else {
+        const name = ['village_a', 'village_b', 'cottages'][rng.int(3)];
+        this.place(this.mk(A.building(name)), c.x, c.y + 14, c.y + 2, { x, y });
+      }
     } else if (t === 'fort') {
-      this.place(this.mk(A.building(rng() < 0.5 ? 'tower_a' : 'tower_b')), c.x, c.y + 16, c.y + 2, { x, y });
+      if (A.has('towerWatch')) {
+        this.place(this.mk(A.building(['towerWatch', 'tower', 'watchtower'][rng.int(3)], PAPER, 0.97), 1), c.x, c.y + 12, c.y + 2, { x, y });
+      } else {
+        this.place(this.mk(A.building(rng() < 0.5 ? 'tower_a' : 'tower_b')), c.x, c.y + 16, c.y + 2, { x, y });
+      }
     } else if (t === 'stronghold') {
       const own = this.state.map.strongholds;
       const isHuman = own.human.x === x && own.human.y === y;
       const f = isHuman ? 'human' : 'orc';
-      const sp = this.mk(A.building(isHuman ? 'castle_town' : 'stronghold', FACTIONS[f].fill), 1.0);
-      this.place(sp, c.x, c.y + 20, c.y + 2, { x, y });
+      const kenney = A.has('castle') && A.has('castleTall');
+      const sp = kenney
+        ? this.mk(A.building(isHuman ? 'castle' : 'castleTall', mixPaper(FACTIONS[f].fill, 0.55), 0.97), 1.0)
+        : this.mk(A.building(isHuman ? 'castle_town' : 'stronghold', FACTIONS[f].fill), 1.0);
+      this.place(sp, c.x, c.y + (kenney ? 14 : 20), c.y + 2, { x, y });
       // cờ tiến độ chiếm
       const label = new PIXI.Text({ text: '', style: { fontFamily: FONT, fontSize: 20, fill: 0xffffff, stroke: { color: 0x1b1b1b, width: 4 }, fontWeight: 'bold' } });
       label.anchor.set(0.5, 1);
-      label.position.set(c.x, c.y - 44);
+      label.position.set(c.x, sp.y - sp.height * sp.anchor.y - 4);
       label.zIndex = c.y + 999;
       this.objects.addChild(label);
       this.holdLabel = this.holdLabel || {};
@@ -263,14 +288,14 @@ export class GameView {
     txt.anchor.set(0.5);
     badge.addChild(bg, txt);
     badge.position.set(24, -8);
-    const fortG = new PIXI.Graphics();
+    const fortG = new PIXI.Container();
     const stars = new PIXI.Text({ text: '', style: { fontFamily: FONT, fontSize: 13, fill: 0xffd54a, fontWeight: 'bold', stroke: { color: 0x1b1b1b, width: 3 } } });
     stars.anchor.set(0.5, 1);
     stars.position.set(24, -22);
     const flag = new PIXI.Text({ text: '', style: { fontFamily: FONT, fontSize: 18, fill: 0xd8402f, fontWeight: 'bold', stroke: { color: 0xffffff, width: 4 } } });
     flag.anchor.set(0.5, 1);
     flag.position.set(0, -(sprite.height) - 4);
-    root.addChild(shadow, fortG, body, badge, stars, flag);
+    root.addChild(shadow, body, fortG, badge, stars, flag);
     const c = tileToWorld(u.x, u.y);
     root.position.set(c.x, c.y + 8);
     root.zIndex = c.y + 8 + 0.1;
@@ -281,20 +306,27 @@ export class GameView {
     return us;
   }
 
-  // Cọc rào dưới chân khi đã hạ trại
+  // Hàng rào trước chân khi đã hạ trại (sprite Kenney; không có thì vẽ cọc bằng code)
   drawFort(us, mode) {
     if (us.fort === mode) return;
     us.fort = mode;
-    const g = us.fortG;
-    g.clear();
+    const box = us.fortG;
+    box.removeChildren().forEach((c) => c.destroy());
     if (!mode) return;
-    const col = 0x1b1b1b;
-    for (let i = -3; i <= 3; i++) {
-      const x = i * 6.5, y = 5 + Math.abs(i) * -0.0;
-      g.moveTo(x, y + 4).lineTo(x - 0.8, y - 9).lineTo(x + 2.2, y + 4);
+    if (this.assets.has('fence')) {
+      const sp = this.mk(this.assets.building('fence', PAPER, 0.8), 0.95);
+      sp.position.set(0, 9);
+      box.addChild(sp);
+      return;
     }
-    g.stroke({ width: 1.8, color: col, join: 'round' });
-    g.moveTo(-21, -1).lineTo(21, -1).stroke({ width: 1.6, color: col });
+    const g = new PIXI.Graphics();
+    for (let i = -3; i <= 3; i++) {
+      const x = i * 6.5;
+      g.moveTo(x, 9).lineTo(x - 0.8, -4).lineTo(x + 2.2, 9);
+    }
+    g.stroke({ width: 1.8, color: 0x1b1b1b, join: 'round' });
+    g.moveTo(-21, 4).lineTo(21, 4).stroke({ width: 1.6, color: 0x1b1b1b });
+    box.addChild(g);
   }
 
   setShown(us, n) {

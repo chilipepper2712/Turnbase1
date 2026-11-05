@@ -54,7 +54,9 @@ Game chiến thuật theo lượt trên **lưới vuông**, hiển thị **isome
 |---|---|---|
 | Góc nhìn | Isometric, logic trên lưới vuông | CHỐT |
 | Màu | Đen trắng doodle. Phe ta tô nền xanh dương lên áo, Orc tô đỏ, nét viền luôn đen | CHỐT |
-| Sprite | Dùng ảnh tham chiếu 2 và 3 của mày; cái nào chưa có thì dựng bằng code, thay dần khi có asset thật | CHỐT |
+| Sprite quân | Dùng ảnh tham chiếu 3 của mày | CHỐT |
+| Công trình, cây, đá/núi, hàng rào | **Kenney Cartography Pack** (CC0), bản Retina; thay sprite công trình cũ vì nét dày hơn quân nhiều gây chênh. Đồi và sông vẫn vẽ bằng code; thành tô nhạt (pha 55% với giấy) để quân cùng màu không lẫn | CHỐT |
+| Asset chưa có | Dựng bằng code, thay dần khi có asset thật | CHỐT |
 | Orc | Tô đỏ sprite người và thêm chi tiết bằng code (sừng, tai) cho tới khi có sprite riêng | CHỐT |
 | Chữ UI | Sans-serif cho dễ đọc ở cỡ nhỏ; nội dung ngắn gọn, dùng icon thay chữ khi hiểu được | CHỐT |
 | Handwriting | Chỉ dùng cho banner lượt và tiêu đề menu | MẶC ĐỊNH |
@@ -195,7 +197,7 @@ Giống cách Civilization làm: quân tồn tại lâu thì lão luyện, bền
 - Cộng thủ **cố định**: người **+15%**, Orc **+12%** (Orc thấp hơn vì đã mạnh sẵn). Không tăng theo thời gian.
 - Nhân với hệ số địa hình: ô cộng thủ nhiều thì mạnh hơn (tối đa ×1.6), ô trừ thủ thì yếu đi (tối thiểu ×0.5). Cấp bậc không đổi mức này, chỉ cấp bậc làm thủ nền cao hơn.
 - Giữ nguyên khi đứng yên. Mất khi di chuyển, tấn công, gộp/tách hoặc tan vỡ.
-- Hiển thị bằng hàng cọc rào dưới chân.
+- Hiển thị bằng hàng rào (sprite Kenney) trước chân.
 
 ## 10. Điều kiện thắng
 
@@ -296,4 +298,5 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 | Màu gộp quân | Xanh lá | Tím → xanh lá |
 | Viền ô | Bỏ nét đứt, chỉ tô ô | Mày đề xuất |
 | Font | Sans-serif | Handwriting → sans |
+| Asset công trình / cây / núi | Dùng Kenney Cartography Pack thay sprite công trình cũ (nét dày hơn quân) | Mày đề xuất, sau khi xem gói gốc |
 | Hosting | Một file HTML duy nhất (Artifact trên iOS không tải được file phụ) | Lỗi hạ tầng, không phải thiết kế |

@@ -47,6 +47,12 @@ tools/             extract_sprites.py (tách sprite từ sheet), simulate.mjs (A
 tests/             node --test
 ```
 
+## Credit asset
+
+Công trình, cây, đá/núi, lều, hàng rào dùng **Kenney Cartography Pack** (CC0, www.kenney.nl). Giấy phép gốc: `assets/KENNEY_LICENSE.txt`.
+Nhập lại hoặc thêm icon: `python3 tools/import_kenney.py <kenney_cartography-pack.zip>` (sửa danh sách `NAMES` trong tool).
+Sprite quân là của tác giả game. Công trình cũ (`castle_town`, `stronghold`, `village_a`...) vẫn nằm trong `assets/buildings/` và được dùng làm fallback nếu file Kenney bị thiếu.
+
 ## Thay asset thật dần
 
 `src/render/assets.js` là registry có fallback. Asset nào có file thì dùng, không có thì vẽ bằng code.

@@ -24,6 +24,14 @@ const BUILDING_WIDTH = {
   stronghold: 118, castle_town: 124, fortress: 110, village_a: 78, village_b: 78, cottages: 74, hamlet: 60,
   tower_a: 50, tower_b: 46, tower_c: 48, keep: 100, manor: 76, town: 96, inn: 56, city: 104, domed: 100,
   ruin_a: 70, ruin_b: 66, ruin_c: 66, ruin_d: 70, ruin_e: 58,
+  // Kenney Cartography Pack (CC0), nhập bằng tools/import_kenney.py
+  castle: 104, castleTall: 112, castleWide: 116, castleWideLow: 92, gate: 56, wall: 56,
+  towerLow: 52, tower: 50, towerTall: 54, towerWatch: 52, watchtower: 56,
+  house: 54, houseChimney: 58, houseSmall: 48, houseTall: 50, houseViking: 56, houses: 70,
+  church: 62, churchLarge: 74, mill: 56, mine: 74, stable: 66, tent: 58, tipi: 44, well: 34, campfire: 34,
+  fence: 48, flag: 30, banner: 30, bush: 28,
+  treePine: 28, treePineLarge: 40, treePines: 56, treePinesSmall: 50, treeTall: 28,
+  rocks: 64, rocksA: 58, rocksB: 62, rocksMountain: 80, rocksTall: 74,
 };
 
 // Bản đóng gói một file nhúng sprite dạng data: URI vào window.__ASSET_DATA__.
@@ -156,9 +164,12 @@ export class Assets {
     return res;
   }
 
-  // tint: màu tô hoặc null (xám nhạt trung tính)
-  building(name, tint = '#e9e8e2') {
-    const k = `b:${name}:${tint}`;
+  // Có file ảnh cho công trình/đạo cụ này không (để chọn giữa sprite thật và fallback)
+  has(name) { return !!this.imgs.get(`assets/buildings/${name}.png`); }
+
+  // tint: màu tô hoặc null (xám nhạt trung tính). anchorY: điểm đặt theo chiều dọc (0.96 = sát chân cho icon đã cắt sát)
+  building(name, tint = '#e9e8e2', anchorY = 0.88) {
+    const k = `b:${name}:${tint}:${anchorY}`;
     if (this.cache.has(k)) return this.cache.get(k);
     const line = this.imgs.get(`assets/buildings/${name}.png`);
     const fill = this.imgs.get(`assets/buildings/${name}_fill.png`);
@@ -170,7 +181,7 @@ export class Assets {
     } else {
       canvas = drawFallbackBuilding(name.length, RES);
     }
-    const res = { texture: this._tex(canvas), anchor: [0.5, 0.88] };
+    const res = { texture: this._tex(canvas), anchor: [0.5, anchorY] };
     this.cache.set(k, res);
     return res;
   }
