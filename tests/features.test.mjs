@@ -147,3 +147,38 @@ test('mapgen: đầu cầu thông thoáng (không đầm lầy / đồi / núi /
   }
   assert.ok(bridges > 100, 'phải thực sự có cầu để kiểm: ' + bridges);
 });
+
+import { MAP_SIZES, armySize, mapScale } from '../src/config.js';
+
+test('cỡ bản đồ: giữ tỉ lệ 4:5, quân tăng theo diện tích, mọi cỡ qua bộ lọc công bằng', () => {
+  for (const [name, { w, h }] of Object.entries(MAP_SIZES)) {
+    assert.equal(w / h, 0.8, name + ' phải giữ tỉ lệ 4:5');
+    for (let seed = 1; seed <= 25; seed++) {
+      const m = generateMap(seed, w, h);
+      assert.equal(m.w, w); assert.equal(m.h, h);
+      assert.equal(m.spawns.human.length, armySize(w, h));
+      assert.equal(m.spawns.orc.length, armySize(w, h));
+      const a = assess(m);
+      assert.ok(a.ok, `${name} seed ${seed}: ${a.reasons.join(', ')}`);
+    }
+  }
+  assert.ok(armySize(24, 30) > armySize(16, 20) && armySize(32, 40) > armySize(24, 30));
+  assert.equal(armySize(16, 20), 7);
+});
+
+test('nước ngẫu nhiên: có map không nước, có map rẽ nhánh/hồ, sông không luôn nằm giữa ngang', () => {
+  let none = 0, some = 0; const centers = new Set(); const vertical = { v: 0 };
+  for (let seed = 1; seed <= 120; seed++) {
+    const m = generateMap(seed);
+    const water = []; m.tiles.forEach((t, i) => { if (t === 'river' || t === 'bridge') water.push([i % m.w, Math.floor(i / m.w)]); });
+    if (!water.length) { none++; continue; }
+    some++;
+    const ys = water.map((p) => p[1]), xs = water.map((p) => p[0]);
+    centers.add(Math.round(ys.reduce((a, b) => a + b, 0) / ys.length));
+    if (Math.max(...ys) - Math.min(...ys) > Math.max(...xs) - Math.min(...xs)) vertical.v++;
+  }
+  assert.ok(none >= 120 * 0.1, 'phải có map không có nước: ' + none);
+  assert.ok(some >= 120 * 0.5, 'đa số có nước');
+  assert.ok(centers.size >= 6, 'vị trí nước phải đa dạng, thấy ' + centers.size + ' vị trí');
+  assert.ok(vertical.v >= 10, 'phải có sông chạy dọc: ' + vertical.v);
+});

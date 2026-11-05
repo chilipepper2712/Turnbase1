@@ -16,7 +16,7 @@ export function createState(map) {
     capture: { human: 0, orc: 0 }, winner: null, winReason: null,
   };
   for (const f of ['human', 'orc']) {
-    map.spawns[f].forEach((p, i) => addUnit(state, f, ROSTER[i], p.x, p.y));
+    map.spawns[f].forEach((p, i) => addUnit(state, f, ROSTER[i % ROSTER.length], p.x, p.y));
   }
   for (const u of state.units) { u.moved = false; u.acted = false; }
   return state;

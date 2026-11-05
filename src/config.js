@@ -1,7 +1,7 @@
 // Toàn bộ số liệu cân bằng nằm ở đây. Sửa số, không cần đụng logic.
 
 export const CONFIG = {
-  map: { w: 16, h: 20 },          // lưới vuông: w cột (x) × h hàng (y)
+  map: { w: 16, h: 20 },          // cỡ mặc định (nhỏ). Lưới vuông: w cột (x) × h hàng (y)
   maxStrength: 10,                // số "quân" tối đa của một squad
   captureTurns: 2,                // giữ thành địch bao nhiêu lượt thì thắng
   healVillage: 2,                 // hồi quân/lượt khi đứng trong làng
@@ -114,4 +114,15 @@ export const MATCHUP = {
 export const UNIT_VALUE = { militia: 1, infantry: 2, archer: 2, cavalry: 2.5 };
 
 // Đội hình xuất phát (theo thứ tự các ô spawn do mapgen sinh ra)
+// Cỡ bản đồ người chơi chọn. Giữ nguyên tỉ lệ khung chữ nhật 4:5. Quân, làng, tháp, mỏ tăng theo diện tích.
+export const MAP_SIZES = {
+  small:  { w: 16, h: 20 },
+  medium: { w: 24, h: 30 },
+  large:  { w: 32, h: 40 },
+};
+export const BASE_AREA = 16 * 20;
+export const mapScale = (w, h) => (w * h) / BASE_AREA;
+// Số squad mỗi bên theo diện tích: 7 / 16 / 28
+export const armySize = (w, h) => Math.max(7, Math.round(7 * mapScale(w, h)));
+
 export const ROSTER = ['infantry', 'infantry', 'archer', 'archer', 'militia', 'militia', 'cavalry'];

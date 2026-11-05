@@ -4,7 +4,7 @@ import { CONFIG, FACTIONS } from '../config.js';
 import { hash2, makeRng } from '../rng.js';
 import { terrainId, levelOf } from '../rules.js';
 import { RES } from './assets.js';
-import { drawGroundTile, makeCanvas, INK } from './doodle.js';
+import { drawGroundTile, makeCanvas, drawCloud, INK } from './doodle.js';
 
 export const TW = 96, TH = 48;
 const CHUNK = 8;
@@ -58,7 +58,9 @@ export class GameView {
     this.objects = new PIXI.Container();
     this.objects.sortableChildren = true;
     this.fx = new PIXI.Container();
-    this.world.addChild(this.ground, this.hl, this.objects, this.fx);
+    this.cloudShadow = new PIXI.Container();   // bóng mây đổ lên nền: dưới ô tô màu và quân
+    this.cloudLayer = new PIXI.Container();    // mây: trên cùng
+    this.world.addChild(this.ground, this.cloudShadow, this.hl, this.objects, this.fx, this.cloudLayer);
     app.stage.addChild(this.world);
     this.zoom = 1;
     this.buildMap();
@@ -99,6 +101,7 @@ export class GameView {
       for (let i = 0; i < w; i += CHUNK) this.bakeChunk(i, j);
     }
     this.drawBorder();
+    this.buildClouds();
     // trang trí đối tượng
     this.deco = [];
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) this.placeDeco(x, y);
@@ -408,34 +411,73 @@ export class GameView {
   }
 
   // ---------- Tween / render ----------
-  // ---------- Idle: quân thở nhẹ ----------
-  // Co giãn thân theo chiều dọc ~1.8%, mỗi quân lệch pha. Chạy ~8 khung/giây, dừng khi tab ẩn,
-  // khi đang có hoạt ảnh khác (các hoạt ảnh tự vẽ), và bỏ qua quân ngoài màn hình.
-  setIdle(on) {
-    this.idleOn = !!on;
-    clearTimeout(this._idleT);
-    if (!this.idleOn) {
-      for (const us of this.sprites.values()) us.body.scale.y = 1;
-      this.requestRender();
-      return;
-    }
+  // ---------- Chuyển động nền (idle thở + mây) ----------
+  // Một vòng lặp chung ~10 khung/giây cho cả hai. Dừng khi tab ẩn. Cả hai tắt thì không vẽ gì (cơ chế vẽ-khi-cần).
+  setIdle(on) { this.idleOn = !!on; if (!on) { for (const us of this.sprites.values()) us.body.scale.y = 1; this.requestRender(); } this.startAmbient(); }
+  setClouds(on) { this.cloudsOn = !!on; this.cloudLayer.visible = this.cloudShadow.visible = this.cloudsOn; this.requestRender(); this.startAmbient(); }
+
+  startAmbient() {
+    clearTimeout(this._ambT);
+    if (!this.idleOn && !this.cloudsOn) return;
     const tick = () => {
-      if (!this.idleOn) return;
-      if (!document.hidden && !this.tweens.length && this.app) {
-        const W = this.app.screen.width, H = this.app.screen.height, t = performance.now() / 1000;
-        let any = false;
-        for (const us of this.sprites.values()) {
-          const sx = us.root.x * this.zoom + this.world.position.x, sy = us.root.y * this.zoom + this.world.position.y;
-          if (sx < -80 || sx > W + 80 || sy < -120 || sy > H + 80) continue;
-          const ph = (us.id * 1.7) % 6.283;
-          us.body.scale.y = 1 + 0.018 * Math.sin(t * 2.2 + ph);
-          any = true;
-        }
-        if (any) this.app.render();
+      if (!this.idleOn && !this.cloudsOn) return;
+      if (!document.hidden && this.app && !this.tweens.length) {
+        if (this.idleOn) this.updateIdle();
+        if (this.cloudsOn) this.updateClouds();
+        this.app.render();
       }
-      this._idleT = setTimeout(tick, 125);
+      this._ambT = setTimeout(tick, 100);
     };
     tick();
+  }
+
+  updateIdle() {
+    const W = this.app.screen.width, H = this.app.screen.height, t = performance.now() / 1000;
+    for (const us of this.sprites.values()) {
+      const sx = us.root.x * this.zoom + this.world.position.x, sy = us.root.y * this.zoom + this.world.position.y;
+      if (sx < -80 || sx > W + 80 || sy < -120 || sy > H + 80) continue;
+      us.body.scale.y = 1 + 0.018 * Math.sin(t * 2.2 + (us.id * 1.7) % 6.283);
+    }
+  }
+
+  // Mây: vị trí là hàm của thời gian (không giữ trạng thái), nên vẽ lúc nào cũng khớp. Trôi theo một hướng gió,
+  // mờ dần khi ra khỏi / vào mép bản đồ rồi quay lại từ phía đầu gió.
+  buildClouds() {
+    for (const c of [this.cloudShadow, this.cloudLayer]) c.removeChildren().forEach((x) => x.destroy());
+    this.clouds = [];
+    const { w, h } = this.state.map;
+    const rng = makeRng((this.state.map.seed || 1) * 31 + 7);
+    const n = Math.max(4, Math.round((w * h) / 70));
+    const variants = [];
+    for (let i = 0; i < 4; i++) variants.push(drawCloud(500 + i * 17, RES));
+    const tex = variants.map((v) => ({ cloud: PIXI.Texture.from(v.cloud), shadow: PIXI.Texture.from(v.shadow), w: v.w, h: v.h }));
+    this.windLen = w + 8;
+    for (let i = 0; i < n; i++) {
+      const v = tex[rng.int(tex.length)], sc = 0.55 + rng() * 0.6;
+      const shadow = new PIXI.Sprite(v.shadow); shadow.anchor.set(0.5); shadow.scale.set((sc * 1.1) / RES, (sc * 0.55) / RES);   // dẹt theo phối cảnh isometric
+      const cloud = new PIXI.Sprite(v.cloud); cloud.anchor.set(0.5); cloud.scale.set(sc / RES);
+      this.cloudShadow.addChild(shadow); this.cloudLayer.addChild(cloud);
+      this.clouds.push({ cloud, shadow, phase: rng() * this.windLen, speed: 0.22 + rng() * 0.18, lane: rng() * (h + 6) - 3, drift: 0.22 + rng() * 0.1, sc });
+    }
+    this.cloudLayer.visible = this.cloudShadow.visible = this.cloudsOn !== false;
+    this.updateClouds();
+  }
+
+  updateClouds() {
+    if (!this.clouds) return;
+    const { w, h } = this.state.map, t = performance.now() / 1000, M = 4;
+    for (const c of this.clouds) {
+      const s = (c.phase + t * c.speed) % this.windLen;
+      const tx = s - M, ty = c.lane + c.drift * s;               // tọa độ ô (liên tục), gió thổi theo +x và hơi +y
+      const p = tileToWorld(tx, ty);
+      // mờ dần theo khoảng cách ra ngoài mép bản đồ
+      const out = Math.max(-tx, tx - (w - 1), -ty, ty - (h - 1), 0);
+      const k = Math.max(0, 1 - out / 3.2);
+      c.cloud.position.set(p.x, p.y - 70);                       // mây ở trên cao
+      c.shadow.position.set(p.x + 46, p.y + 6);                  // bóng đổ xuống nền, lệch xuống phải
+      c.cloud.alpha = 0.55 * k; c.shadow.alpha = 0.8 * k;
+      c.cloud.visible = c.shadow.visible = k > 0.01;
+    }
   }
 
   requestRender() {
@@ -453,6 +495,7 @@ export class GameView {
       if (k >= 1) done.push(tw);
     }
     for (const tw of done) { this.tweens.splice(this.tweens.indexOf(tw), 1); tw.resolve(); }
+    if (this.cloudsOn) this.updateClouds();
     this.app.render();
     if (this.tweens.length) this.requestRender();
   }

@@ -140,5 +140,10 @@
   "terrain.note.swamp": "Lầy lội: đi chậm, giảm thủ và sức đánh. Kỵ binh sa lầy, không vào được.",
   "ui.idle": "Quân thở (hoạt ảnh đứng yên)",
   "ui.on": "Bật",
-  "ui.off": "Tắt (tiết kiệm pin)"
+  "ui.off": "Tắt (tiết kiệm pin)",
+  "ui.mapSize": "Cỡ bản đồ (áp dụng cho map mới)",
+  "ui.size.small": "Nhỏ",
+  "ui.size.medium": "Vừa",
+  "ui.size.large": "Lớn",
+  "ui.clouds": "Mây trôi trên bản đồ"
 }

@@ -140,5 +140,10 @@
   "terrain.note.swamp": "Mire: slow, lowers defense and damage. Cavalry bog down and cannot enter.",
   "ui.idle": "Breathing idle animation",
   "ui.on": "On",
-  "ui.off": "Off (saves battery)"
+  "ui.off": "Off (saves battery)",
+  "ui.mapSize": "Map size (applies to new maps)",
+  "ui.size.small": "Small",
+  "ui.size.medium": "Medium",
+  "ui.size.large": "Large",
+  "ui.clouds": "Drifting clouds"
 }

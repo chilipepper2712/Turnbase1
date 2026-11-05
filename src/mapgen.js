@@ -3,7 +3,7 @@
 //  - "vùng ảnh hưởng" (ô nào tới thành nào trước) chia gần đều,
 //  - mỗi bên có làng và chỗ ẩn nấp thiên nhiên trong vùng của mình.
 // Quy ước: orc ở phía trên (y nhỏ), người ở phía dưới (y lớn).
-import { CONFIG, TERRAIN, ROSTER, MAPGEN } from './config.js';
+import { CONFIG, TERRAIN, MAPGEN, mapScale, armySize } from './config.js';
 import { makeRng, hash2 } from './rng.js';
 
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -120,6 +120,7 @@ export function assess(map) {
 
 export function generateOnce(seed, w, h) {
   const rng = makeRng(seed);
+  const scale = mapScale(w, h), army = armySize(w, h);
   const tiles = new Array(w * h).fill('plain');
   const at = (x, y) => tiles[y * w + x];
   const set = (x, y, t) => { tiles[y * w + x] = t; };
@@ -151,31 +152,85 @@ export function generateOnce(seed, w, h) {
   set(orc.x, orc.y, 'stronghold'); set(human.x, human.y, 'stronghold');
   const nearHold = (x, y, r = 3) => Math.abs(x - orc.x) + Math.abs(y - orc.y) <= r || Math.abs(x - human.x) + Math.abs(y - human.y) <= r;
 
-  // sông: một dải 2 ô uốn lượn ngang bản đồ (90% số map), có 2-3 chỗ bắc cầu
-  const riverCols = [];
-  if (rng() < 0.9) {
-    const base = Math.floor(h / 2) + rng.int(3) - 1;
-    const amp = 0.8 + rng() * 1.8, freq = 0.35 + rng() * 0.5, ph = rng() * 6.28;
-    const y0 = (x) => Math.round(base + Math.sin(x * freq + ph) * amp + (noise(seed, x, 7, 2.5) - 0.5) * 1.6);
-    for (let x = 0; x < w; x++) {
-      for (let k = 0; k < 2; k++) {
-        const y = y0(x) + k;
-        if (inb(x, y) && !nearHold(x, y, 4) && at(x, y) !== 'stronghold') set(x, y, 'river');
-      }
-      riverCols.push({ x, y: y0(x) });
+  // ---- Nước: ngẫu nhiên hoàn toàn. Có thể không có sông, một sông chạy từ mép này sang mép kia theo hướng bất kỳ,
+  // sông rẽ nhánh (chia map thành 3 vùng), và/hoặc hồ. Cầu đặt dọc đường sông; bộ lọc `assess` đảm bảo vẫn đi được giữa hai thành.
+  const edgePoint = (side) => {
+    if (side === 0) return { x: rng.int(w), y: 0 };
+    if (side === 1) return { x: w - 1, y: rng.int(h) };
+    if (side === 2) return { x: rng.int(w), y: h - 1 };
+    return { x: 0, y: rng.int(h) };
+  };
+  const walkRiver = (from, to) => {
+    const path = [{ ...from }];
+    let { x, y } = from;
+    for (let guard = 0; guard < 6 * (w + h); guard++) {
+      if (x === to.x && y === to.y) break;
+      const dx = to.x - x, dy = to.y - y;
+      let mx = 0, my = 0;
+      const wander = rng();
+      if (wander < 0.28) { if (rng() < 0.5) mx = rng() < 0.5 ? -1 : 1; else my = rng() < 0.5 ? -1 : 1; }
+      else if (Math.abs(dx) * rng() > Math.abs(dy) * rng()) mx = Math.sign(dx) || (rng() < 0.5 ? -1 : 1);
+      else my = Math.sign(dy) || (rng() < 0.5 ? -1 : 1);
+      const nx = x + mx, ny = y + my;
+      if (!inb(nx, ny)) continue;
+      x = nx; y = ny; path.push({ x, y, mx, my });
     }
-    // cầu: 2-3 cột cách nhau >= 4
-    const nb = 2 + rng.int(2);
+    return path;
+  };
+  const rivers = [];
+  const paintRiver = (path) => {
+    const cells = [];
+    path.forEach((p, i) => {
+      const horiz = i > 0 ? path[i].mx !== 0 : path[1] && path[1].mx !== 0;
+      for (const [cx, cy] of [[p.x, p.y], horiz ? [p.x, p.y + 1] : [p.x + 1, p.y]]) {
+        if (!inb(cx, cy) || nearHold(cx, cy, 4)) continue;
+        if (at(cx, cy) === 'stronghold') continue;
+        set(cx, cy, 'river'); cells.push({ x: cx, y: cy, idx: i, horiz });
+      }
+    });
+    rivers.push({ path, cells });
+  };
+  const waterRoll = rng();
+  // 18% không nước · 44% chỉ sông · 16% sông + hồ · 22% chỉ hồ
+  if (waterRoll >= 0.18 && waterRoll < 0.78) {
+    const s0 = rng.int(4);
+    const s1 = rng() < 0.6 ? (s0 + 2) % 4 : (s0 + 1 + rng.int(3)) % 4;
+    const main = walkRiver(edgePoint(s0), edgePoint(s1));
+    paintRiver(main);
+    if (rng() < 0.4 && main.length > 12) {                // nhánh: chia map thành 3 vùng
+      const from = main[Math.floor(main.length * (0.25 + rng() * 0.5))];
+      let s2 = rng.int(4); if (s2 === s0 || s2 === s1) s2 = (s2 + 1) % 4;
+      paintRiver(walkRiver({ x: from.x, y: from.y }, edgePoint(s2)));
+    }
+  }
+  if (waterRoll >= 0.62) {                                  // hồ (có thể đi kèm sông)
+    const lakes = rng() < 0.3 ? 2 : 1, nL = rng.int(1e9);
+    for (let k = 0; k < lakes; k++) {
+      const cx = 3 + rng.int(w - 6), cy = 4 + rng.int(h - 8), r = (1.6 + rng() * 2.2) * Math.sqrt(scale);
+      if (nearHold(cx, cy, r + 4)) continue;
+      for (let y = Math.floor(cy - r - 2); y <= cy + r + 2; y++) for (let x = Math.floor(cx - r - 2); x <= cx + r + 2; x++) {
+        if (!inb(x, y) || nearHold(x, y, 4)) continue;
+        const d = Math.hypot(x - cx, (y - cy) * 1.2) + (noise(nL, x, y, 2) - 0.5) * 2;
+        if (d < r) set(x, y, 'river');
+      }
+    }
+  }
+  // cầu: dọc mỗi sông, cách nhau >= 5 ô đường sông, ít nhất 2 cầu cho mỗi sông dài
+  for (const rv of rivers) {
+    const want = Math.max(2, Math.round(rv.path.length / 9));
     const used = [];
-    for (let tries = 0; used.length < nb && tries < 40; tries++) {
-      const x = 1 + rng.int(w - 2);
-      if (used.some((u) => Math.abs(u - x) < 4)) continue;
-      const y = y0(x);
-      if (at(x, y) !== 'river' && at(x, y + 1) !== 'river') continue;
-      used.push(x);
-      for (const yy of [y, y + 1]) if (at(x, yy) === 'river') set(x, yy, 'bridge');
+    for (let tries = 0; used.length < want && tries < 80; tries++) {
+      const i = 1 + rng.int(Math.max(1, rv.path.length - 2));
+      if (used.some((u) => Math.abs(u - i) < 5)) continue;
+      const here = rv.cells.filter((c) => c.idx === i);
+      if (!here.length || here.some((c) => at(c.x, c.y) !== 'river')) continue;
+      used.push(i);
+      for (const c of here) set(c.x, c.y, 'bridge');
       // hai đầu cầu phải là đất đi được
-      for (const yy of [y - 1, y + 2]) if (inb(x, yy) && (at(x, yy) === 'mountain' || at(x, yy) === 'river')) set(x, yy, 'plain');
+      for (const c of here) for (const [dx, dy] of DIRS) {
+        const nx = c.x + dx, ny = c.y + dy;
+        if (inb(nx, ny) && ['mountain', 'peak', 'swamp'].includes(at(nx, ny))) set(nx, ny, 'plain');
+      }
     }
   }
 
@@ -207,20 +262,20 @@ export function generateOnce(seed, w, h) {
   };
   placeVillage(orc.x, orc.y, 4, 7);       // mỗi bên có làng gần nhà
   placeVillage(human.x, human.y, 4, 7);
-  const extra = 1 + rng.int(3);
+  const extra = Math.round((1 + rng.int(3)) * scale);
   for (let i = 0; i < extra; i++) placeVillage(w / 2, h / 2, 0, Math.min(w, h) * 0.45);
 
   // tháp / cứ điểm ở khu giữa
-  const nFort = 1 + rng.int(2);
-  for (let i = 0, t = 0; i < nFort && t < 60; t++) {
-    const x = 2 + rng.int(w - 4), y = Math.floor(h / 2) - 5 + rng.int(10);
+  const nFort = Math.round((1 + rng.int(2)) * scale);
+  for (let i = 0, t = 0; i < nFort && t < 120; t++) {
+    const x = 2 + rng.int(w - 4), y = Math.floor(h * 0.3) + rng.int(Math.max(2, Math.floor(h * 0.4)));
     if (free(x, y) && !nearHold(x, y, 3)) { set(x, y, 'fort'); i++; }
   }
 
   // hầm mỏ: đồi / chân núi
   const spots = [];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (at(x, y) === 'hill' && !nearHold(x, y, 4)) spots.push({ x, y });
-  for (let i = 0; i < 2 && spots.length; i++) {
+  for (let i = 0; i < Math.round(2 * scale) && spots.length; i++) {
     const p = spots.splice(rng.int(spots.length), 1)[0];
     set(p.x, p.y, 'mine');
   }
@@ -235,7 +290,7 @@ export function generateOnce(seed, w, h) {
   }
 
   const map = { w, h, tiles, seed, strongholds: { orc, human }, spawns: { orc: [], human: [] } };
-  // ô xuất phát: vòng 2..5 quanh thành, ưu tiên phía hướng về địch
+  // ô xuất phát: các ô đi được gần thành nhất (từ vòng 2 trở ra), đủ số quân; hàng gần địch nhất lên trước
   for (const [f, me, foe] of [['orc', orc, human], ['human', human, orc]]) {
     const cands = [];
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -243,11 +298,10 @@ export function generateOnce(seed, w, h) {
       const tt = TERRAIN[t];
       if (!isFinite(tt.cost) || tt.noCavalry || t === 'stronghold' || t === 'bridge') continue;
       const d = Math.abs(x - me.x) + Math.abs(y - me.y);
-      if (d >= 2 && d <= 5) cands.push({ x, y, d, e: Math.abs(x - foe.x) + Math.abs(y - foe.y) });
+      if (d >= 2) cands.push({ x, y, d, e: Math.abs(x - foe.x) + Math.abs(y - foe.y) });
     }
     cands.sort((a, b) => a.d - b.d || a.e - b.e || a.x - b.x);
-    map.spawns[f] = cands.slice(0, ROSTER.length).map(({ x, y }) => ({ x, y }));
-    // xếp hàng đầu (gần địch hơn) cho bộ binh
+    map.spawns[f] = cands.slice(0, army).map(({ x, y }) => ({ x, y }));
     map.spawns[f].sort((a, b) => (Math.abs(a.x - foe.x) + Math.abs(a.y - foe.y)) - (Math.abs(b.x - foe.x) + Math.abs(b.y - foe.y)));
   }
   return map;
@@ -258,7 +312,8 @@ export function generateMap(seed = 1, w = CONFIG.map.w, h = CONFIG.map.h) {
   for (let i = 0; i < 120; i++) {
     const s = (seed + i * 7919) >>> 0;
     const m = generateOnce(s, w, h);
-    if (m.spawns.human.length < ROSTER.length || m.spawns.orc.length < ROSTER.length) continue;
+    const n = armySize(w, h);
+    if (m.spawns.human.length < n || m.spawns.orc.length < n) continue;
     const a = assess(m);
     m.requestedSeed = seed;
     m.fairness = a;

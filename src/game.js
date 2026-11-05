@@ -1,5 +1,5 @@
 // Điều khiển ván chơi: thao tác người chơi, vòng lặp AI, panel/preview/menu.
-import { CONFIG, FACTIONS, TERRAIN, STATS, LEVEL } from './config.js';
+import { CONFIG, FACTIONS, TERRAIN, STATS, LEVEL, MAP_SIZES } from './config.js';
 import { generateMap } from './mapgen.js';
 import {
   createState, reachable, targetsFrom, previewAttack, moveUnit, attackUnit, waitUnit, mergeUnits,
@@ -36,6 +36,7 @@ export class Game {
     };
     this.bindChrome();
     view.setIdle(settings.idle === true);
+    view.setClouds(settings.clouds !== false);
   }
 
   get state() { return this.view.state; }
@@ -44,7 +45,8 @@ export class Game {
   // ---------- Vòng đời ----------
   newGame(seed) {
     this.seed = seed >>> 0;
-    const map = generateMap(this.seed);
+    const size = MAP_SIZES[this.settings.mapSize] || MAP_SIZES.small;
+    const map = generateMap(this.seed, size.w, size.h);
     this.map = map;
     this.busy = false;
     this.sel = null; this.pending = null; this.origin = null;
@@ -580,8 +582,12 @@ export class Game {
       <select id="m-speed">${Object.keys(SPEEDS).map((d) => opt(d, t('ui.speed.' + (d === 'normal' ? 'normal' : d === 'fast' ? 'fast' : 'instant')), this.settings.speed)).join('')}</select>
       <label>${esc(t('ui.idle'))}</label>
       <select id="m-idle"><option value="1" ${this.settings.idle === true ? 'selected' : ''}>${esc(t('ui.on'))}</option><option value="0" ${this.settings.idle !== true ? 'selected' : ''}>${esc(t('ui.off'))}</option></select>
+      <label>${esc(t('ui.clouds'))}</label>
+      <select id="m-clouds"><option value="1" ${this.settings.clouds !== false ? 'selected' : ''}>${esc(t('ui.on'))}</option><option value="0" ${this.settings.clouds === false ? 'selected' : ''}>${esc(t('ui.off'))}</option></select>
       <label>${esc(t('ui.language'))}</label>
       <select id="m-lang">${LANGS.map((c) => opt(c, langName(c), getLang())).join('')}</select>
+      <label>${esc(t('ui.mapSize'))}</label>
+      <select id="m-size">${Object.entries(MAP_SIZES).map(([k, v]) => opt(k, `${t('ui.size.' + k)} (${v.w}×${v.h})`, this.settings.mapSize || 'small')).join('')}</select>
       <label>${esc(t('ui.seed'))}</label>
       <input id="m-seed" type="number" min="0" value="${this.seed}">
       <div class="btns">
@@ -594,7 +600,10 @@ export class Game {
       this.settings.difficulty = $('m-diff').value;
       this.settings.speed = $('m-speed').value;
       this.settings.idle = $('m-idle').value === '1';
+      this.settings.mapSize = $('m-size').value;
       this.view.setIdle(this.settings.idle);
+      this.settings.clouds = $('m-clouds').value === '1';
+      this.view.setClouds(this.settings.clouds);
       const lang = $('m-lang').value;
       if (lang !== getLang()) await setLang(lang);
       this.settings.lang = lang;

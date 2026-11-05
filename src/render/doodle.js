@@ -249,16 +249,21 @@ export function drawGroundTile(ctx, cx, cy, tid, ctxInfo) {
     }
   }
   if (tid === 'bridge') {
-    // cầu bắc theo trục +y: dải ván + lan can
+    // cầu bắc ngang qua sông: sông chạy theo trục x (hai bên ±x là nước) thì cầu chạy theo trục y, ngược lại cầu chạy theo trục x
+    const isW = (t) => t === 'river' || t === 'bridge';
+    const waterAlongX = neighbors[1] === 'river' || neighbors[3] === 'river';
+    const waterAlongY = neighbors[0] === 'river' || neighbors[2] === 'river';
+    const alongY = waterAlongX || !waterAlongY;
+    const L = alongY ? e2 : e1, Wd = alongY ? e1 : e2;      // L: hướng dọc cầu, Wd: hướng ngang cầu
     const hw = 0.27;
-    const P = (t, u) => [cx + e2[0] * t * 0.5 * 2 / 2 + e1[0] * u * 0.5, cy + e2[1] * t * 0.5 * 2 / 2 + e1[1] * u * 0.5];
-    const c1 = P(-1, -hw * 2), c2 = P(-1, hw * 2), c3 = P(1, hw * 2), c4 = P(1, -hw * 2);
+    const P = (t, u) => [cx + L[0] * t + Wd[0] * u, cy + L[1] * t + Wd[1] * u];
+    const c1 = P(-0.5, -hw), c2 = P(-0.5, hw), c3 = P(0.5, hw), c4 = P(0.5, -hw);
     polyFill(ctx, [c1, c2, c3, c4], '#f7f6f1');
     inkLine(ctx, [c1, c4], { rng, width: 2.2, amp: 0.7 });
     inkLine(ctx, [c2, c3], { rng, width: 2.2, amp: 0.7 });
     for (let i = -4; i <= 4; i++) {
-      const t = i / 4.6;
-      inkLine(ctx, [P(t, -hw * 2), P(t, hw * 2)], { rng, width: 1.2, amp: 0.3, step: 6 });
+      const t = i / 8.4;
+      inkLine(ctx, [P(t, -hw), P(t, hw)], { rng, width: 1.2, amp: 0.3, step: 6 });
     }
   }
 }
@@ -292,4 +297,37 @@ export function drawFallbackBuilding(seed, S = 2) {
   inkLine(ctx, body, { rng, width: 2.4, close: true });
   inkLine(ctx, [[8, 32], [45, 8], [82, 32]], { rng, width: 2.4 });
   return c;
+}
+
+// ---------- Mây nhìn từ trên xuống ----------
+// Trả { cloud, shadow }: hai canvas cùng kích thước, cùng hình bóng. Cloud: trắng đục nhẹ viền mực mảnh;
+// shadow: xám nhoè (giả blur bằng nhiều lớp mờ dần, vì ctx.filter không chạy trên mọi trình duyệt).
+export function drawCloud(seed, S = 2) {
+  const rng = makeRng(seed);
+  const W = 240, H = 130;
+  const blobs = [];
+  const n = 5 + rng.int(3);
+  for (let i = 0; i < n; i++) {
+    const t = n === 1 ? 0.5 : i / (n - 1);
+    const mid = 1 - Math.abs(t - 0.5) * 1.5;
+    blobs.push({ x: 28 + t * (W - 56), y: H / 2 + (rng() - 0.5) * 18, r: 16 + mid * 22 + rng() * 8 });
+  }
+  const mk = () => { const c = makeCanvas(W * S, H * S); const x = c.getContext('2d'); x.scale(S, S); return [c, x]; };
+  const [cloud, cx] = mk();
+  cx.strokeStyle = 'rgba(40,40,36,0.75)'; cx.lineWidth = 2.2;
+  for (const b of blobs) { cx.beginPath(); cx.arc(b.x, b.y, b.r + 1, 0, Math.PI * 2); cx.stroke(); }
+  cx.fillStyle = '#ffffff';
+  for (const b of blobs) { cx.beginPath(); cx.arc(b.x, b.y, b.r, 0, Math.PI * 2); cx.fill(); }
+  // vài nét cong bên trong như ảnh vẽ tay
+  cx.strokeStyle = 'rgba(40,40,36,0.45)'; cx.lineWidth = 1.5; cx.lineCap = 'round';
+  for (let i = 0; i < 3; i++) {
+    const b = blobs[1 + rng.int(blobs.length - 2)];
+    cx.beginPath(); cx.arc(b.x + 2, b.y + 2, b.r * 0.55, Math.PI * 0.15, Math.PI * 0.75); cx.stroke();
+  }
+  const [shadow, sx] = mk();
+  for (let k = 7; k >= 0; k--) {
+    sx.fillStyle = `rgba(30,32,36,${0.022 + (7 - k) * 0.006})`;
+    for (const b of blobs) { sx.beginPath(); sx.arc(b.x, b.y, b.r * 0.92 + k * 2.2, 0, Math.PI * 2); sx.fill(); }
+  }
+  return { cloud, shadow, w: W, h: H };
 }

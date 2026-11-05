@@ -90,11 +90,12 @@ Game chiến thuật theo lượt trên **lưới vuông**, hiển thị **isome
 
 | Hạng mục | Quyết định | Nhãn |
 |---|---|---|
-| Kích thước | 16×20. Bắt đầu từ ý 64×64, thu nhỏ để test nhanh; kích thước là config, kiến trúc phải scale | CHỐT |
+| Kích thước | Người chơi chọn 1 trong 3 cỡ, giữ tỉ lệ chữ nhật 4:5: **Nhỏ 16×20, Vừa 24×30, Lớn 32×40**. Số squad mỗi bên (7 / 16 / 28), làng, tháp, hầm mỏ tăng theo diện tích | CHỐT |
 | Sinh map | Procedural có seed, hiển thị seed để replay | CHỐT |
 | Đối xứng | **Không** đối xứng (đối xứng làm game giống cờ vua / cờ tướng). Công bằng được kiểm tra sau khi sinh | CHỐT |
 | Vị trí thành | Orc ở phía trên, người ở phía dưới; vị trí ngang ngẫu nhiên | MẶC ĐỊNH |
-| Sông | 90% số map; dải 2 ô uốn lượn; 2–3 chỗ bắc cầu | MẶC ĐỊNH |
+| Nước | **Ngẫu nhiên hoàn toàn**: có thể không có nước (~20–35%), một sông đi từ mép này sang mép kia theo hướng bất kỳ, sông rẽ nhánh chia map thành nhiều vùng, hồ, hoặc kết hợp. Cầu đặt dọc sông, bắc đúng hướng ngang dòng chảy. Ý "sông cắt ngang giữa map" ban đầu chỉ là di sản của map đối xứng, không phải quyết định thiết kế | CHỐT |
+| Hộp tạo màn | Chỉ cho chọn **cỡ bản đồ** (menu, áp dụng cho map mới). Không cho chọn tỉ lệ địa hình: để ngẫu nhiên hoàn toàn cho đơn giản. Kiểu menu Civilization (chọn nhiều thông số) đã cân nhắc và bỏ | CHỐT |
 | Đầu cầu | Không được có đầm lầy, đồi, núi (thấp lẫn cao), hầm mỏ ngay cạnh cầu | CHỐT |
 | Ruộng, hầm mỏ ở bản test | Chỉ là địa hình (ruộng như đồng bằng) | CHỐT |
 
@@ -299,4 +300,6 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 | Viền ô | Bỏ nét đứt, chỉ tô ô | Mày đề xuất |
 | Font | Sans-serif | Handwriting → sans |
 | Asset công trình / cây / núi | Dùng Kenney Cartography Pack thay sprite công trình cũ (nét dày hơn quân) | Mày đề xuất, sau khi xem gói gốc |
+| Mây trôi | Mây nhìn từ trên xuống, đổ bóng xám mờ xuống nền, trôi chậm theo hướng gió, mờ dần ở mép bản đồ rồi quay lại; vẽ bằng code; có nút tắt trong menu (mặc định bật). Tốn khoảng 10 lần vẽ mỗi giây | CHỐT |
+| Idle thở | Thử và bỏ vì nhìn lạ; còn nút trong menu, mặc định tắt | Mày quyết |
 | Hosting | Một file HTML duy nhất (Artifact trên iOS không tải được file phụ) | Lỗi hạ tầng, không phải thiết kế |

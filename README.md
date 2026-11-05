@@ -10,7 +10,7 @@ python3 -m http.server 8080      # hoặc: npm run serve
 # mở http://localhost:8080
 ```
 
-Tham số URL: `?seed=123` (map cố định) · `?ai=easy|tactical` · `?speed=normal|fast|instant` · `?lang=vi|en` · `?idle=1` (bật hoạt ảnh thở, mặc định tắt).
+Tham số URL: `?seed=123` (map cố định) · `?ai=easy|tactical` · `?speed=normal|fast|instant` · `?lang=vi|en` · `?idle=1` (bật hoạt ảnh thở, mặc định tắt) · `?clouds=0` (tắt mây) · `?size=small|medium|large`.
 Không cần build; PixiJS được vendor sẵn ở `vendor/pixi.min.js`.
 
 ## Luật tóm tắt (bản test: chỉ có phần core, chưa có kinh tế)
