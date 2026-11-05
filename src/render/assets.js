@@ -25,10 +25,11 @@ const BUILDING_WIDTH = {
   tower_a: 50, tower_b: 46, tower_c: 48, keep: 100, manor: 76, town: 96, inn: 56, city: 104, domed: 100,
   ruin_a: 70, ruin_b: 66, ruin_c: 66, ruin_d: 70, ruin_e: 58,
   // Kenney Cartography Pack (CC0), nhập bằng tools/import_kenney.py
-  castle: 104, castleTall: 112, castleWide: 116, castleWideLow: 92, gate: 56, wall: 56,
-  towerLow: 52, tower: 50, towerTall: 54, towerWatch: 52, watchtower: 56,
-  house: 54, houseChimney: 58, houseSmall: 48, houseTall: 50, houseViking: 56, houses: 70,
-  church: 62, churchLarge: 74, mill: 56, mine: 74, stable: 66, tent: 58, tipi: 44, well: 34, campfire: 34,
+  // Thành chính nhỏ hơn hẳn để nằm gọn trong ô (ô rộng 96); công trình khác nhỏ lại ~8% so với cây.
+  castle: 80, castleTall: 86, castleWide: 90, castleWideLow: 76, gate: 52, wall: 52,
+  towerLow: 48, tower: 46, towerTall: 50, towerWatch: 48, watchtower: 52,
+  house: 50, houseChimney: 54, houseSmall: 44, houseTall: 46, houseViking: 52, houses: 64,
+  church: 58, churchLarge: 68, mill: 52, mine: 68, stable: 60, tent: 54, tipi: 40, well: 32, campfire: 32,
   fence: 48, flag: 30, banner: 30, bush: 28,
   treePine: 28, treePineLarge: 40, treePines: 56, treePinesSmall: 50, treeTall: 28,
   rocks: 64, rocksA: 58, rocksB: 62, rocksMountain: 80, rocksTall: 74,

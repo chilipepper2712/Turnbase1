@@ -30,13 +30,23 @@ NAMES = [
 
 
 def fill_mask(alpha):
-    ink = alpha > 0.4
-    sealed = ndi.binary_dilation(ink, iterations=2)
-    seed = np.zeros_like(sealed)
-    seed[0, :] = seed[-1, :] = seed[:, 0] = seed[:, -1] = True
-    outside = ndi.binary_propagation(seed & ~sealed, mask=~sealed)
-    inside = ndi.binary_erosion(~outside, iterations=1) & ~ink
-    return inside
+    """Hình bóng đặc của icon, để lót một lớp nền giấy solid che đường lưới phía sau.
+
+    Icon của Kenney chỉ là nét; nhiều icon hở đáy (hầm mỏ, núi, đá) hoặc có khe hở nhỏ trên nét nên
+    "vùng kín" không đủ. Cách làm: nối đáy bằng một đường ảo, bịt khe hở bằng closing, lấp lỗ, rồi nở nhẹ
+    để lớp nền nằm dưới cả nét vẽ (không để lộ viền trong suốt cạnh nét)."""
+    ink = alpha > 0.35
+    closed = ink.copy()
+    ys, xs = np.where(ink)
+    ybot = ys.max()
+    band = ink[max(ybot - 2, 0): ybot + 1]      # chỉ xét vài hàng cuối: cây có thân hẹp ở đáy, núi/hầm mỏ thì đáy rộng
+    bx = np.where(band.any(0))[0]
+    # chỉ bịt đáy khi đáy thật sự rộng (núi, hầm mỏ, đá); cây có thân hẹp thì bỏ qua, kẻo vệt trắng thừa dưới gốc
+    if (bx.max() - bx.min() + 1) > 0.5 * ink.shape[1]:
+        closed[ybot, bx.min(): bx.max() + 1] = True
+    closed = ndi.binary_closing(closed, structure=np.ones((3, 3), bool), iterations=3)
+    filled = ndi.binary_fill_holes(closed)
+    return ndi.binary_dilation(filled, iterations=1)
 
 
 def main(zip_path):
