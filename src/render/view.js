@@ -663,6 +663,10 @@ export class GameView {
           if (!us) break;
           const pts = ev.path.map((p) => tileToWorld(p.x, p.y + 0));
           const per = Math.min(130, 700 / Math.max(1, pts.length - 1));
+          const u = s.units.find((q) => q.id === ev.unit);
+          const walk = u ? this.assets.walk(u.role, u.faction) : null;
+          const still = us.sprite.texture;
+          let elapsed = 0;                                   // ms đã đi, quyết định frame bước
           for (let i = 1; i < pts.length; i++) {
             const a = pts[i - 1], b = pts[i];
             this.face(us, b.x - a.x);
@@ -670,9 +674,15 @@ export class GameView {
             await this.tween(per, (k) => {
               us.root.position.set(a.x + (b.x - a.x) * k, a.y + 8 + (b.y - a.y) * k);
               us.root.zIndex = us.root.y + 0.1;
-              us.body.position.set(0, -bob(k));
+              if (walk) {
+                const f = Math.floor(((elapsed + k * per) / 1000) * walk.fps) % walk.textures.length;
+                us.sprite.texture = walk.textures[f];
+                us.body.position.set(0, 0);
+              } else us.body.position.set(0, -bob(k));
             });
+            elapsed += per;
           }
+          if (walk) us.sprite.texture = still;
           us.body.position.set(0, 0);
           break;
         }

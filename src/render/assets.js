@@ -11,6 +11,11 @@ export const RES = 2; // texture dựng ở độ phân giải gấp đôi, spri
 
 // Chiều cao thân mong muốn (đơn vị thế giới). Kỵ binh giữ nguyên cả ngựa lẫn cờ vì to hơn sẽ che hết ô.
 const UNIT_HEIGHT = { militia: 62, infantry: 62, archer: 62, cavalry: 70 };
+// Animation đi bộ: dải frame ngang assets/units/<phe>_<quân>_walk.png (tools/prep_walk.py). frames = số frame,
+// scale = chỉnh cỡ so với sprite đứng yên (1 = cùng chiều cao), fps = nhịp bước.
+export const WALK = {
+  human_militia: { frames: 16, scale: 1.3, fps: 14 },
+};
 const BODY_FRAC = {
   human: { militia: 0.92, infantry: 0.89, archer: 1.0, cavalry: 1.0 },
   orc:   { militia: 0.92, infantry: 1.0,  archer: 1.0, cavalry: 1.0 },
@@ -110,6 +115,7 @@ export class Assets {
     const pre = [];
     for (const role of Object.keys(UNIT_HEIGHT)) {
       pre.push(this._img(`assets/units/${role}.png`), this._img(`assets/units/${role}_fill.png`));
+      for (const f of Object.keys(FACTIONS)) if (WALK[`${f}_${role}`]) pre.push(this._img(`assets/units/${f}_${role}_walk.png`));
       for (const f of Object.keys(FACTIONS)) {
         pre.push(this._img(`assets/units/${f}_${role}.png`), this._img(`assets/units/${f}_${role}_fill.png`));
       }
@@ -131,6 +137,35 @@ export class Assets {
     return t;
   }
 
+  unitHeight(role, faction) {
+    return (UNIT_HEIGHT[role] / (BODY_FRAC[faction]?.[role] ?? 1)) * (faction === 'orc' ? 0.95 : 1.1) * RES;
+  }
+
+  // Các frame đi bộ { textures, fps } hoặc null nếu quân này chưa có animation
+  walk(role, faction) {
+    const key = `${faction}_${role}`, cfg = WALK[key];
+    if (!cfg) return null;
+    const ck = 'w:' + key;
+    if (this.cache.has(ck)) return this.cache.get(ck);
+    const img = this.imgs.get(`assets/units/${key}_walk.png`);
+    let res = null;
+    if (img) {
+      const fw = img.width / cfg.frames, fh = img.height;
+      const H = Math.round(this.unitHeight(role, faction) * (cfg.scale ?? 1)), W = Math.round(fw * H / fh);
+      const textures = [];
+      for (let i = 0; i < cfg.frames; i++) {
+        const c = makeCanvas(W, H);
+        const ctx = c.getContext('2d');
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, i * fw, 0, fw, fh, 0, 0, W, H);
+        textures.push(this._tex(c));
+      }
+      res = { textures, fps: cfg.fps || 12 };
+    }
+    this.cache.set(ck, res);
+    return res;
+  }
+
   // Trả { texture, anchor:[x,y] } – gốc ở chân đơn vị
   unit(role, faction) {
     const k = `u:${role}:${faction}`;
@@ -142,7 +177,7 @@ export class Assets {
     const baseFill = this.imgs.get(`assets/units/${role}_fill.png`);
     // Chiều cao thân (đầu tới chân) là thứ phải đồng đều giữa các quân; giáo/kiếm nhô cao hơn đầu không được tính.
     // BODY_FRAC = phần thân chiếm trong chiều cao toàn ảnh, nên ảnh có vũ khí dài được phóng to bù lại.
-    const H = (UNIT_HEIGHT[role] / (BODY_FRAC[faction]?.[role] ?? 1)) * (faction === 'orc' ? 0.95 : 1.1) * RES;   // Orc nhỏ lại ~12% so với trước (1.08 -> 0.95), người to thêm 10%
+    const H = this.unitHeight(role, faction);
     const color = FACTIONS[faction].fill;
     if (own) {
       const W = Math.round(own.width * (H / own.height));
