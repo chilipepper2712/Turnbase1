@@ -45,31 +45,25 @@ Sau khi thả file chạy `node tools/build_audio_index.mjs` (lệnh `npm run bu
 - Tiếng bước và tick giao diện phải **rất ngắn** (dưới 0.2s), vì chúng phát liên tục.
 - Game tự lệch cao độ ±4% mỗi lần phát để đỡ lặp, nên không cần nhiều biến thể cùng tên.
 
-## Trạng thái hiện tại (đã nhập từ gói `doodle_battle_field.zip`)
+## Trạng thái hiện tại
 
-Nhập bằng `python3 tools/import_audio_pack.py <zip>` (bảng ánh xạ tên nằm đầu file). Biến thể cùng tên (`attack_melee_1`, `_2`, `_3`...) được chọn ngẫu nhiên, không lặp liền bản vừa phát.
+Nhập bằng `python3 tools/import_audio_pack.py <thư mục|zip>` (bảng ánh xạ tên nằm đầu file). Biến thể cùng tên (`attack_melee_1`, `_2`, `_3`...) được chọn ngẫu nhiên, không lặp liền bản vừa phát.
 
-| Đã có | Nguồn trong gói |
-|---|---|
-| `ui_select`, `ui_confirm`, `ui_cancel` | cùng tên |
-| `step_foot` ×2 | `step_foot_1,2` |
-| `attack_melee` ×3 | `attack_melee_1..3` |
-| `attack_spear` ×3 | `Sword Attack 1..3` |
-| `hit_flesh` ×3 | `Sword Blocked 1..3` (tiếng đập vào khiên/giáp, tạm dùng cho "trúng đòn") |
-| `bow_shoot` ×2 | `Bow Attack 1,2` |
-| `arrow_hit` ×3 | `Bow Impact Hit 1..3` |
-| `unit_die` ×3 | `unit_die_1..3` |
-| `fortify` | `build_camp` |
-| `victory`, `defeat` | cùng tên |
-| nhạc `battle_1..4` | 4 bài dài, xếp theo thời lượng giảm dần |
+**Đã có file thật (16):** `ui_cancel`, `step_foot` ×2, `step_horse`, `attack_melee` ×3, `attack_spear` ×3 (từ Sword Attack), `attack_charge`, `bow_shoot` ×2, `arrow_hit` ×3, `hit_flesh` ×3 (từ Sword Blocked, tiếng đập vào khiên chứ chưa phải vào thịt), `unit_die` ×3, `fortify` (build_camp), `levelup`, `turn_player` (từ human-roar), `turn_enemy`, `victory`, `defeat`; nhạc `battle_1..4`.
 
-**Chưa có, đang dùng tiếng thay thế:** `turn_player` và `turn_enemy` (đang dùng `ui_confirm`, rất ngắn nên không nổi bật, nên có một tiếng kèn/chuông riêng), `step_horse` (dùng bước chân), `attack_charge` (dùng `attack_melee`), `end_turn`, `merge`, `split`, `capture`, `levelup`, `heal`, `rout`, `ui_deny` (dùng `ui_confirm`/`hit_flesh`/`ui_cancel`).
+**Cố ý tắt:** `ui_select`, `ui_confirm` (tiếng click gây khó chịu). Chạm chọn quân và bấm xác nhận giờ im lặng.
+
+**Dùng tiếng thay thế (3):** `rout` (dùng `hit_flesh`), `ui_deny` (dùng `ui_cancel`), `heal` (dùng `levelup`).
+
+**Đang im lặng vì thay thế của chúng là `ui_confirm` đã bị tắt (4):** `end_turn`, `merge`, `split`, `capture`.
+
 **Chưa dùng:** `Bow Blocked 1..3` (game chưa có cơ chế đỡ đòn).
 
 ### Cách xử lý đã áp dụng khi nhập
 - SFX: cắt khoảng lặng đầu (`unit_die_1` có 0.58 giây lặng đầu nên bị trễ), đổi mono, cân đỉnh theo nhóm (giao diện −12 dB, bước chân −15 dB, còn lại −8 dB). `ui_confirm` gốc vượt 0 dB (+4.8) nên bị méo, đã hạ xuống.
 - Nhạc: đổi mono, nén `mp3` 64kbps, hạ về −20 LUFS (nền), tổng gói từ 21MB còn 5.3MB.
-- Nhạc mặc định ở mức 35% còn SFX 80%, để nghe rõ tiếng hiệu ứng; chỉnh trong menu ☰.
+- Nhạc mặc định ở mức 35% (đã cộng thêm khoảng +2.6 dB so với thang gốc) còn SFX 80%; chỉnh trong menu ☰.
+- Một số tiếng gốc có đuôi vang quá dài đã bị cắt và mờ đuôi: `levelup` 10 giây còn 1.6 giây, `horse_step` 2 giây còn 0.42 giây (4 nhịp vó dồn ở đầu; tiếng này phát cho mỗi ô đi qua nên phải rất ngắn).
 
 ## Nhạc nền (music)
 

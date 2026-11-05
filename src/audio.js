@@ -40,6 +40,8 @@ export function resolveSfx(name, available) {
   return [];
 }
 
+// Nhạc nền to thêm ~2.6 dB (khoảng +35% biên độ) so với thang âm lượng gốc, vì mặc định nghe hơi nhỏ
+const MUSIC_BOOST = 1.35;
 const EXT_PREF = ['mp3', 'ogg', 'm4a', 'wav'];
 const b64ToBuf = (uri) => {
   const bin = atob(uri.slice(uri.indexOf(',') + 1)), u = new Uint8Array(bin.length);
@@ -123,7 +125,7 @@ export class AudioManager {
     if (!this.ctx) return;
     const sq = (v) => Math.pow(Math.max(0, Math.min(1, v)), 2);           // thang cảm nhận
     this.master.gain.value = this.s.muted ? 0 : 1;
-    this.musicBus.gain.value = sq(this.s.musicVol ?? 0.35);
+    this.musicBus.gain.value = sq(this.s.musicVol ?? 0.35) * MUSIC_BOOST;
     this.sfxBus.gain.value = sq(this.s.sfxVol ?? 0.8);
   }
 

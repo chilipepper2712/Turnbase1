@@ -14,7 +14,7 @@ OUT = os.path.join(ROOT, "assets", "audio")
 
 # tên file thô (không đuôi, không phân biệt hoa thường) -> tên SFX trong game (thêm _N cho các biến thể cùng tên)
 MAP = {
-    "ui_select": "ui_select", "ui_confirm": "ui_confirm", "ui_cancel": "ui_cancel",
+    "ui_cancel": "ui_cancel",
     "step_foot_1": "step_foot_1", "step_foot_2": "step_foot_2",
     "attack_melee_1": "attack_melee_1", "attack_melee_2": "attack_melee_2", "attack_melee_3": "attack_melee_3",
     "sword attack 1": "attack_spear_1", "sword attack 2": "attack_spear_2", "sword attack 3": "attack_spear_3",
@@ -23,9 +23,15 @@ MAP = {
     "bow impact hit 1": "arrow_hit_1", "bow impact hit 2": "arrow_hit_2", "bow impact hit 3": "arrow_hit_3",
     "unit_die_1": "unit_die_1", "unit_die_2": "unit_die_2", "unit_die_3": "unit_die_3",
     "build_camp": "fortify", "victory": "victory", "defeat": "defeat",
+    "levelup": "levelup", "horse_attack_charge": "attack_charge", "horse_step": "step_horse", "turn_enemy": "turn_enemy",
+    "universfield-human-roar-250239": "turn_player",      # tiếng gầm của quân người = hiệu lệnh đầu lượt, đi cặp với turn_enemy
 }
+# Tiếng click giao diện bị bỏ (gây khó chịu): file có tên này sẽ bị XOÁ khỏi assets/audio/sfx khi chạy nhập
+SILENT = ["ui_select", "ui_confirm"]
+# cắt dài tối đa (giây) + mờ đuôi: tiếng gốc có đuôi vang quá dài cho một hiệu ứng phát liên tục / theo sự kiện
+TRIM = {"levelup": (1.6, 0.6), "step_horse": (0.42, 0.1)}
 # đỉnh mong muốn (dBFS) theo tiền tố tên SFX; tiếng giao diện nhỏ, bước chân nhỏ nhất vì phát liên tục
-PEAK = [("ui_", -12), ("step_", -15), ("fortify", -10), ("victory", -10), ("defeat", -10), ("", -8)]
+PEAK = [("ui_", -12), ("step_", -15), ("fortify", -10), ("victory", -10), ("defeat", -10), ("turn_", -9), ("levelup", -10), ("", -8)]
 # nhạc: số thứ tự theo thời lượng giảm dần được đặt tên battle_1..N
 MUSIC_LUFS = -20
 
@@ -62,13 +68,16 @@ def main():
     os.makedirs(os.path.join(OUT, "sfx"), exist_ok=True); os.makedirs(os.path.join(OUT, "music"), exist_ok=True)
     music, done, skipped = [], [], []
     for f in sorted(files):
-        key = os.path.splitext(os.path.basename(f))[0].lower()
+        key = re.sub(r"^[0-9a-f]{8}-", "", os.path.splitext(os.path.basename(f))[0].lower())   # bỏ tiền tố mã băm khi upload
         if key in MAP:
             name = MAP[key]
             target = next(db for pre, db in PEAK if name.startswith(pre))
             tmpw = os.path.join(tempfile.gettempdir(), "imp_" + name + ".wav")
-            sh("ffmpeg", "-y", "-v", "error", "-i", f, "-ac", "1", "-ar", str(rate_of(f)),
-               "-af", "silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.004", tmpw)
+            chain = "silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.004"
+            if name in TRIM:
+                mx, fd = TRIM[name]
+                chain += f",atrim=0:{mx},afade=t=out:st={mx - fd}:d={fd}"
+            sh("ffmpeg", "-y", "-v", "error", "-i", f, "-ac", "1", "-ar", str(rate_of(f)), "-af", chain, tmpw)
             gain = target - peak_db(tmpw)
             outp = os.path.join(OUT, "sfx", name + ".wav")
             sh("ffmpeg", "-y", "-v", "error", "-i", tmpw, "-af", f"volume={gain:.2f}dB", "-c:a", "pcm_s16le", outp)
@@ -79,6 +88,8 @@ def main():
             music.append(f)
         else:
             skipped.append(os.path.basename(f))
+    for n in SILENT:
+        for old in glob.glob(os.path.join(OUT, "sfx", n + ".*")): os.remove(old); print("đã xoá", os.path.basename(old))
     music.sort(key=duration, reverse=True)
     for i, f in enumerate(music, 1):
         outp = os.path.join(OUT, "music", f"battle_{i}.mp3")
