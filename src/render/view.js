@@ -457,14 +457,17 @@ export class GameView {
     }
     // bóng: hình oval xám đặc (dẹt theo phối cảnh isometric), độ đục chỉnh bằng alpha của sprite
     const oc = makeCanvas(256, 128), octx = oc.getContext('2d');
-    octx.fillStyle = '#2a2c30'; octx.beginPath(); octx.ellipse(128, 64, 126, 62, 0, 0, Math.PI * 2); octx.fill();
+    octx.translate(128, 64); octx.scale(1, 0.5);                 // vòng tròn bị ép dẹt thành oval 2:1
+    const gr = octx.createRadialGradient(0, 0, 0, 0, 0, 126);   // mép mềm: đặc ở giữa, tan dần ra ngoài
+    gr.addColorStop(0, 'rgba(42,44,48,1)'); gr.addColorStop(0.5, 'rgba(42,44,48,0.85)'); gr.addColorStop(1, 'rgba(42,44,48,0)');
+    octx.fillStyle = gr; octx.beginPath(); octx.arc(0, 0, 126, 0, Math.PI * 2); octx.fill();
     const ovalTex = PIXI.Texture.from(oc);
     this.windLen = w + 8;
     for (let i = 0; i < n; i++) {
       const v = tex[rng.int(tex.length)], width = 150 + rng() * 120;     // bề ngang mây trong thế giới (ô rộng 96)
       const cloud = new PIXI.Sprite(v.cloud); cloud.anchor.set(0.5); cloud.scale.set(width / v.w);
       const shadow = new PIXI.Sprite(ovalTex); shadow.anchor.set(0.5);
-      shadow.width = width * 0.8; shadow.height = width * 0.8 * 0.5;
+      shadow.width = width * 0.68; shadow.height = width * 0.68 * 0.5;   // nhỏ hơn 15% so với trước (0.8)
       this.cloudShadow.addChild(shadow); this.cloudLayer.addChild(cloud);
       this.clouds.push({ cloud, shadow, phase: rng() * this.windLen, speed: 0.22 + rng() * 0.18, lane: rng() * (h + 6) - 3, drift: 0.22 + rng() * 0.1 });
     }
@@ -484,7 +487,7 @@ export class GameView {
       const k = Math.max(0, 1 - out / 3.2);
       c.cloud.position.set(p.x, p.y - 150);                      // mây bay cao, ít che bản đồ
       c.shadow.position.set(p.x + 30, p.y + 6);                  // bóng oval trên nền
-      c.cloud.alpha = 0.75 * k; c.shadow.alpha = 0.35 * k;
+      c.cloud.alpha = 0.75 * k; c.shadow.alpha = 0.28 * k;
       c.cloud.visible = c.shadow.visible = k > 0.01;
     }
   }

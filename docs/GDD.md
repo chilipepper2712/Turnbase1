@@ -300,6 +300,6 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 | Viền ô | Bỏ nét đứt, chỉ tô ô | Mày đề xuất |
 | Font | Sans-serif | Handwriting → sans |
 | Asset công trình / cây / núi | Dùng Kenney Cartography Pack thay sprite công trình cũ (nét dày hơn quân) | Mày đề xuất, sau khi xem gói gốc |
-| Mây trôi | Dùng bộ mây doodle của tác giả (đục 75%, bay cao), bóng là oval xám đục 35% trên nền; trôi chậm theo hướng gió, mờ dần ở mép bản đồ rồi quay lại; có nút tắt trong menu (mặc định bật). Tốn khoảng 10 lần vẽ mỗi giây. Giấy phép bộ mây chưa rõ | CHỐT |
+| Mây trôi | Dùng bộ mây doodle của tác giả (đục 75%, bay cao), bóng là oval xám mép mềm, đục 28%, nhỏ hơn mây, trên nền; trôi chậm theo hướng gió, mờ dần ở mép bản đồ rồi quay lại; có nút tắt trong menu (mặc định bật). Tốn khoảng 10 lần vẽ mỗi giây. Giấy phép bộ mây chưa rõ | CHỐT |
 | Idle thở | Thử và bỏ vì nhìn lạ; còn nút trong menu, mặc định tắt | Mày quyết |
 | Hosting | Một file HTML duy nhất (Artifact trên iOS không tải được file phụ) | Lỗi hạ tầng, không phải thiết kế |
