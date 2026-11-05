@@ -14,7 +14,6 @@ const UNIT_HEIGHT = { militia: 62, infantry: 62, archer: 62, cavalry: 70 };
 // Animation đi bộ: dải frame ngang assets/units/<phe>_<quân>_walk.png (tools/prep_walk.py). frames = số frame,
 // scale = chỉnh cỡ so với sprite đứng yên (1 = cùng chiều cao), fps = nhịp bước.
 export const WALK = {
-  human_militia: { frames: 16, scale: 1.3, fps: 14 },
 };
 const BODY_FRAC = {
   human: { militia: 0.92, infantry: 0.89, archer: 1.0, cavalry: 1.0 },
