@@ -53,6 +53,9 @@ Công trình, cây, đá/núi, lều, hàng rào dùng **Kenney Cartography Pack
 Nhập lại hoặc thêm icon: `python3 tools/import_kenney.py <kenney_cartography-pack.zip>` (sửa danh sách `NAMES` trong tool).
 Sprite quân là của tác giả game. Công trình cũ (`castle_town`, `stronghold`, `village_a`...) vẫn nằm trong `assets/buildings/` và được dùng làm fallback nếu file Kenney bị thiếu.
 
+Mây (`assets/clouds/`) lấy từ bộ "cloud doodle free" do tác giả game cung cấp, **chưa rõ giấy phép** (zip không kèm file license): cần xác nhận nguồn trước khi phát hành.
+Nhập lại: `python3 tools/import_clouds.py <thư mục ảnh mây .jpg>`.
+
 ## Thay asset thật dần
 
 `src/render/assets.js` là registry có fallback. Asset nào có file thì dùng, không có thì vẽ bằng code.

@@ -397,7 +397,7 @@ export class GameView {
     paint(o.attack, 0xd8402f, 0.42);
     for (const p of o.range || []) {
       const c = tileToWorld(p.x, p.y);
-      g.circle(c.x, c.y, 8).fill({ color: 0xd8402f, alpha: 0.88 });
+      g.ellipse(c.x, c.y, 13, 6.5).fill({ color: 0xd8402f, alpha: 0.88 });      // oval 2:1 nằm trên mặt đất isometric
     }
     if (o.dest) paint([o.dest], 0xf2c200, 0.6);
     if (o.selected) g.poly(dia(o.selected.x, o.selected.y, 1), true).stroke({ width: 3, color: 0xf2c200 });
@@ -448,16 +448,25 @@ export class GameView {
     const { w, h } = this.state.map;
     const rng = makeRng((this.state.map.seed || 1) * 31 + 7);
     const n = Math.max(4, Math.round((w * h) / 70));
-    const variants = [];
-    for (let i = 0; i < 4; i++) variants.push(drawCloud(500 + i * 17, RES));
-    const tex = variants.map((v) => ({ cloud: PIXI.Texture.from(v.cloud), shadow: PIXI.Texture.from(v.shadow), w: v.w, h: v.h }));
+    const imgs = this.assets.cloudImgs || [];
+    let tex;
+    if (imgs.length) {
+      tex = imgs.map((im) => ({ cloud: PIXI.Texture.from(im), w: im.width, h: im.height }));
+    } else {                                              // dự phòng: mây vẽ bằng code
+      tex = [0, 1, 2, 3].map((i) => { const v = drawCloud(500 + i * 17, RES); return { cloud: PIXI.Texture.from(v.cloud), w: v.w * RES, h: v.h * RES }; });
+    }
+    // bóng: hình oval xám đặc (dẹt theo phối cảnh isometric), độ đục chỉnh bằng alpha của sprite
+    const oc = makeCanvas(256, 128), octx = oc.getContext('2d');
+    octx.fillStyle = '#2a2c30'; octx.beginPath(); octx.ellipse(128, 64, 126, 62, 0, 0, Math.PI * 2); octx.fill();
+    const ovalTex = PIXI.Texture.from(oc);
     this.windLen = w + 8;
     for (let i = 0; i < n; i++) {
-      const v = tex[rng.int(tex.length)], sc = 0.55 + rng() * 0.6;
-      const shadow = new PIXI.Sprite(v.shadow); shadow.anchor.set(0.5); shadow.scale.set((sc * 1.1) / RES, (sc * 0.55) / RES);   // dẹt theo phối cảnh isometric
-      const cloud = new PIXI.Sprite(v.cloud); cloud.anchor.set(0.5); cloud.scale.set(sc / RES);
+      const v = tex[rng.int(tex.length)], width = 150 + rng() * 120;     // bề ngang mây trong thế giới (ô rộng 96)
+      const cloud = new PIXI.Sprite(v.cloud); cloud.anchor.set(0.5); cloud.scale.set(width / v.w);
+      const shadow = new PIXI.Sprite(ovalTex); shadow.anchor.set(0.5);
+      shadow.width = width * 0.8; shadow.height = width * 0.8 * 0.5;
       this.cloudShadow.addChild(shadow); this.cloudLayer.addChild(cloud);
-      this.clouds.push({ cloud, shadow, phase: rng() * this.windLen, speed: 0.22 + rng() * 0.18, lane: rng() * (h + 6) - 3, drift: 0.22 + rng() * 0.1, sc });
+      this.clouds.push({ cloud, shadow, phase: rng() * this.windLen, speed: 0.22 + rng() * 0.18, lane: rng() * (h + 6) - 3, drift: 0.22 + rng() * 0.1 });
     }
     this.cloudLayer.visible = this.cloudShadow.visible = this.cloudsOn !== false;
     this.updateClouds();
@@ -473,9 +482,9 @@ export class GameView {
       // mờ dần theo khoảng cách ra ngoài mép bản đồ
       const out = Math.max(-tx, tx - (w - 1), -ty, ty - (h - 1), 0);
       const k = Math.max(0, 1 - out / 3.2);
-      c.cloud.position.set(p.x, p.y - 70);                       // mây ở trên cao
-      c.shadow.position.set(p.x + 46, p.y + 6);                  // bóng đổ xuống nền, lệch xuống phải
-      c.cloud.alpha = 0.55 * k; c.shadow.alpha = 0.8 * k;
+      c.cloud.position.set(p.x, p.y - 150);                      // mây bay cao, ít che bản đồ
+      c.shadow.position.set(p.x + 30, p.y + 6);                  // bóng oval trên nền
+      c.cloud.alpha = 0.75 * k; c.shadow.alpha = 0.35 * k;
       c.cloud.visible = c.shadow.visible = k > 0.01;
     }
   }

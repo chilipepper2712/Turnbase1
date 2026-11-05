@@ -122,7 +122,10 @@ export class Assets {
     for (const n of Object.keys(BUILDING_WIDTH)) {
       pre.push(this._img(`assets/buildings/${n}.png`), this._img(`assets/buildings/${n}_fill.png`));
     }
+    for (let i = 0; i < 6; i++) pre.push(this._img(`assets/clouds/cloud${i}.png`));
     await Promise.all(pre);
+    this.cloudImgs = [];
+    for (let i = 0; i < 6; i++) { const im = this.imgs.get(`assets/clouds/cloud${i}.png`); if (im) this.cloudImgs.push(im); }
   }
 
   async _img(url) {

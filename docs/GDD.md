@@ -59,7 +59,7 @@ Game chiến thuật theo lượt trên **lưới vuông**, hiển thị **isome
 | Asset chưa có | Dựng bằng code, thay dần khi có asset thật | CHỐT |
 | Orc | Tô đỏ sprite người và thêm chi tiết bằng code (sừng, tai) cho tới khi có sprite riêng | CHỐT |
 | Chữ UI | Sans-serif cho dễ đọc ở cỡ nhỏ; nội dung ngắn gọn, dùng icon thay chữ khi hiểu được | CHỐT |
-| Handwriting | Chỉ dùng cho banner lượt và tiêu đề menu | MẶC ĐỊNH |
+| Handwriting | Không còn dùng trong UI; banner qua lượt và tiêu đề menu dùng chung font sans của bảng thông tin, cỡ nhỏ | CHỐT |
 | Hộp thông tin | Gọn, trong suốt hơn (alpha ~0.74) để dành chỗ cho bản đồ | CHỐT |
 | Mỗi ô một địa hình | Sprite nằm gọn trong ô, không chồng sang ô khác | CHỐT |
 | Quân đứng trong núi thấp / đồi | Quân vẫn phải thấy được (núi hạ thấp, nằm sau quân) | CHỐT |
@@ -300,6 +300,6 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 | Viền ô | Bỏ nét đứt, chỉ tô ô | Mày đề xuất |
 | Font | Sans-serif | Handwriting → sans |
 | Asset công trình / cây / núi | Dùng Kenney Cartography Pack thay sprite công trình cũ (nét dày hơn quân) | Mày đề xuất, sau khi xem gói gốc |
-| Mây trôi | Mây nhìn từ trên xuống, đổ bóng xám mờ xuống nền, trôi chậm theo hướng gió, mờ dần ở mép bản đồ rồi quay lại; vẽ bằng code; có nút tắt trong menu (mặc định bật). Tốn khoảng 10 lần vẽ mỗi giây | CHỐT |
+| Mây trôi | Dùng bộ mây doodle của tác giả (đục 75%, bay cao), bóng là oval xám đục 35% trên nền; trôi chậm theo hướng gió, mờ dần ở mép bản đồ rồi quay lại; có nút tắt trong menu (mặc định bật). Tốn khoảng 10 lần vẽ mỗi giây. Giấy phép bộ mây chưa rõ | CHỐT |
 | Idle thở | Thử và bỏ vì nhìn lạ; còn nút trong menu, mặc định tắt | Mày quyết |
 | Hosting | Một file HTML duy nhất (Artifact trên iOS không tải được file phụ) | Lỗi hạ tầng, không phải thiết kế |
