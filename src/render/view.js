@@ -274,10 +274,9 @@ export class GameView {
     const A = this.assets;
     const res = A.unit(u.role, u.faction);
     const root = new PIXI.Container();
-    // vòng màu phe dưới chân: sprite quân dùng chung cho hai phe nên phe được báo bằng màu vòng này
+    // bóng xám nhẹ dưới chân (phe được phân biệt bằng hình quân và huy hiệu số)
     const shadow = new PIXI.Graphics();
-    const fc = Number('0x' + FACTIONS[u.faction].fill.slice(1));
-    shadow.ellipse(0, 0, 25, 9).fill({ color: fc, alpha: 0.38 }).stroke({ width: 2.6, color: fc, alpha: 0.95 });
+    shadow.ellipse(0, 0, 22, 7).fill({ color: 0x000000, alpha: 0.14 });
     const body = new PIXI.Container();
     const sprite = new PIXI.Sprite(res.texture);
     sprite.anchor.set(res.anchor[0], res.anchor[1]);

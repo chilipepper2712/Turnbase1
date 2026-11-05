@@ -135,7 +135,7 @@ export class Assets {
     const ownFill = this.imgs.get(`assets/units/${faction}_${role}_fill.png`);
     const base = this.imgs.get(`assets/units/${role}.png`);
     const baseFill = this.imgs.get(`assets/units/${role}_fill.png`);
-    const H = UNIT_HEIGHT[role] * (faction === 'orc' ? 1.08 : 1) * RES;
+    const H = UNIT_HEIGHT[role] * (faction === 'orc' ? 0.95 : 1.1) * RES;   // Orc nhỏ lại ~12% so với trước (1.08 -> 0.95), người to thêm 10%
     const color = FACTIONS[faction].fill;
     if (own) {
       const W = Math.round(own.width * (H / own.height));
