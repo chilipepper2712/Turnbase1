@@ -213,3 +213,27 @@ test('cù lao: làng/tháp/mỏ chỉ tồn tại trên đất liền hoặc cù
   }
   assert.ok(islandsSeen > 0, 'phải có cù lao hoang trong tập mẫu (đất đi được nhưng không nối)');
 });
+
+import { icon, ICON_NAMES } from '../src/icons.js';
+
+test('icon: mọi tên có hình, hình dùng currentColor (không hard-code màu), tên lạ thì rỗng', () => {
+  assert.ok(ICON_NAMES.length >= 15);
+  for (const n of ICON_NAMES) {
+    const s = icon(n);
+    assert.ok(s.startsWith('<svg') && s.includes('<path d="'), n);
+    assert.ok(!/#[0-9a-f]{3,6}|rgb/i.test(s), n + ' không được chứa màu cố định');
+  }
+  assert.equal(icon('khong-ton-tai'), '');
+});
+
+import fs from 'node:fs';
+
+test('giao diện không dùng emoji hay ký tự trang trí rời (chỉ dùng bộ icon SVG)', () => {
+  const bad = /[\u2190-\u21ff\u2300-\u23ff\u25a0-\u27bf\u2b00-\u2bff\u{1F300}-\u{1FAFF}]/u;
+  for (const file of ['index.html', 'lang/vi.json', 'lang/en.json', 'src/game.js', 'src/main.js']) {
+    fs.readFileSync(new URL('../' + file, import.meta.url), 'utf8').split('\n').forEach((l, i) => {
+      if (l.trim().startsWith('//')) return;
+      assert.ok(!bad.test(l), `${file}:${i + 1} có ký tự trang trí: ${l.trim().slice(0, 70)}`);
+    });
+  }
+});

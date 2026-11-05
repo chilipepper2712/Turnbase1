@@ -294,9 +294,8 @@ export class GameView {
     badge.addChild(bg, txt);
     badge.position.set(24, -8);
     const fortG = new PIXI.Container();
-    const stars = new PIXI.Text({ text: '', style: { fontFamily: FONT, fontSize: 13, fill: 0xffd54a, fontWeight: 'bold', stroke: { color: 0x1b1b1b, width: 3 } } });
-    stars.anchor.set(0.5, 1);
-    stars.position.set(24, -22);
+    const stars = new PIXI.Graphics();          // sao cấp bậc: hình vẽ, cùng kiểu với bộ icon của giao diện
+    stars.position.set(24, -26);
     const flag = new PIXI.Text({ text: '', style: { fontFamily: FONT, fontSize: 18, fill: 0xd8402f, fontWeight: 'bold', stroke: { color: 0xffffff, width: 4 } } });
     flag.anchor.set(0.5, 1);
     flag.position.set(0, -(sprite.height) - 4);
@@ -309,6 +308,19 @@ export class GameView {
     us.sprite.scale.x = Math.abs(us.sprite.scale.x) * (us.facing < 0 ? -1 : 1);
     this.sprites.set(u.id, us);
     return us;
+  }
+
+  // Sao cấp bậc: n ngôi sao vàng viền mực xếp ngang, căn giữa dưới huy hiệu số quân
+  drawStars(us, n) {
+    if (us.starN === n) return;
+    us.starN = n;
+    const g = us.stars; g.clear();
+    const R = 5.2, gap = 11.5, x0 = -((n - 1) * gap) / 2;
+    for (let i = 0; i < n; i++) {
+      const cx = x0 + i * gap, pts = [];
+      for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, r = k % 2 ? R * 0.45 : R; pts.push(cx + Math.cos(a) * r, Math.sin(a) * r); }
+      g.poly(pts, true).fill(0xe0a800).stroke({ width: 1.3, color: 0x1b1b1b, join: 'round' });
+    }
   }
 
   // Hàng rào trước chân khi đã hạ trại (sprite Kenney; không có thì vẽ cọc bằng code)
@@ -363,7 +375,7 @@ export class GameView {
       const mine = u.faction === s.current;
       us.body.alpha = mine && u.acted && u.status === 'ok' && !s.winner ? 0.55 : 1;
       us.flag.text = u.status === 'routed' ? this.t('ui.routed') : '';
-      us.stars.text = '★'.repeat(levelOf(u.xp || 0));
+      this.drawStars(us, levelOf(u.xp || 0));
       this.drawFort(us, u.fort || 0);
     }
     this.setHold(s);
@@ -823,7 +835,6 @@ export class GameView {
         case 'die': {
           const us = this.sprites.get(ev.unit);
           if (!us) break;
-          this.float('✕', us.root.x, us.root.y - 40, 0xffffff, 28);
           await this.tween(380, (k) => { us.root.alpha = 1 - k; us.body.scale.set(1 - 0.3 * k); });
           us.root.destroy({ children: true });
           this.sprites.delete(ev.unit);
@@ -844,7 +855,7 @@ export class GameView {
         case 'levelup': {
           const us = this.sprites.get(ev.unit);
           if (us) {
-            us.stars.text = '★'.repeat(ev.level);
+            this.drawStars(us, ev.level);
             this.float(this.t('float.levelup', { n: ev.level }), us.root.x, us.root.y - 58, 0xffd54a, 22);
             await wait(260 / this.speed);
           }

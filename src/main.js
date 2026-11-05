@@ -4,6 +4,7 @@ import { GameView } from './render/view.js';
 import { Game } from './game.js';
 import { createState } from './rules.js';
 import { AudioManager } from './audio.js';
+import { icon } from './icons.js';
 import { generateMap } from './mapgen.js';
 
 const KEY = 'turnbase1.settings';
@@ -33,7 +34,9 @@ async function main() {
   await view.init(createState(generateMap(seed)));
   document.getElementById('loading').classList.add('done');
 
-  document.getElementById('movebtn').textContent = '✓ ' + t('ui.moveHere');
+  document.getElementById('movebtn').innerHTML = icon('check') + ' ' + t('ui.moveHere');
+  document.getElementById('btn-fit').innerHTML = icon('expand');
+  document.getElementById('btn-menu').innerHTML = icon('menu');
   const game = new Game(view, settings, save);
   const audio = new AudioManager(settings);
   game.audio = audio;
@@ -47,7 +50,7 @@ async function main() {
   document.getElementById('splash-sub').textContent = t('ui.splash.sub');
   document.getElementById('splash-note').textContent = t('ui.splash.note');
   const startBtn = document.getElementById('splash-start');
-  startBtn.textContent = '▶ ' + t('ui.start');
+  startBtn.innerHTML = icon('play') + ' ' + t('ui.start');
   splash.hidden = false;
   startBtn.addEventListener('click', async () => {
     startBtn.disabled = true;

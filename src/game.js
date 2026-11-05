@@ -9,6 +9,7 @@ import {
 import { planNextAction } from './ai.js';
 import { executeAction } from './actions.js';
 import { t, setLang, getLang, LANGS, langName } from './i18n.js';
+import { icon } from './icons.js';
 
 const SPEEDS = { normal: 1, fast: 2.4, instant: 14 };
 const $ = (id) => document.getElementById(id);
@@ -357,7 +358,7 @@ export class Game {
     if (!b) return;
     if (!this.moveTarget || this.busy || !this.sel) { b.hidden = true; return; }
     const p = this.view.tileScreen(this.moveTarget.x, this.moveTarget.y);
-    b.textContent = '✓ ' + t('ui.moveHere');
+    b.innerHTML = icon('check') + ' ' + esc(t('ui.moveHere'));
     b.hidden = false;
     b.style.left = p.x + 'px'; b.style.top = (p.y - 22) + 'px';
   }
@@ -477,15 +478,16 @@ export class Game {
     const el = $('actions');
     const u = this.sel, s = this.state;
     if (!u || this.mode === 'view' || this.busy) { el.innerHTML = ''; return; }
-    const btn = (act, label, cls = '', aria = '') => `<button data-act="${act}" class="${cls}"${aria ? ` aria-label="${esc(aria)}" title="${esc(aria)}"` : ''}>${esc(label)}</button>`;
+    // ic: tên icon (nút chỉ có icon thì cần aria để đọc được bằng trình đọc màn hình)
+    const btn = (act, label, cls = '', ic = '', aria = '') => `<button data-act="${act}" class="${cls}"${aria ? ` aria-label="${esc(aria)}" title="${esc(aria)}"` : ''}>${ic ? icon(ic) : ''}${label ? esc(label) : ''}</button>`;
     let h = '';
-    if (this.splitting) h = btn('cancel', '✕', 'x', t('ui.cancel'));
+    if (this.splitting) h = btn('cancel', '', 'x', 'x', t('ui.cancel'));
     else {
       h += btn('wait', t('ui.wait'), this.mode === 'moved' ? 'primary' : '');
-      if (canFortify(s, u)) h += btn('fortify', t('ui.fortify'));
+      if (canFortify(s, u)) h += btn('fortify', t('ui.fortify'), '', 'tent');
       if (canSplit(s, u)) h += btn('split', t('ui.split'));
-      if (this.mode === 'moved' && this.origin && this.origin.id === u.id) h += btn('undo', t('ui.undo'));
-      h += btn('cancel', '✕', 'x', t('ui.cancel'));
+      if (this.mode === 'moved' && this.origin && this.origin.id === u.id) h += btn('undo', t('ui.undo'), '', 'undo');
+      h += btn('cancel', '', 'x', 'x', t('ui.cancel'));
     }
     el.innerHTML = h;
   }
@@ -503,28 +505,28 @@ export class Game {
     el.innerHTML = html;
   }
 
-  costText(c) { return isFinite(c) ? String(c) : '✕'; }
+  costText(c) { return isFinite(c) ? String(c) : '–'; }
   sg(n) { return n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : '0'; }
 
-  // Hiệu ứng địa hình: mỗi dòng một icon, đọc lướt được
+  // Hiệu ứng địa hình: mỗi dòng một icon + chữ ngắn, đọc lướt được. Trả về [[tên icon, chữ], ...]
   terrainLines(tid) {
     const f = terrainFacts(tid);
     const L = [];
-    if (!f.passable) { L.push(t('fx.blocked')); return L; }
+    if (!f.passable) { L.push(['ban', t('fx.blocked')]); return L; }
     const cav = f.cost.cavHuman === f.cost.cavOrc ? this.costText(f.cost.cavHuman) : `${this.costText(f.cost.cavHuman)}/${this.costText(f.cost.cavOrc)}`;
-    L.push(t('fx.cost', { h: this.costText(f.cost.human), o: this.costText(f.cost.orc), c: cav }));
-    if (f.def.human || f.def.orc) L.push(t('fx.def', { h: this.sg(f.def.human) + '%', o: this.sg(f.def.orc) + '%' }));
-    if (f.atk) L.push(t('fx.atk', { n: this.sg(f.atk) + '%' }));
-    if (f.rangeBonus) L.push(t('fx.range', { n: f.rangeBonus }));
-    if (f.heal) L.push(t('fx.heal', { n: f.heal }));
-    if (f.noCavalry) L.push(t('fx.nocav'));
+    L.push(['foot', t('fx.cost', { h: this.costText(f.cost.human), o: this.costText(f.cost.orc), c: cav })]);
+    if (f.def.human || f.def.orc) L.push(['shield', t('fx.def', { h: this.sg(f.def.human) + '%', o: this.sg(f.def.orc) + '%' })]);
+    if (f.atk) L.push(['sword', t('fx.atk', { n: this.sg(f.atk) + '%' })]);
+    if (f.rangeBonus) L.push(['bow', t('fx.range', { n: f.rangeBonus })]);
+    if (f.heal) L.push(['plus', t('fx.heal', { n: f.heal })]);
+    if (f.noCavalry) L.push(['ban', t('fx.nocav')]);
     return L;
   }
 
   terrainCard(tile) {
     const s = this.state;
     const tid = terrainId(s, tile.x, tile.y);
-    const L = this.terrainLines(tid).map((l) => `<li>${esc(l)}</li>`).join('');
+    const L = this.terrainLines(tid).map(([ic, tx]) => `<li>${icon(ic)}<span>${esc(tx)}</span></li>`).join('');
     const nk = 'terrain.note.' + tid, note = t(nk);
     let you = '';
     const u = this.sel;
@@ -532,7 +534,8 @@ export class Game {
       const def = Math.round(defensePct(s, u, tile.x, tile.y));
       const cost = moveCostFor(tid, u.faction, u.role);
       const fb = Math.round(fortifyBonus(s, u, tile.x, tile.y));
-      you = `<div class="you">${esc(t('fx.forYou', { unit: t(`unit.${u.faction}.${u.role}`), def, cost: this.costText(cost) }))}<br>${esc(t('fx.fort', { n: fb }))}</div>`;
+      you = `<div class="you"><div><b>${esc(t('fx.forYou', { unit: t(`unit.${u.faction}.${u.role}`) }))}</b> ${icon('shield')} ${def}% ${icon('foot')} ${this.costText(cost)}</div>`
+        + `<div>${icon('tent')} ${esc(t('fx.fort', { n: fb }))}</div></div>`;
     }
     return `<h3>${esc(t('terrain.' + tid))}</h3><ul class="fx">${L}</ul>${you}${note === nk ? '' : `<div class="note">${esc(note)}</div>`}`;
   }
@@ -554,9 +557,9 @@ export class Game {
     const nx = nextLevelXp(u);
     const xpTxt = nx ? `${u.xp}/${nx}` : t('ui.xpmax');
     const tdef = terrainFacts(tid).def[u.faction];
-    const fort = u.fort === 2 ? `<div class="fortline">${esc(t('ui.fort.on', { n: Math.round(fortifyBonus(s, u)) }))}</div>` : '';
-    const ic = (k) => t('ic.' + k);
-    return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(t(`unit.${u.faction}.${u.role}`))}<span class="stars">${'★'.repeat(lvl)}</span></h3>
+    const fort = u.fort === 2 ? `<div class="fortline">${icon('tent')}${esc(t('ui.fort.on', { n: Math.round(fortifyBonus(s, u)) }))}</div>` : '';
+    const ic = (k) => icon({ strength: 'heart', morale: 'flag', xp: 'star', def: 'shield', atk: 'sword', move: 'foot', range: 'bow' }[k]);
+    return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(t(`unit.${u.faction}.${u.role}`))}<span class="stars">${icon('star', 'gold fill').repeat(lvl)}</span></h3>
       <div class="pips" title="${esc(t('ui.strength'))}">${pips}</div>
       <div class="line"><span title="${esc(t('ui.strength'))}">${ic('strength')} <b>${u.strength}/${CONFIG.maxStrength}</b></span><span title="${esc(t('ui.morale'))}">${ic('morale')} <b>${mor}</b></span><span title="${esc(t('ui.xp'))}">${ic('xp')} <b>${xpTxt}</b></span></div>
       <div class="bar" title="${esc(t('ui.morale'))}"><i style="width:${mor}%;background:${morCol}"></i></div>
@@ -572,9 +575,9 @@ export class Game {
     const el = $('preview');
     const d = pv.detail;
     const lines = [];
-    lines.push(`<span class="good">${esc(t('ui.preview.deal', { n: pv.dmg }))}</span> (${tgt.strength} → ${pv.defLeft})`);
+    lines.push(`<span class="good">${esc(t('ui.preview.deal', { n: pv.dmg }))}</span> (${tgt.strength} ${icon('arrow')} ${pv.defLeft})`);
     if (pv.kills) lines.push(`<span class="good">${esc(t('ui.preview.kill'))}</span>`);
-    else if (pv.counter > 0) lines.push(`<span class="bad">${esc(t('ui.preview.take', { n: pv.counter }))}</span> (${atk.strength} → ${pv.atkLeft})`);
+    else if (pv.counter > 0) lines.push(`<span class="bad">${esc(t('ui.preview.take', { n: pv.counter }))}</span> (${atk.strength} ${icon('arrow')} ${pv.atkLeft})`);
     else lines.push(esc(t('ui.preview.noCounter')));
     if (pv.counterKills) lines.push(`<span class="bad">${esc(t('ui.preview.dies'))}</span>`);
     const notes = [];
@@ -582,10 +585,10 @@ export class Game {
     if (d.charge > 1) notes.push(t('ui.preview.charge', { n: Math.round((d.charge - 1) * 100) }));
     notes.push(t('ui.preview.defense', { n: Math.round(d.defPct) }));
     if (opt.node.x !== atk.x || opt.node.y !== atk.y) notes.push(t('ui.preview.from'));
-    el.innerHTML = `<h4>${esc(t('ui.preview.title', { attacker: t(`unit.${atk.faction}.${atk.role}`), defender: t(`unit.${tgt.faction}.${tgt.role}`) }))}</h4>`
+    el.innerHTML = `<h4>${esc(t(`unit.${atk.faction}.${atk.role}`))} ${icon('arrow')} ${esc(t(`unit.${tgt.faction}.${tgt.role}`))}</h4>`
       + lines.map((l) => `<div>${l}</div>`).join('')
       + `<div class="note">${notes.map(esc).join(' · ')}</div>`
-      + (withButtons ? `<div class="btns"><button data-act="confirm" class="primary">${esc(t('ui.attack'))}</button><button data-act="cancel" class="x" aria-label="${esc(t('ui.cancel'))}" title="${esc(t('ui.cancel'))}">✕</button></div>` : '');
+      + (withButtons ? `<div class="btns"><button data-act="confirm" class="primary">${esc(t('ui.attack'))}</button><button data-act="cancel" class="x" aria-label="${esc(t('ui.cancel'))}" title="${esc(t('ui.cancel'))}">${icon('x')}</button></div>` : '');
     el.hidden = false;
   }
 
@@ -599,7 +602,7 @@ export class Game {
     $('movebtn').addEventListener('click', () => this.confirmMove());
     $('btn-fit').addEventListener('click', () => this.view.fit());
     const soundBtn = $('btn-sound');
-    const paint = () => { soundBtn.textContent = this.settings.muted ? '🔇' : '🔊'; };
+    const paint = () => { soundBtn.innerHTML = icon(this.settings.muted ? 'sound-off' : 'sound'); };
     soundBtn.addEventListener('click', () => { this.audio?.setMuted(!this.settings.muted); if (!this.audio) this.settings.muted = !this.settings.muted; this.save(); paint(); });
     paint();
     $('btn-menu').addEventListener('click', () => this.openMenu());
@@ -628,30 +631,31 @@ export class Game {
   openMenu() {
     const m = $('modal');
     const opt = (v, label, cur) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${esc(label)}</option>`;
+    const onoff = (id, on) => `<select id="${id}"><option value="1" ${on ? 'selected' : ''}>${esc(t('ui.on'))}</option><option value="0" ${on ? '' : 'selected'}>${esc(t('ui.off'))}</option></select>`;
+    const field = (id, label, control) => `<div class="field"><label for="${id}">${esc(label)}</label>${control}</div>`;
     m.innerHTML = `<div class="card">
-      <h2>${esc(t('ui.title'))}</h2>
-      <label>${esc(t('ui.difficulty'))}</label>
-      <select id="m-diff">${['easy', 'tactical'].map((d) => opt(d, t('diff.' + d), this.settings.difficulty)).join('')}</select>
-      <label>${esc(t('ui.speed'))}</label>
-      <select id="m-speed">${Object.keys(SPEEDS).map((d) => opt(d, t('ui.speed.' + (d === 'normal' ? 'normal' : d === 'fast' ? 'fast' : 'instant')), this.settings.speed)).join('')}</select>
-      <label>${esc(t('ui.musicVol'))}</label>
-      <input id="m-music" type="range" min="0" max="100" value="${Math.round((this.settings.musicVol ?? 0.35) * 100)}">
-      <label>${esc(t('ui.sfxVol'))}</label>
-      <input id="m-sfx" type="range" min="0" max="100" value="${Math.round((this.settings.sfxVol ?? 0.8) * 100)}">
-      <label>${esc(t('ui.idle'))}</label>
-      <select id="m-idle"><option value="1" ${this.settings.idle === true ? 'selected' : ''}>${esc(t('ui.on'))}</option><option value="0" ${this.settings.idle !== true ? 'selected' : ''}>${esc(t('ui.off'))}</option></select>
-      <label>${esc(t('ui.clouds'))}</label>
-      <select id="m-clouds"><option value="1" ${this.settings.clouds !== false ? 'selected' : ''}>${esc(t('ui.on'))}</option><option value="0" ${this.settings.clouds === false ? 'selected' : ''}>${esc(t('ui.off'))}</option></select>
-      <label>${esc(t('ui.language'))}</label>
-      <select id="m-lang">${LANGS.map((c) => opt(c, langName(c), getLang())).join('')}</select>
-      <label>${esc(t('ui.mapSize'))}</label>
-      <select id="m-size">${Object.entries(MAP_SIZES).map(([k, v]) => opt(k, `${t('ui.size.' + k)} (${v.w}×${v.h})`, this.settings.mapSize || 'small')).join('')}</select>
-      <label>${esc(t('ui.seed'))}</label>
-      <input id="m-seed" type="number" min="0" value="${this.seed}">
+      <div class="head"><h2>${esc(t('ui.title'))}</h2><button data-m="close" class="icon" aria-label="${esc(t('ui.close'))}" title="${esc(t('ui.close'))}">${icon('x')}</button></div>
+      <div class="body"><div class="cols">
+        <div>
+          <h3>${esc(t('ui.group.game'))}</h3>
+          ${field('m-diff', t('ui.difficulty'), `<select id="m-diff">${['easy', 'tactical'].map((d) => opt(d, t('diff.' + d), this.settings.difficulty)).join('')}</select>`)}
+          ${field('m-size', t('ui.mapSize'), `<select id="m-size">${Object.entries(MAP_SIZES).map(([k, v]) => opt(k, `${t('ui.size.' + k)} (${v.w}×${v.h})`, this.settings.mapSize || 'small')).join('')}</select>`)}
+          ${field('m-seed', t('ui.seed'), `<input id="m-seed" type="number" min="0" value="${this.seed}">`)}
+        </div>
+        <div>
+          <h3>${esc(t('ui.group.audio'))}</h3>
+          ${field('m-music', t('ui.musicVol'), `<input id="m-music" type="range" min="0" max="100" value="${Math.round((this.settings.musicVol ?? 0.35) * 100)}">`)}
+          ${field('m-sfx', t('ui.sfxVol'), `<input id="m-sfx" type="range" min="0" max="100" value="${Math.round((this.settings.sfxVol ?? 0.8) * 100)}">`)}
+          <h3>${esc(t('ui.group.display'))}</h3>
+          ${field('m-speed', t('ui.speed'), `<select id="m-speed">${Object.keys(SPEEDS).map((d) => opt(d, t('ui.speed.' + d), this.settings.speed)).join('')}</select>`)}
+          ${field('m-clouds', t('ui.clouds'), onoff('m-clouds', this.settings.clouds !== false))}
+          ${field('m-idle', t('ui.idle'), onoff('m-idle', this.settings.idle === true))}
+          ${field('m-lang', t('ui.language'), `<select id="m-lang">${LANGS.map((c) => opt(c, langName(c), getLang())).join('')}</select>`)}
+        </div>
+      </div></div>
       <div class="btns">
         <button data-m="new" class="primary">${esc(t('ui.newMap'))}</button>
         <button data-m="restart">${esc(t('ui.restart'))}</button>
-        <button data-m="close">${esc(t('ui.close'))}</button>
       </div></div>`;
     m.hidden = false;
     const apply = async () => {

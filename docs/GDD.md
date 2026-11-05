@@ -60,7 +60,7 @@ Game chiến thuật theo lượt trên **lưới vuông**, hiển thị **isome
 | Công trình, cây, đá/núi, hàng rào | **Kenney Cartography Pack** (CC0), bản Retina; thay sprite công trình cũ vì nét dày hơn quân nhiều gây chênh. Đồi và sông vẫn vẽ bằng code; thành tô nhạt (pha 55% với giấy) để quân cùng màu không lẫn | CHỐT |
 | Asset chưa có | Dựng bằng code, thay dần khi có asset thật | CHỐT |
 | Orc | Tô đỏ sprite người và thêm chi tiết bằng code (sừng, tai) cho tới khi có sprite riêng | CHỐT |
-| Chữ UI | Sans-serif cho dễ đọc ở cỡ nhỏ; nội dung ngắn gọn, dùng icon thay chữ khi hiểu được | CHỐT |
+| Chữ UI | Sans-serif cho dễ đọc ở cỡ nhỏ; nội dung ngắn gọn, dùng icon thay chữ khi hiểu được. **Một bộ icon SVG nét phẳng duy nhất** (`src/icons.js`), không dùng emoji (mỗi hệ điều hành vẽ emoji một kiểu). Thang cỡ chữ 6 bậc (12/13/14/16/20/36), khoảng cách và viền theo token trong `style.css` | CHỐT |
 | Handwriting | Không còn dùng trong UI; banner qua lượt và tiêu đề menu dùng chung font sans của bảng thông tin, cỡ nhỏ | CHỐT |
 | Hộp thông tin | Gọn, trong suốt hơn (alpha ~0.74) để dành chỗ cho bản đồ | CHỐT |
 | Mỗi ô một địa hình | Sprite nằm gọn trong ô, không chồng sang ô khác | CHỐT |
