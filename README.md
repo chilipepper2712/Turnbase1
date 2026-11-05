@@ -70,6 +70,18 @@ nếu thiếu `_fill` thì sprite không được tô màu. `python3 tools/extra
 Orc hiện dùng sprite người tô đỏ + sừng vẽ bằng code (toạ độ ở `ORC_FEATURES`).
 Trình duyệt sẽ in vài lỗi 404 trong console khi dò các file override tuỳ chọn; vô hại.
 
+## Làm sprite quân từ ảnh AI
+
+`tools/simplify_sprite.py` biến ảnh AI nhiều chi tiết thành sprite phẳng vài mảng màu: bỏ nền, thu nhỏ, làm mịn giữ cạnh, gộp màu (k-means Lab), xoá đốm, viền đen dày.
+Có thể tô màu phe: `--preview p.png` in palette đánh số cụm; chọn cụm vải/áo bằng `--team 3,8 --team-hue both` để sinh `<tên>_blue.png` và `<tên>_red.png`.
+
+```
+python3 tools/simplify_sprite.py anh.webp --out assets/units/human_militia.png --height 176 --colors 11 \
+        --team 3,8 --team-hue both --preview /tmp/pal.png        # --flip nếu ảnh quay mặt sang trái; --holes 4000 bỏ khoảng trắng kín
+```
+
+Giới hạn: tool chỉ làm gọn những gì ảnh gốc đã có. Nếu người và ngựa cùng tông nâu thì sẽ dính vào nhau; khi đó nên sinh lại ảnh bằng prompt đơn giản hơn.
+
 ## Ngôn ngữ
 
 Sửa/dịch chuỗi ở `lang/vi.json`. Thêm ngôn ngữ: tạo `lang/<mã>.json` (copy `vi.json`), thêm mã vào `LANGS` trong `src/i18n.js`.
