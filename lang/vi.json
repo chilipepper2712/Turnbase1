@@ -133,7 +133,7 @@
   "float.fortify": "Hạ trại",
   "float.levelup": "Lên cấp {n}!",
   "fx.atk": "⚔ Sát thương {n} khi đứng đây",
-  "fx.fort": "🏕 Hạ trại tại đây: thủ +{n}%",
+  "fx.fort": "🏕 Nếu hạ trại ở đây: thêm {n}% thủ",
   "terrain.peak": "Núi cao",
   "terrain.swamp": "Đầm lầy",
   "terrain.note.peak": "Vách đá, không thể leo hay vượt. Phải đi vòng.",

@@ -133,7 +133,7 @@
   "float.fortify": "Entrench",
   "float.levelup": "Level {n}!",
   "fx.atk": "⚔ Damage {n} when standing here",
-  "fx.fort": "🏕 Entrench here: def +{n}%",
+  "fx.fort": "🏕 If entrenched here: +{n}% defense",
   "terrain.peak": "High peak",
   "terrain.swamp": "Swamp",
   "terrain.note.peak": "Sheer rock, cannot be climbed or crossed. Go around.",

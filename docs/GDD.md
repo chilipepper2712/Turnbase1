@@ -127,7 +127,7 @@ Hai loại phòng thủ: **thiên nhiên** (rừng, đồi, núi thấp) và **c
 | Tháp canh / cứ điểm | 1 | +25% / +13% | | MẶC ĐỊNH |
 | Thành | 1 | +30% / +15% | Hồi 2 quân/lượt cho chủ thành; mục tiêu chiếm | MẶC ĐỊNH |
 
-**[MỞ]** Mày muốn thưởng thủ của làng, tháp canh và thành **bằng nhau** (19%?). Hiện đang xếp bậc 15 / 25 / 30 cho người. Xem mục 14.
+Thưởng thủ công trình đang **xếp bậc** (làng 15, hầm mỏ 20, tháp 25, thành 30 cho người; Orc bằng một nửa). Con số "19%" từng nêu thực ra là thưởng **hạ trại** trên tháp (15% × hệ số địa hình 1.25), không phải thưởng của ô. **[MẶC ĐỊNH]**. Nếu muốn các công trình bằng nhau thì đổi `str` trong `TERRAIN`.
 
 ## 7. Đơn vị
 
@@ -217,7 +217,7 @@ AI chiến thuật có áp lực tiến công tăng dần theo lượt để kh�
 
 - **Chọn quân → ô vàng di chuyển → chạm ô để đi.** Chạm địch có ô đỏ thì hiện **preview**; chạm lần nữa hoặc bấm Tấn công để xác nhận (di chuyển và đánh trong một thao tác nếu cần). **[CHỐT]**
 - **Xem địa hình trên cảm ứng:** chạm ô trống, hoặc **giữ ngón tay ~0.5 giây lên bất kỳ ô nào**. Chuột thì rê. Nội dung nêu rõ: tốn bao nhiêu điểm đi theo từng loại quân, thủ cộng thêm theo từng phe, thế cao, tầm bắn, hồi quân. **[CHỐT]**
-- **Chọn ô:** ô đang có hành động hợp lệ (đi, đánh, gộp, tách) được ưu tiên, nên quân đứng phía trước che ô phía sau không cản chọn. Muốn chọn chính quân đó thì chạm vào chân nó. **[CHỐT]**
+- **Chọn ô:** ô đang có hành động hợp lệ (đi, đánh, gộp, tách) được ưu tiên, nên quân đứng phía trước che ô phía sau không cản chọn. Muốn chọn chính quân đó thì chạm vào chân nó. Chạm vào hình công trình, núi, đồi thì xem đúng ô của nó (hình cao hơn ô). **[CHỐT]**
 - **Tầm bắn cung thủ** hiện bằng chấm tròn đỏ giữa ô; **vùng nguy hiểm** của địch hiện khi chạm vào địch. **[CHỐT]**
 - **Panel thông tin:** tên, quân số, tinh thần, xp/cấp, thủ, sức đánh, di chuyển, tầm, địa hình đang đứng, trạng thái, hạ trại. **[CHỐT ý]**
 - **Cầm dọc:** vẫn chơi được, layout riêng. **[CHỐT]**
@@ -253,7 +253,6 @@ Mô tả mày đã đưa ra **[CHỐT ý, chưa chốt chi tiết]**:
 - Chiếm công trình có đổi chủ không? Công trình nào cần chiếm?
 - "Chuyển quân" cụ thể là gì (gộp/tách đã có; còn vận chuyển giữa nơi này và nơi khác)?
 - AI quản lý kinh tế (build order) đến mức nào ở mức dễ / chiến thuật?
-- Thưởng thủ của làng, tháp canh, thành: bằng nhau hay xếp bậc? Mày nêu 19%, hiện chưa có con số này ở đâu trong game. Cần xác nhận giá trị.
 
 ## 15. Cân bằng (kết quả đo)
 

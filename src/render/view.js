@@ -25,6 +25,7 @@ export class GameView {
     this.assets = assets;
     this.t = t;
     this.sprites = new Map();       // unitId -> UnitSprite
+    this.features = [];             // sprite công trình / núi / đồi, để chọn theo hình
     this.tweens = [];
     this.raf = 0;
     this.hooks = {};
@@ -86,6 +87,7 @@ export class GameView {
     this.ground.removeChildren().forEach((c) => c.destroy());
     this.objects.removeChildren().forEach((c) => c.destroy({ children: true }));
     this.sprites.clear();
+    this.features = [];
     this.holdLabel = null;
     for (let j = 0; j < h; j += CHUNK) {
       for (let i = 0; i < w; i += CHUNK) this.bakeChunk(i, j);
@@ -159,10 +161,12 @@ export class GameView {
     };
   }
 
-  place(sprite, wx, wy, z) {
+  place(sprite, wx, wy, z, tile) {
     sprite.position.set(wx, wy);
     sprite.zIndex = z ?? wy;
     this.objects.addChild(sprite);
+    // sprite cao hơn ô (lâu đài, tháp, núi...): nhớ lại để chạm vào hình thì trúng đúng ô của nó
+    if (tile) this.features.push({ sprite, x: tile.x, y: tile.y });
     return sprite;
   }
 
@@ -190,25 +194,25 @@ export class GameView {
       }
     } else if (t === 'hill') {
       // đúng một nấm đồi nằm gọn giữa ô
-      this.place(this.mk(A.deco('hill', rng.int(3)), 0.72), c.x, c.y + 12, c.y + 2);
+      this.place(this.mk(A.deco('hill', rng.int(3)), 0.72), c.x, c.y + 12, c.y + 2, { x, y });
     } else if (t === 'peak') {
-      this.place(this.mk(A.deco('mountain', rng.int(3)), 0.66), c.x, c.y + 16);
+      this.place(this.mk(A.deco('mountain', rng.int(3)), 0.66), c.x, c.y + 16, undefined, { x, y });
     } else if (t === 'mountain') {
       // núi thấp: nhỏ, nằm sau quân đứng cùng ô để quân vẫn lấp ló khi đi vào
-      this.place(this.mk(A.deco('mountain', rng.int(3)), 0.46), c.x, c.y + 11, c.y + 2);
+      this.place(this.mk(A.deco('mountain', rng.int(3)), 0.46), c.x, c.y + 11, c.y + 2, { x, y });
     } else if (t === 'mine') {
-      this.place(this.mk(A.deco('mine', 0), 0.72), c.x, c.y + 12, c.y + 2);
+      this.place(this.mk(A.deco('mine', 0), 0.72), c.x, c.y + 12, c.y + 2, { x, y });
     } else if (t === 'village') {
       const name = ['village_a', 'village_b', 'cottages'][rng.int(3)];
-      this.place(this.mk(A.building(name)), c.x, c.y + 14, c.y + 2);
+      this.place(this.mk(A.building(name)), c.x, c.y + 14, c.y + 2, { x, y });
     } else if (t === 'fort') {
-      this.place(this.mk(A.building(rng() < 0.5 ? 'tower_a' : 'tower_b')), c.x, c.y + 16, c.y + 2);
+      this.place(this.mk(A.building(rng() < 0.5 ? 'tower_a' : 'tower_b')), c.x, c.y + 16, c.y + 2, { x, y });
     } else if (t === 'stronghold') {
       const own = this.state.map.strongholds;
       const isHuman = own.human.x === x && own.human.y === y;
       const f = isHuman ? 'human' : 'orc';
       const sp = this.mk(A.building(isHuman ? 'castle_town' : 'stronghold', FACTIONS[f].fill), 1.0);
-      this.place(sp, c.x, c.y + 20, c.y + 2);
+      this.place(sp, c.x, c.y + 20, c.y + 2, { x, y });
       // cờ tiến độ chiếm
       const label = new PIXI.Text({ text: '', style: { fontFamily: FONT, fontSize: 20, fill: 0xffffff, stroke: { color: 0x1b1b1b, width: 4 }, fontWeight: 'bold' } });
       label.anchor.set(0.5, 1);
@@ -453,14 +457,32 @@ export class GameView {
     return { x: t.x, y: t.y };
   }
 
+  // Chạm vào hình công trình / núi / đồi thì trả về ô của nó (hình cao hơn ô nên ô hình học nằm phía sau hình)
+  pickFeature(sx, sy) {
+    const wx = (sx - this.world.position.x) / this.zoom, wy = (sy - this.world.position.y) / this.zoom;
+    let best = null;
+    for (const f of this.features) {
+      const sp = f.sprite;
+      const w = sp.width, h = sp.height;
+      const left = sp.x - w * sp.anchor.x, top = sp.y - h * sp.anchor.y;
+      // thu hẹp mép trong suốt: chỉ tính phần thân
+      const inX = wx >= left + w * 0.15 && wx <= left + w * 0.85;
+      const inY = wy >= top + h * 0.1 && wy <= top + h * 1.0;
+      if (!inX || !inY) continue;
+      if (!best || f.x + f.y > best.x + best.y) best = f;   // vật nằm phía trước đè lên vật phía sau
+    }
+    return best ? { x: best.x, y: best.y } : null;
+  }
+
   // Điểm chạm -> ô. Thứ tự ưu tiên:
   //  1. ô dưới điểm chạm nếu nó đang là ô hành động được (đi / đánh / gộp / tách): quân đứng phía trước che ô đó vẫn không cản
   //  2. quân có thân nằm dưới điểm chạm (sprite cao hơn ô)
-  //  3. ô dưới điểm chạm
+  //  3. công trình / núi / đồi có hình nằm dưới điểm chạm
+  //  4. ô dưới điểm chạm
   pickAt(sx, sy) {
     const tile = this.screenToTile(sx, sy);
     if (tile && this.hooks.isActionable?.(tile)) return tile;
-    return this.pickUnit(sx, sy) || tile;
+    return this.pickUnit(sx, sy) || this.pickFeature(sx, sy) || tile;
   }
 
   screenToTile(sx, sy) {
