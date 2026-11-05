@@ -35,7 +35,7 @@ export class Game {
       onLongPress: (tile) => this.inspect(tile),
     };
     this.bindChrome();
-    view.setIdle(settings.idle !== false);
+    view.setIdle(settings.idle === true);
   }
 
   get state() { return this.view.state; }
@@ -579,7 +579,7 @@ export class Game {
       <label>${esc(t('ui.speed'))}</label>
       <select id="m-speed">${Object.keys(SPEEDS).map((d) => opt(d, t('ui.speed.' + (d === 'normal' ? 'normal' : d === 'fast' ? 'fast' : 'instant')), this.settings.speed)).join('')}</select>
       <label>${esc(t('ui.idle'))}</label>
-      <select id="m-idle"><option value="1" ${this.settings.idle !== false ? 'selected' : ''}>${esc(t('ui.on'))}</option><option value="0" ${this.settings.idle === false ? 'selected' : ''}>${esc(t('ui.off'))}</option></select>
+      <select id="m-idle"><option value="1" ${this.settings.idle === true ? 'selected' : ''}>${esc(t('ui.on'))}</option><option value="0" ${this.settings.idle !== true ? 'selected' : ''}>${esc(t('ui.off'))}</option></select>
       <label>${esc(t('ui.language'))}</label>
       <select id="m-lang">${LANGS.map((c) => opt(c, langName(c), getLang())).join('')}</select>
       <label>${esc(t('ui.seed'))}</label>
