@@ -35,6 +35,7 @@ export class Game {
       onLongPress: (tile) => this.inspect(tile),
     };
     this.bindChrome();
+    view.setIdle(settings.idle !== false);
   }
 
   get state() { return this.view.state; }
@@ -577,6 +578,8 @@ export class Game {
       <select id="m-diff">${['easy', 'tactical'].map((d) => opt(d, t('diff.' + d), this.settings.difficulty)).join('')}</select>
       <label>${esc(t('ui.speed'))}</label>
       <select id="m-speed">${Object.keys(SPEEDS).map((d) => opt(d, t('ui.speed.' + (d === 'normal' ? 'normal' : d === 'fast' ? 'fast' : 'instant')), this.settings.speed)).join('')}</select>
+      <label>${esc(t('ui.idle'))}</label>
+      <select id="m-idle"><option value="1" ${this.settings.idle !== false ? 'selected' : ''}>${esc(t('ui.on'))}</option><option value="0" ${this.settings.idle === false ? 'selected' : ''}>${esc(t('ui.off'))}</option></select>
       <label>${esc(t('ui.language'))}</label>
       <select id="m-lang">${LANGS.map((c) => opt(c, langName(c), getLang())).join('')}</select>
       <label>${esc(t('ui.seed'))}</label>
@@ -590,6 +593,8 @@ export class Game {
     const apply = async () => {
       this.settings.difficulty = $('m-diff').value;
       this.settings.speed = $('m-speed').value;
+      this.settings.idle = $('m-idle').value === '1';
+      this.view.setIdle(this.settings.idle);
       const lang = $('m-lang').value;
       if (lang !== getLang()) await setLang(lang);
       this.settings.lang = lang;

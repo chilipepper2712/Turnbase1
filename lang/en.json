@@ -137,5 +137,8 @@
   "terrain.peak": "High peak",
   "terrain.swamp": "Swamp",
   "terrain.note.peak": "Sheer rock, cannot be climbed or crossed. Go around.",
-  "terrain.note.swamp": "Mire: slow, lowers defense and damage. Cavalry bog down and cannot enter."
+  "terrain.note.swamp": "Mire: slow, lowers defense and damage. Cavalry bog down and cannot enter.",
+  "ui.idle": "Breathing idle animation",
+  "ui.on": "On",
+  "ui.off": "Off (saves battery)"
 }

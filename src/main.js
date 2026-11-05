@@ -16,6 +16,7 @@ async function main() {
   const settings = loadSettings();
   if (q.get('ai')) settings.difficulty = q.get('ai');
   if (q.get('speed')) settings.speed = q.get('speed');
+  if (q.get('idle')) settings.idle = q.get('idle') !== '0';
   if (q.get('lang')) settings.lang = q.get('lang');
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch { /* bỏ qua */ } };
 

@@ -408,6 +408,36 @@ export class GameView {
   }
 
   // ---------- Tween / render ----------
+  // ---------- Idle: quân thở nhẹ ----------
+  // Co giãn thân theo chiều dọc ~1.8%, mỗi quân lệch pha. Chạy ~8 khung/giây, dừng khi tab ẩn,
+  // khi đang có hoạt ảnh khác (các hoạt ảnh tự vẽ), và bỏ qua quân ngoài màn hình.
+  setIdle(on) {
+    this.idleOn = !!on;
+    clearTimeout(this._idleT);
+    if (!this.idleOn) {
+      for (const us of this.sprites.values()) us.body.scale.y = 1;
+      this.requestRender();
+      return;
+    }
+    const tick = () => {
+      if (!this.idleOn) return;
+      if (!document.hidden && !this.tweens.length && this.app) {
+        const W = this.app.screen.width, H = this.app.screen.height, t = performance.now() / 1000;
+        let any = false;
+        for (const us of this.sprites.values()) {
+          const sx = us.root.x * this.zoom + this.world.position.x, sy = us.root.y * this.zoom + this.world.position.y;
+          if (sx < -80 || sx > W + 80 || sy < -120 || sy > H + 80) continue;
+          const ph = (us.id * 1.7) % 6.283;
+          us.body.scale.y = 1 + 0.018 * Math.sin(t * 2.2 + ph);
+          any = true;
+        }
+        if (any) this.app.render();
+      }
+      this._idleT = setTimeout(tick, 125);
+    };
+    tick();
+  }
+
   requestRender() {
     if (this.raf) return;
     this.raf = requestAnimationFrame((t) => this.frame(t));
