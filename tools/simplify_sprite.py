@@ -25,10 +25,13 @@ INK = np.array([27, 27, 27], np.uint8)
 TEAM_HUE = {"blue": 0.60, "red": 0.01}
 
 
-def remove_bg(rgb, holes=0):
-    """Bỏ nền trắng nối với mép ảnh. holes>0: bỏ luôn các vùng trắng kín (vd. khoảng trống trong vòng cung)
-    có diện tích >= holes px (ảnh gốc); đừng dùng khi nhân vật có chi tiết trắng lớn (băng tay trắng, mũ...)."""
-    near_white = rgb.min(2) > 235
+def remove_bg(rgb, holes=0, checker=False):
+    """Bỏ nền nối với mép ảnh. Nền trắng thường; checker=True cho ảnh có ô cờ "giả trong suốt" vẽ sẵn
+    (các ô trắng và xám nhạt trung tính). holes>0: bỏ luôn vùng nền kín có diện tích >= holes px."""
+    if checker:
+        near_white = (rgb.min(2) > 190) & ((rgb.max(2) - rgb.min(2)) < 16)
+    else:
+        near_white = rgb.min(2) > 235
     lab, n = ndi.label(near_white)
     border = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))) - {0}
     bg = np.isin(lab, list(border))
@@ -101,14 +104,19 @@ def despeckle(lab, alpha, min_area, passes=2):
     return lab
 
 
-def recolor_team(pal, team_idx, hue):
+TEAM_RGB = {"blue": (58, 120, 216), "red": (216, 64, 47)}   # đúng màu phe trong game (FACTIONS.fill)
+
+
+def recolor_team(pal, team_idx, name):
+    """Đổi các cụm vải sang màu phe của game. Cụm sáng nhất lấy đúng màu phe, các cụm tối hơn
+    giữ tương quan sáng tối (để nếp vải vẫn đọc được)."""
     pal = pal.copy()
+    base = np.array(TEAM_RGB[name], float)
+    lum = lambda c: 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
+    top = max(lum(pal[i]) for i in team_idx)
     for i in team_idx:
-        r, g, b = pal[i] / 255.0
-        h, s, v = colorsys.rgb_to_hsv(r, g, b)
-        s = max(s, 0.55)                 # đủ bão hoà để đọc ra "màu phe"
-        rr, gg, bb = colorsys.hsv_to_rgb(hue, min(s, 0.85), min(max(v, 0.35), 0.95))
-        pal[i] = (np.array([rr, gg, bb]) * 255).astype(np.uint8)
+        k = min(1.0, (lum(pal[i]) / max(top, 1)) ** 0.8)
+        pal[i] = np.clip(base * (0.55 + 0.45 * k), 0, 255).astype(np.uint8)
     return pal
 
 
@@ -150,11 +158,12 @@ def main():
     ap.add_argument("--team", default="")
     ap.add_argument("--team-hue", default="")
     ap.add_argument("--preview", default="")
+    ap.add_argument("--checker", action="store_true", help="ảnh có ô cờ giả trong suốt vẽ sẵn")
     ap.add_argument("--holes", type=int, default=0, help="bỏ vùng trắng kín >= số px này (ảnh gốc)")
     a = ap.parse_args()
 
     rgb = np.array(Image.open(a.src).convert("RGB"))
-    alpha = remove_bg(rgb, a.holes)
+    alpha = remove_bg(rgb, a.holes, a.checker)
     rgb, alpha = crop_resize(rgb, alpha, a.height, a.flip)
     lab, pal = quantize(rgb, alpha, a.colors)
     lab = despeckle(lab, alpha, a.min_area)
@@ -170,7 +179,7 @@ def main():
         save_preview(a.preview, lab, pal)
     if a.team_hue and team:
         for name in (["blue", "red"] if a.team_hue == "both" else [a.team_hue]):
-            p = recolor_team(pal, team, TEAM_HUE[name])
+            p = recolor_team(pal, team, name)
             Image.fromarray(render(lab, alpha, p, a.outline)).save(f"{base}_{name}{ext}")
     Image.fromarray(render(lab, alpha, pal, a.outline)).save(a.out)
     print(f"{a.src} -> {a.out}  {alpha.shape[1]}x{alpha.shape[0]}  {len(pal)} màu  tối nhất=cụm {dark}")
