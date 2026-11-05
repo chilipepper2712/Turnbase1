@@ -49,13 +49,13 @@ Sau khi thả file chạy `node tools/build_audio_index.mjs` (lệnh `npm run bu
 
 Nhập bằng `python3 tools/import_audio_pack.py <thư mục|zip>` (bảng ánh xạ tên nằm đầu file). Biến thể cùng tên (`attack_melee_1`, `_2`, `_3`...) được chọn ngẫu nhiên, không lặp liền bản vừa phát.
 
-**Đã có file thật (16):** `ui_cancel`, `step_foot` ×2, `step_horse`, `attack_melee` ×3, `attack_spear` ×3 (từ Sword Attack), `attack_charge`, `bow_shoot` ×2, `arrow_hit` ×3, `hit_flesh` ×3 (từ Sword Blocked, tiếng đập vào khiên chứ chưa phải vào thịt), `unit_die` ×3, `fortify` (build_camp), `levelup`, `turn_player` (từ human-roar), `turn_enemy`, `victory`, `defeat`; nhạc `battle_1..4`.
+**Đã có file thật (15):** `ui_cancel`, `step_foot` ×2, `step_horse`, `attack_melee` ×3, `attack_spear` ×3 (từ Sword Attack), `attack_charge`, `bow_shoot` ×2, `arrow_hit` ×3, `hit_flesh` ×3 (từ Sword Blocked, tiếng đập vào khiên chứ chưa phải vào thịt), `unit_die` ×3, `fortify` (build_camp), `levelup`, `turn_enemy`, `victory`, `defeat`; nhạc `battle_1..4`.
 
 **Cố ý tắt:** `ui_select`, `ui_confirm` (tiếng click gây khó chịu). Chạm chọn quân và bấm xác nhận giờ im lặng.
 
 **Dùng tiếng thay thế (3):** `rout` (dùng `hit_flesh`), `ui_deny` (dùng `ui_cancel`), `heal` (dùng `levelup`).
 
-**Đang im lặng vì thay thế của chúng là `ui_confirm` đã bị tắt (4):** `end_turn`, `merge`, `split`, `capture`.
+**Đang im lặng vì thay thế của chúng là `ui_confirm` đã bị tắt (5):** `turn_player` (đầu lượt của mày, nên có một tiếng riêng), `end_turn`, `merge`, `split`, `capture`.
 
 **Chưa dùng:** `Bow Blocked 1..3` (game chưa có cơ chế đỡ đòn).
 

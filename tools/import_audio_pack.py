@@ -24,7 +24,6 @@ MAP = {
     "unit_die_1": "unit_die_1", "unit_die_2": "unit_die_2", "unit_die_3": "unit_die_3",
     "build_camp": "fortify", "victory": "victory", "defeat": "defeat",
     "levelup": "levelup", "horse_attack_charge": "attack_charge", "horse_step": "step_horse", "turn_enemy": "turn_enemy",
-    "universfield-human-roar-250239": "turn_player",      # tiếng gầm của quân người = hiệu lệnh đầu lượt, đi cặp với turn_enemy
 }
 # Tiếng click giao diện bị bỏ (gây khó chịu): file có tên này sẽ bị XOÁ khỏi assets/audio/sfx khi chạy nhập
 SILENT = ["ui_select", "ui_confirm"]
