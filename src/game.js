@@ -31,6 +31,7 @@ export class Game {
       onTap: (tile) => this.onTap(tile),
       onHover: (tile) => this.onHover(tile),
       onCancel: () => this.cancel(),
+      onCamera: () => this.placeMoveBtn(),
       isActionable: (tile) => this.isActionable(tile),
       onLongPress: (tile) => this.inspect(tile),
     };
@@ -132,7 +133,7 @@ export class Game {
   }
 
   // ---------- Chọn / hành động ----------
-  clearInfo() { this.inspectTile = null; this.rangeTiles = null; this.hoverRange = null; this.threat = null; }
+  clearInfo() { this.moveTarget = null; this.inspectTile = null; this.rangeTiles = null; this.hoverRange = null; this.threat = null; }
 
   deselect() {
     this.sel = null; this.pending = null; this.attackOpts = null; this.reach = null; this.origin = null;
@@ -146,6 +147,7 @@ export class Game {
 
   cancel() {
     if (this.busy) return;
+    if (this.moveTarget) { this.moveTarget = null; this.refreshOverlay(); return; }
     if (this.pending) { this.pending = null; this.hidePreview(); this.refreshOverlay(); return; }
     if (this.splitting) { this.splitting = false; this.select(this.sel); return; }
     this.deselect();
@@ -211,10 +213,17 @@ export class Game {
         if (statsOf(u).range[1] > 1) o.range = tilesInRange(s, u, n.x, n.y);
       }
     }
+    if (this.moveTarget && u && this.mode === 'selected' && this.reach.tiles.has(key(this.moveTarget.x, this.moveTarget.y))) {
+      const mt = this.moveTarget;
+      o.dest = { x: mt.x, y: mt.y };
+      o.path = pathTo(this.reach.tiles.get(key(mt.x, mt.y)));
+      if (statsOf(u).range[1] > 1) o.range = tilesInRange(s, u, mt.x, mt.y);
+    }
     if (!o.range && !this.splitting) o.range = this.hoverRange || this.rangeTiles || undefined;
     if (this.threat) o.threat = this.threat;
     o.hover = this.inspectTile || this.hoverTile || undefined;
     this.view.setOverlay(o);
+    this.placeMoveBtn();
   }
 
   // ---------- Tap / hover ----------
@@ -267,8 +276,9 @@ export class Game {
       return;
     }
     if (sel && this.mode === 'selected' && this.reach.tiles.has(key(tile.x, tile.y))) {
-      return this.doMove(tile);
+      return this.proposeMove(tile);
     }
+    if (this.moveTarget) { this.moveTarget = null; this.refreshOverlay(); return; }
     this.inspect(tile);
   }
 
@@ -304,6 +314,7 @@ export class Game {
   proposeAttack(enemy) {
     const opt = this.attackOpts.get(enemy.id);
     if (!opt) return;
+    this.moveTarget = null;
     this.pending = opt;
     this.refreshOverlay();
     this.showPreview(opt, true);
@@ -322,6 +333,31 @@ export class Game {
     const tgt = s.units.find((x) => x.id === p.target.id);
     if (tgt) await this.view.playEvents(attackUnit(s, u, tgt));
     this.afterAction();
+  }
+
+  // Bước xác nhận di chuyển: chạm ô chỉ đánh dấu đích; quân chỉ đi khi bấm nút "Tới đây" ngay trên ô (đỡ trượt tay)
+  proposeMove(tile) {
+    if (this.moveTarget && this.moveTarget.x === tile.x && this.moveTarget.y === tile.y) return;
+    this.moveTarget = { x: tile.x, y: tile.y };
+    this.hidePreview(); this.pending = null;
+    this.refreshOverlay();
+  }
+
+  placeMoveBtn() {
+    const b = $('movebtn');
+    if (!b) return;
+    if (!this.moveTarget || this.busy || !this.sel) { b.hidden = true; return; }
+    const p = this.view.tileScreen(this.moveTarget.x, this.moveTarget.y);
+    b.textContent = '✓ ' + t('ui.moveHere');
+    b.hidden = false;
+    b.style.left = p.x + 'px'; b.style.top = (p.y - 22) + 'px';
+  }
+
+  async confirmMove() {
+    const t0 = this.moveTarget;
+    if (!t0 || this.busy || !this.sel) return;
+    this.moveTarget = null; $('movebtn').hidden = true;
+    return this.doMove(t0);
   }
 
   async doMove(tile) {
@@ -430,15 +466,15 @@ export class Game {
     const el = $('actions');
     const u = this.sel, s = this.state;
     if (!u || this.mode === 'view' || this.busy) { el.innerHTML = ''; return; }
-    const btn = (act, label, cls = '') => `<button data-act="${act}" class="${cls}">${esc(label)}</button>`;
+    const btn = (act, label, cls = '', aria = '') => `<button data-act="${act}" class="${cls}"${aria ? ` aria-label="${esc(aria)}" title="${esc(aria)}"` : ''}>${esc(label)}</button>`;
     let h = '';
-    if (this.splitting) h = btn('cancel', t('ui.cancel'));
+    if (this.splitting) h = btn('cancel', '✕', 'x', t('ui.cancel'));
     else {
       h += btn('wait', t('ui.wait'), this.mode === 'moved' ? 'primary' : '');
       if (canFortify(s, u)) h += btn('fortify', t('ui.fortify'));
       if (canSplit(s, u)) h += btn('split', t('ui.split'));
       if (this.mode === 'moved' && this.origin && this.origin.id === u.id) h += btn('undo', t('ui.undo'));
-      h += btn('cancel', t('ui.cancel'));
+      h += btn('cancel', '✕', 'x', t('ui.cancel'));
     }
     el.innerHTML = h;
   }
@@ -538,7 +574,7 @@ export class Game {
     el.innerHTML = `<h4>${esc(t('ui.preview.title', { attacker: t(`unit.${atk.faction}.${atk.role}`), defender: t(`unit.${tgt.faction}.${tgt.role}`) }))}</h4>`
       + lines.map((l) => `<div>${l}</div>`).join('')
       + `<div class="note">${notes.map(esc).join(' · ')}</div>`
-      + (withButtons ? `<div class="btns"><button data-act="confirm" class="primary">${esc(t('ui.attack'))}</button><button data-act="cancel">${esc(t('ui.cancel'))}</button></div>` : '');
+      + (withButtons ? `<div class="btns"><button data-act="confirm" class="primary">${esc(t('ui.attack'))}</button><button data-act="cancel" class="x" aria-label="${esc(t('ui.cancel'))}" title="${esc(t('ui.cancel'))}">✕</button></div>` : '');
     el.hidden = false;
   }
 
@@ -549,11 +585,13 @@ export class Game {
     $('actions').addEventListener('click', (e) => this.onAct(e));
     $('preview').addEventListener('click', (e) => this.onAct(e));
     $('endturn').addEventListener('click', () => this.onEndTurn());
+    $('movebtn').addEventListener('click', () => this.confirmMove());
     $('btn-fit').addEventListener('click', () => this.view.fit());
     $('btn-menu').addEventListener('click', () => this.openMenu());
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') this.cancel();
       if (e.key === 'Enter' && this.pending) this.confirmAttack();
+      else if (e.key === 'Enter' && this.moveTarget) this.confirmMove();
     });
     // cầm dọc vẫn chơi được; chỉ nhắc một lần
     if (window.innerHeight > window.innerWidth) setTimeout(() => this.toast(t('ui.rotate')), 1500);
@@ -567,6 +605,7 @@ export class Game {
     else if (a === 'split') this.startSplit();
     else if (a === 'fortify') this.doFortify();
     else if (a === 'undo') this.doUndo();
+    else if (a === 'movehere') this.confirmMove();
     else if (a === 'cancel') this.cancel();
     else if (a === 'confirm') this.confirmAttack();
   }

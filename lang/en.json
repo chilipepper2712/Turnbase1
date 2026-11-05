@@ -12,7 +12,7 @@
   "ui.wait": "Hold",
   "ui.merge": "Merge",
   "ui.split": "Split",
-  "ui.undo": "Undo move",
+  "ui.undo": "↶ Undo",
   "ui.cancel": "Cancel",
   "ui.attack": "Attack",
   "ui.routed": "Routed!",
@@ -145,5 +145,6 @@
   "ui.size.small": "Small",
   "ui.size.medium": "Medium",
   "ui.size.large": "Large",
-  "ui.clouds": "Drifting clouds"
+  "ui.clouds": "Drifting clouds",
+  "ui.moveHere": "Move here"
 }

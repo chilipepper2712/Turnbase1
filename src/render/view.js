@@ -549,6 +549,13 @@ export class GameView {
     this.world.scale.set(this.zoom);
     this.world.position.set(W / 2 - cx * this.zoom, H / 2 - cy * this.zoom);
     this.requestRender();
+    this.hooks.onCamera?.();
+  }
+
+  // Toạ độ màn hình (px, theo cửa sổ) của tâm một ô
+  tileScreen(x, y) {
+    const c = tileToWorld(x, y), r = this.app.canvas.getBoundingClientRect();
+    return { x: r.left + this.world.position.x + c.x * this.zoom, y: r.top + this.world.position.y + c.y * this.zoom };
   }
 
   focus(x, y, ms = 350) {

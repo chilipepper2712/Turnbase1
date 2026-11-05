@@ -33,6 +33,7 @@ async function main() {
   document.getElementById('hud').hidden = false;
   document.getElementById('loading').classList.add('done');
 
+  document.getElementById('movebtn').textContent = '✓ ' + t('ui.moveHere');
   const game = new Game(view, settings, save);
   window.__game = game; // tiện debug / test tự động
   game.newGame(seed);

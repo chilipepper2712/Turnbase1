@@ -12,7 +12,7 @@
   "ui.wait": "Đứng yên",
   "ui.merge": "Gộp quân",
   "ui.split": "Tách quân",
-  "ui.undo": "Hoàn tác di chuyển",
+  "ui.undo": "↶ Đi lại",
   "ui.cancel": "Huỷ",
   "ui.attack": "Tấn công",
   "ui.routed": "Tan vỡ!",
@@ -145,5 +145,6 @@
   "ui.size.small": "Nhỏ",
   "ui.size.medium": "Vừa",
   "ui.size.large": "Lớn",
-  "ui.clouds": "Mây trôi trên bản đồ"
+  "ui.clouds": "Mây trôi trên bản đồ",
+  "ui.moveHere": "Tới đây"
 }

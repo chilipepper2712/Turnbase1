@@ -219,7 +219,8 @@ AI chiến thuật có áp lực tiến công tăng dần theo lượt để kh�
 
 ## 12. Giao diện và điều khiển
 
-- **Chọn quân → ô vàng di chuyển → chạm ô để đi.** Chạm địch có ô đỏ thì hiện **preview**; chạm lần nữa hoặc bấm Tấn công để xác nhận (di chuyển và đánh trong một thao tác nếu cần). **[CHỐT]**
+- **Chọn quân → ô vàng di chuyển → chạm ô để đánh dấu đích → bấm nút "✓ Tới đây" nổi trên ô đó thì quân mới đi** (tránh trượt tay trên cảm ứng). Chạm ô khác thì đổi đích; sau khi đi vẫn có nút "↶ Đi lại" để về chỗ cũ nếu chưa hành động. Nút hủy trong thanh hành động là ✕. **[CHỐT]**
+- **(cũ)** Chọn quân → ô vàng di chuyển → chạm ô để đi. Chạm địch có ô đỏ thì hiện **preview**; chạm lần nữa hoặc bấm Tấn công để xác nhận (di chuyển và đánh trong một thao tác nếu cần). **[CHỐT]**
 - **Xem địa hình trên cảm ứng:** chạm ô trống, hoặc **giữ ngón tay ~0.5 giây lên bất kỳ ô nào**. Chuột thì rê. Nội dung nêu rõ: tốn bao nhiêu điểm đi theo từng loại quân, thủ cộng thêm theo từng phe, thế cao, tầm bắn, hồi quân. **[CHỐT]**
 - **Chọn ô:** ô đang có hành động hợp lệ (đi, đánh, gộp, tách) được ưu tiên, nên quân đứng phía trước che ô phía sau không cản chọn. Muốn chọn chính quân đó thì chạm vào chân nó. Chạm vào hình công trình, núi, đồi thì xem đúng ô của nó (hình cao hơn ô). **[CHỐT]**
 - **Tầm bắn cung thủ** hiện bằng chấm tròn đỏ giữa ô; **vùng nguy hiểm** của địch hiện khi chạm vào địch. **[CHỐT]**
