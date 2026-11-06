@@ -132,7 +132,7 @@ test('kỵ binh xung phong khi đi đủ xa', () => {
   assert.ok(charged > still);
 });
 
-test('morale: cùng mức morale và cùng đòn đánh, orc tan vỡ còn người thì không', () => {
+test('morale: cùng mức morale và cùng đòn đánh, orc bỏ chạy còn người thì không', () => {
   const s = blank();
   const o = addUnit(s, 'orc', 'infantry', 5, 6);
   const h = addUnit(s, 'human', 'infantry', 8, 6);
@@ -142,11 +142,11 @@ test('morale: cùng mức morale và cùng đòn đánh, orc tan vỡ còn ngư�
   attackUnit(s, a1, o);
   attackUnit(s, a2, h);
   assert.ok(o.strength < 10 && h.strength < 10);
-  assert.ok(o.morale <= 45 && o.status === 'routed', 'orc phải vỡ: morale ' + o.morale);
-  assert.ok(h.morale > 25 && h.status === 'ok', 'người chưa vỡ: morale ' + h.morale);
+  assert.ok(o.morale <= 45 && o.status === 'routed', 'orc phải bỏ chạy: morale ' + o.morale);
+  assert.ok(h.morale > 25 && h.status === 'ok', 'người chưa bỏ chạy: morale ' + h.morale);
 });
 
-test('tan vỡ: đầu lượt tự rút lui xa địch và không hành động được', () => {
+test('bỏ chạy: đầu lượt tự rút lui xa địch và không hành động được', () => {
   const s = blank();
   const o = addUnit(s, 'orc', 'militia', 5, 5);
   addUnit(s, 'human', 'infantry', 5, 7);

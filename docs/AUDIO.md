@@ -26,7 +26,7 @@ Sau khi thả file chạy `node tools/build_audio_index.mjs` (lệnh `npm run bu
 | `arrow_hit` | Mũi tên trúng | cắm "phập", ngắn | B | `hit_flesh` |
 | `hit_flesh` | Squad trúng đòn (cận chiến) | va đập/đau, ~0.3s | A | không |
 | `unit_die` | Squad bị tiêu diệt | ngã/rên, ~0.6s | A | không |
-| `rout` | Squad tan vỡ | tiếng hoảng loạn/kèn rút lui, ~0.8s | B | `hit_flesh` |
+| `rout` | Squad bỏ chạy | tiếng hoảng loạn/kèn rút lui, ~0.8s | B | `hit_flesh` |
 | `heal` | Squad hồi quân ở làng/thành | tiếng nhẹ sáng, ~0.5s | C | `levelup` |
 | `merge` | Gộp quân | tiếng chắc, ghép lại, ~0.4s | B | `ui_confirm` |
 | `split` | Tách quân | tiếng tách, ~0.4s | B | `ui_confirm` |

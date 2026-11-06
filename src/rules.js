@@ -348,7 +348,7 @@ export function attackUnit(s, atk, def) {
     atk.acted = true;
     atk.moved = true;
     checkRout(atk, events);
-    // bị tan vỡ trong lúc ra đòn: hết lượt
+    // bị bỏ chạy trong lúc ra đòn: hết lượt
   }
   checkElimination(s);
   return events;
@@ -397,7 +397,7 @@ export function mergeUnits(s, u, tgt) {
 }
 
 // Hạ trại: thay cho cả lượt hành động (không di chuyển, không tấn công). Có hiệu lực ngay lập tức,
-// giữ nguyên cho tới khi quân di chuyển, tấn công, gộp/tách hoặc tan vỡ.
+// giữ nguyên cho tới khi quân di chuyển, tấn công, gộp/tách hoặc bỏ chạy.
 export function canFortify(s, u) {
   return !u.moved && !u.acted && u.status === 'ok' && u.fort === 0;
 }
@@ -478,7 +478,7 @@ export function endTurn(s) {
     u.moved = false; u.acted = false; u.movedDist = 0;
     if (u.status === 'routed') u.fort = 0;
   }
-  // tan vỡ: tự rút lui
+  // bỏ chạy: tự rút lui
   for (const u of alliesOf(s, next)) {
     if (u.status !== 'routed') continue;
     u.moved = true; u.acted = true;

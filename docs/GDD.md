@@ -18,7 +18,7 @@ Mọi con số cân bằng nằm trong `src/config.js` và là nguồn sự th�
 
 ## 1. Tầm nhìn
 
-Game chiến thuật theo lượt trên **lưới vuông**, hiển thị **isometric**, phong cách **doodle vẽ tay** (nét mực đen trên nền giấy). Bối cảnh fantasy trung cổ: **con người đấu Orc**. Câu chuyện chưa khoá. **[CHỐT]**
+Game chiến thuật theo lượt trên **lưới vuông**, hiển thị **isometric**, phong cách **doodle vẽ tay** (nét mực đen trên nền giấy). Bối cảnh fantasy trung cổ: **con người đấu Orc**. Câu chuyện chưa viết; định hướng dài hạn là **chiến dịch có cốt truyện kiểu Warcraft / Fire Emblem** với đội quân giữ lại qua các màn (mục 16). **[CHỐT]**
 
 **Trụ cột thiết kế:**
 
@@ -27,7 +27,7 @@ Game chiến thuật theo lượt trên **lưới vuông**, hiển thị **isome
 3. **Dễ học.** Luật phổ biến, kết quả xem trước được, không dựa may rủi. **[CHỐT]**
 4. **Mở rộng được.** Kiến trúc phải sống được ở chiến trường lớn hơn và nhiều quân hơn, chơi lâu không nóng máy. **[CHỐT]**
 
-**Chưa phải mục tiêu của bản test:** câu chuyện, chiến dịch, âm thanh, save/load, fog of war, kinh tế.
+**Chưa làm:** câu chuyện và chiến dịch, lưu/tải, sương mù, kinh tế, hệ kỹ năng cho squad tinh nhuệ.
 
 ## 2. Phạm vi và nền tảng
 
@@ -86,7 +86,7 @@ Game chiến thuật theo lượt trên **lưới vuông**, hiển thị **isome
 - Đi qua quân mình được nhưng không đứng chồng lên. **[MẶC ĐỊNH]**
 - Không thể di chuyển sau khi đã tấn công. **[MẶC ĐỊNH]**
 - Hoàn tác di chuyển được nếu chưa hành động. **[MẶC ĐỊNH]**
-- Đầu lượt: hồi quân ở làng/thành nhà, hồi tinh thần, quân tan vỡ tự rút lui, cập nhật tiến độ chiếm thành. **[MẶC ĐỊNH]**
+- Đầu lượt: hồi quân ở làng/thành nhà, hồi tinh thần, quân bỏ chạy tự rút lui, cập nhật tiến độ chiếm thành. **[MẶC ĐỊNH]**
 
 ## 5. Bản đồ
 
@@ -155,7 +155,7 @@ Một hình vẽ là một **squad**; quân số 1–10 (số hiển thị trên
 | Cung thủ | 5 / 5.2 | 5 / 6 | 4 / 4 | 2–3 |
 | Kỵ binh | 7 / 7.4 | 10 / 11 | 7 / 7 | 1 |
 
-Orc **mạnh hơn nhưng không kỷ luật** **[CHỐT]**, thể hiện bằng: sức đánh và thủ nền cao hơn chút; **không có bonus đội hình**; **ngưỡng tan vỡ cao hơn** (tinh thần ≤ 45 thì vỡ, người ≤ 25). Người có **bonus đội hình** +6% thủ cho mỗi đồng đội kề, tối đa 3. **[MẶC ĐỊNH số]**
+Orc **mạnh hơn nhưng không kỷ luật** **[CHỐT]**, thể hiện bằng: sức đánh và thủ nền cao hơn chút; **không có bonus đội hình**; **ngưỡng bỏ chạy cao hơn** (tinh thần ≤ 45 thì vỡ, người ≤ 25). Người có **bonus đội hình** +6% thủ cho mỗi đồng đội kề, tối đa 3. **[MẶC ĐỊNH số]**
 
 **Khắc chế** (nhân vào sát thương) **[MẶC ĐỊNH]**:
 
@@ -177,7 +177,16 @@ Sát thương = `sức đánh × cấp bậc × thế cao × (quân số/10) × 
 - **Phản công:** bên bị đánh còn sống và đối thủ nằm trong tầm của nó thì đánh trả, theo quân số còn lại. Cung thủ không phản công cận chiến vì tầm tối thiểu 2. **[CHỐT]**
 - **Giáp công:** +15% cho mỗi đồng đội khác của kẻ tấn công đang kề mục tiêu, tối đa 2. Chỉ áp dụng cho cận chiến. **[CHỐT ý, MẶC ĐỊNH số]**
 - **Thủ%** gồm thủ nền, cấp bậc, địa hình, đội hình, hạ trại. Giới hạn từ −30% đến +70%.
-- **Tinh thần:** mỗi squad có tinh thần 0–100. Mất theo % quân bị mất (và khi đồng đội kề chết); tăng khi đánh và khi hạ địch. Dưới ngưỡng thì **tan vỡ**: mất hành động, đầu lượt tự rút lui, mất trại, không chiếm thành được; tỉnh lại khi tinh thần vượt ngưỡng + 15. **[CHỐT ý, MẶC ĐỊNH số]**
+- **Tinh thần:** mỗi squad có tinh thần 0–100. Mất theo % quân bị mất (và khi đồng đội kề chết); tăng khi đánh và khi hạ địch. Dưới ngưỡng thì **bỏ chạy**: mất hành động, đầu lượt tự rút lui, mất trại, không chiếm thành được; hồi tỉnh khi tinh thần vượt ngưỡng + 15. **[CHỐT ý, MẶC ĐỊNH số]**
+
+**Tinh thần và bỏ chạy: định hướng (chưa làm)**
+
+- Trạng thái đổi tên: **bỏ chạy** (trước là "tan vỡ"), **hồi tỉnh** (trước là "tỉnh lại"). **[CHỐT]**
+- Thanh sĩ khí đã có (0–100) nhưng hiện chỉ quyết định ngưỡng bỏ chạy. Định hướng: **sĩ khí cao thì tự tin, xông lên nhiều hơn; sĩ khí thấp thì dễ bỏ chạy.** **[CHỐT ý]**
+- Một số squad bỏ chạy **ra khỏi bản đồ luôn** thay vì kẹt lại trên bản đồ (cảm hứng: quân tan chạy trong Đông Chu Liệt Quốc); không phải squad nào cũng vậy, trường hợp này phải hiếm. **[CHỐT ý]**
+- **[MỞ]** Sĩ khí ép người chơi hành động thế nào? Tao khuyên: với **AI** thì đổi hành vi, với **người chơi** chỉ đổi chỉ số (cộng/trừ sức đánh, di chuyển, ngưỡng bỏ chạy), chỉ bỏ chạy mới bị ép. Ép người chơi xông lên dễ gây bực.
+- **[MỞ]** "Hiếm" thực hiện bằng xác suất sẽ **mâu thuẫn với trụ cột "không may rủi"**. Đề xuất: điều kiện xác định (ví dụ sĩ khí về 0, quân số còn rất ít, không còn đồng đội hay thành nhà trong tầm, chỉ huy đã chết) và hiện cảnh báo "sắp bỏ chạy hẳn" để người chơi can thiệp được.
+- **[MỞ]** Squad bỏ chạy hẳn khỏi bản đồ thì **mất vĩnh viễn** hay chỉ rời màn đó (quay lại màn sau với quân số, sĩ khí, kinh nghiệm bị phạt)? Lựa chọn sau giảm vòng xoáy thua, nhưng người chơi có thể lợi dụng nếu được tự rút quân.
 
 ### Kinh nghiệm và cấp bậc **[CHỐT ý, MẶC ĐỊNH số]**
 
@@ -200,12 +209,20 @@ Giống cách Civilization làm: quân tồn tại lâu thì lão luyện, bền
 - Thay cho cả lượt hành động (không đi, không đánh), **có hiệu lực ngay lập tức**.
 - Cộng thủ **cố định**: người **+15%**, Orc **+12%** (Orc thấp hơn vì đã mạnh sẵn). Không tăng theo thời gian.
 - Nhân với hệ số địa hình: ô cộng thủ nhiều thì mạnh hơn (tối đa ×1.6), ô trừ thủ thì yếu đi (tối thiểu ×0.5). Cấp bậc không đổi mức này, chỉ cấp bậc làm thủ nền cao hơn.
-- Giữ nguyên khi đứng yên. Mất khi di chuyển, tấn công, gộp/tách hoặc tan vỡ.
+- Giữ nguyên khi đứng yên. Mất khi di chuyển, tấn công, gộp/tách hoặc bỏ chạy.
 - Hiển thị bằng hàng rào (sprite Kenney) trước chân.
+
+### Biến đổi địa hình: định hướng (chưa làm)
+
+Dân quân ngoài việc bổ sung quân còn có thể **đốt rừng, đặt bẫy, xây cầu**. **[CHỐT ý]** Hợp trụ cột "địa hình là vũ khí".
+
+- **[MỞ]** Bẫy **ẩn hay hiện**? Game chưa có sương mù nên bẫy ẩn nghĩa là AI phải biết hoặc bị coi là gian lận.
+- **[MỞ]** Tốn một hành động hay nhiều lượt, đốt rừng cháy lan theo gió (hướng mây trôi) hay chỉ một ô, cầu xây xong có phá được không.
+- **[MỞ]** Orc có làm được không? Tao khuyên bất đối xứng: người **xây** (cầu, bẫy, chướng ngại), orc **đốt**, hợp với hướng bất đối xứng ở cấp luật.
 
 ## 10. Điều kiện thắng
 
-- **Chiếm thành địch:** đứng trên thành địch (không tan vỡ) và giữ **2 lượt** của mình. **[CHỐT]**
+- **Chiếm thành địch:** đứng trên thành địch (không bỏ chạy) và giữ **2 lượt** của mình. **[CHỐT]**
 - **Tiêu diệt toàn bộ** quân địch. **[MẶC ĐỊNH]**
 - Thành của mình bị chiếm thì thua. **[MẶC ĐỊNH]**
 - **Mục tiêu về lâu dài là mix, tuỳ màn, tuỳ chiến dịch.** **[CHỐT]** Hiện mới có hai loại ở trên.
@@ -273,25 +290,56 @@ Mô tả mày đã đưa ra **[CHỐT ý, chưa chốt chi tiết]**:
 
 Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ). Thời gian ván thật khi người chơi đang suy nghĩ chưa đo. **Cần playtest bằng tay.**
 
-## 16. Roadmap đề xuất
+### Số đo gameplay (AI chiến thuật đấu AI chiến thuật, 120 ván cỡ nhỏ, 60 ván cỡ vừa)
+
+- Kết thúc bằng **diệt hết địch khoảng 85–88%**, chiếm thành chỉ khoảng 12–17% số ván: mục tiêu chiếm thành gần như không quyết định.
+- Trung vị 13 lượt (nhỏ), 17 lượt (vừa). Khoảng 24 đòn đánh mỗi ván nhỏ; 9 trên 14 squad bị diệt.
+- Bên dẫn quân số sau lượt 5 thắng khoảng 62–65% (mẫu nhỏ, sai số khoảng ±15%); bên hạ squad đầu tiên thắng 57–63%.
+- 64–69% đòn đánh trúng mục tiêu đang có thủ ≥15%; giáp công 15–16% số đòn, xung phong 6–12%. Cung thủ chiếm 42–48% số đòn.
+- Chưa đủ mẫu để kết luận Orc mạnh hơn (55% ở cỡ nhỏ, 52% ở cỡ vừa).
+- **Người chơi thật:** tác giả chơi khoảng 20 ván, thắng 12–14, và càng về sau càng đoán được AI nên thắng nhiều hơn. **AI dễ đoán là điểm yếu lớn nhất của chế độ chơi đơn.**
+
+## 16. Chiến dịch và đội quân tinh nhuệ (định hướng dài hạn)
+
+**Đã chốt:**
+
+- Chiến dịch có **cốt truyện kiểu Warcraft / Fire Emblem**, nhiều màn, **mục tiêu đa dạng** (giữ N lượt, hộ tống, phá công trình, chống đợt tiếp viện...). **[CHỐT]**
+- **Độ dài mỗi màn:** hiện tại hoặc dài hơn một chút, cỡ một ván cờ vua / cờ tướng hoặc nhỉnh hơn. **[CHỐT ý]**
+- **Chơi đơn trước.** Chiến dịch **có cả bên Orc.** **[CHỐT]**
+- **Squad tinh nhuệ** (không gọi là "hero" vì quá cá nhân): chỉ số cao hơn; đến một cấp nào đó thì mở **kỹ năng hoặc bonus đặc biệt**, theo hệ kỹ năng của từng loại quân. Kỹ năng ảnh hưởng chính squad đó **hoặc các squad xung quanh** (aura), hoặc phát huy khi **hạ trại** (thưởng sĩ khí, sĩ khí khó giảm), và nhiều cách khác. **[CHỐT]**
+- **Mang squad qua các màn.** Squad tinh nhuệ sống sót càng lâu càng tiến hoá. **[CHỐT]**
+- **Chết trận là mất luôn:** squad chết khi quân số về 0. **[CHỐT]**
+
+**Chưa chốt:**
+
+- **[MỞ]** Bao nhiêu cấp, cấp nào mở kỹ năng, danh sách kỹ năng cho từng vai trò. Hiện trần là cấp 3 ("tinh nhuệ").
+- **[MỞ]** **Gộp quân đang pha loãng kinh nghiệm:** kinh nghiệm lấy trung bình theo quân số, nên bơm dân quân vào squad tinh nhuệ làm nó **mất cấp**. Với đội quân tinh nhuệ thì cần luật khác (ví dụ giữ kinh nghiệm của squad nhận, hoặc pha loãng một phần).
+- **[MỞ]** **Tỉ lệ thương vong hiện tại quá cao cho permadeath** (khoảng 4–5 squad bị diệt mỗi bên mỗi ván). Cần đổi luật cho nghiêng về làm bỏ chạy hơn là diệt, và mục tiêu màn không buộc phải đánh đến cùng.
+- **[MỞ]** Chống vòng xoáy thua (mất tinh nhuệ, màn sau yếu đi, càng mất thêm): tặng quân, màn dễ xen kẽ, thưởng sau màn.
+- **[MỞ]** **Lưu/tải chưa có.** Chiến dịch với permadeath cần lưu liên tục và đáng tin. Bản Artifact lưu bằng trình duyệt có thể mất (cửa sổ riêng tư, xoá dữ liệu trang, đổi máy), cần chỗ lưu tốt hơn hoặc xuất/nhập file lưu.
+- **[MỞ]** Bất đối xứng ở cấp luật giữa người và Orc (xem mục 17).
+
+## 17. Roadmap đề xuất
 
 *Đây là đề xuất của dev, chưa được đồng ý. Thứ tự là ý kiến, đảo lại được.*
 
-1. **Playtest core** (ngay): mày chơi khoảng 10 ván, ghi lại: ván có quá dài không, địa hình có thật sự quyết định chiến thuật không, AI có ngu hoặc quá khôn ở đâu, UI trên iPad có chỗ nào cản. Sửa số cân bằng và lỗi cảm giác. **Nên làm trước mọi thứ khác.**
-2. **Mục tiêu đa dạng** (điều kiện thắng "mix tuỳ màn"): giữ N lượt, hộ tống, phá một công trình, phòng thủ chống đợt quân tiếp viện. Cần trước khi nghĩ tới chiến dịch.
-3. **Dàn trận và quân tiếp viện** cho màn phòng thủ (mày đã nói để sau, "not now").
-4. **Mốc 2: kinh tế** (mục 14), sau khi core đã ổn.
-5. **Mốc 3:** AI khó hơn, âm thanh, hướng dẫn chơi (tutorial), lưu/tải, người vs người.
-6. **Asset thật:** sprite Orc riêng, đơn vị mới (pháo binh nếu mày muốn), hoạt ảnh.
-7. **Câu chuyện và chiến dịch**: khi core đủ vững để biết game cần kể gì.
+1. **Đa dạng mục tiêu** và cấu trúc màn chơi (đòn bẩy rẻ nhất; sửa điểm yếu "chiếm thành không quyết định"; cần trước chiến dịch).
+2. **Lưu và tải** (cần trước permadeath và chiến dịch), kèm quyết định chỗ lưu đáng tin.
+3. **Tinh thần có hệ trạng thái** (hăng hái, vững, dao động, bỏ chạy), bỏ chạy ra khỏi bản đồ có điều kiện xác định, hồi tỉnh.
+4. **Giảm thương vong và hệ squad tinh nhuệ:** luật gộp không phá kinh nghiệm, cấp và kỹ năng theo vai trò, mang quân qua màn.
+5. **AI bớt dễ đoán:** mỗi màn một tính cách, thỉnh thoảng đổi nước đi, phục kích. Đo bằng việc người chơi thắng bao nhiêu phần trăm.
+6. **Biến đổi địa hình bằng dân quân** (đốt, bẫy, cầu).
+7. **Bất đối xứng ở cấp luật** giữa người và Orc, chuẩn bị chơi bên Orc.
+8. **Kinh tế / tuyển quân tại chỗ** (mục 14), **cốt truyện, chiến dịch**, nội dung màn.
+9. Hình ảnh: **hoãn** art 3D isometric; có thể làm sau khi gameplay vững.
 
-## 17. Nhật ký quyết định
+## 18. Nhật ký quyết định
 
 | Chủ đề | Quyết định | Thay đổi so với trước |
 |---|---|---|
 | Kiểu lượt | Phase-based | Chọn trong 4 kiểu |
 | Chiến đấu | Deterministic, preview, phản công, giáp công, tinh thần | |
-| Orc "không kỷ luật" | Không đội hình, dễ tan vỡ hơn. Orc **bám địa hình thiên nhiên**, người bám công trình | Mày đảo ý ban đầu của dev ("dễ bị kéo ra khỏi vị trí") |
+| Orc "không kỷ luật" | Không đội hình, dễ bỏ chạy hơn. Orc **bám địa hình thiên nhiên**, người bám công trình | Mày đảo ý ban đầu của dev ("dễ bị kéo ra khỏi vị trí") |
 | Kinh tế | Làm sau core | Mày đã mô tả ý đầy đủ |
 | Kích thước map | 64×64 → 32×32 → **16×20** | Thu nhỏ để test nhanh |
 | Mirror map | **Bỏ**; thay bằng kiểm tra công bằng sau khi sinh | Mày phản đối đối xứng |
@@ -307,3 +355,10 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 | Mây trôi | Dùng bộ mây doodle của tác giả (đục 75%, bay cao), bóng là oval xám mép mềm, đục 28%, nhỏ hơn mây, trên nền; trôi chậm theo hướng gió, mờ dần ở mép bản đồ rồi quay lại; có nút tắt trong menu (mặc định bật). Tốn khoảng 10 lần vẽ mỗi giây. Giấy phép bộ mây chưa rõ | CHỐT |
 | Idle thở | Thử và bỏ vì nhìn lạ; còn nút trong menu, mặc định tắt | Mày quyết |
 | Hosting | Một file HTML duy nhất (Artifact trên iOS không tải được file phụ) | Lỗi hạ tầng, không phải thiết kế |
+| Art 3D isometric | **Hoãn.** Đã xem tham chiếu (đảo cỏ vẽ tay, pixel iso 32×32, tileset OpenGameArt, khối voxel) và cân nhắc Blender + Tripo, rồi quyết định tập trung gameplay; giữ doodle | Mày đổi ý; bản doodle cuối là commit `68b7ea0` và có một Artifact đóng băng |
+| Đánh giá gameplay | Giống nhất Wesnoth, rồi Advance Wars / Wargroove; điểm yếu: mục tiêu chiếm thành vô nghĩa, AI dễ đoán, ít khác biệt | Dev đánh giá theo mô phỏng, mày xác nhận AI đoán được |
+| Chiến dịch | Có cốt truyện, có chơi bên Orc, chơi đơn trước | Mày chốt |
+| Squad tinh nhuệ | Gọi là "squad tinh nhuệ" (không dùng "hero"); mở kỹ năng theo cấp và theo loại quân; mang qua các màn; chết trận là mất | Mày chốt |
+| Tên trạng thái | "Bỏ chạy" thay "tan vỡ"; "hồi tỉnh" thay "tỉnh lại" | Mày yêu cầu |
+| Sĩ khí | Hướng: sĩ khí cao thì tự tin xông lên, thấp thì bỏ chạy; một số squad bỏ chạy hẳn ra khỏi bản đồ (hiếm) | Mày đề xuất; chi tiết còn mở |
+| Biến đổi địa hình | Dân quân đốt rừng, đặt bẫy, xây cầu | Mày đề xuất |

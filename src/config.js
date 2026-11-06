@@ -17,7 +17,7 @@ export const CONFIG = {
   moraleAllyDeath: 8,
   moraleRecoverCalm: 10,          // hồi morale đầu lượt nếu không có địch kề
   moraleRecoverEngaged: 3,
-  routRecoverMargin: 15,          // morale phải vượt ngưỡng rout + số này mới tỉnh lại
+  routRecoverMargin: 15,          // morale phải vượt ngưỡng rout + số này mới hồi tỉnh
   startMorale: 100,
 };
 
@@ -69,7 +69,7 @@ export const FACTIONS = {
     strAffinity: 1.0,     // hưởng bao nhiêu % bonus công trình
     natMoveDiscount: 0,   // giảm chi phí đi trên địa hình thiên nhiên
     formation: 6,         // % phòng thủ mỗi đồng đội kề (tối đa 3)
-    routAt: 25,           // morale <= ngưỡng này thì tan vỡ
+    routAt: 25,           // morale <= ngưỡng này thì bỏ chạy
     fill: '#3a78d8',
     fillDark: '#2a5aa8',
   },
