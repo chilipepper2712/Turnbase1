@@ -3,6 +3,11 @@
 Game chiến thuật theo lượt trên **lưới vuông**, hiển thị **isometric** theo phong cách doodle vẽ tay.
 Chạy trên trình duyệt (chuột + touch, landscape). Người chơi (quân ta, màu xanh) đấu AI (Orc, màu đỏ).
 
+## Bản doodle đã đóng băng
+
+Bản doodle hoàn chỉnh cuối cùng (trước khi chuyển sang art 3D isometric) được đánh dấu bằng git tag **`doodle-v1`**.
+Khôi phục: `git checkout doodle-v1` (xem) hoặc `git checkout -b doodle doodle-v1` (làm tiếp từ đó).
+
 ## Chạy
 
 ```bash
