@@ -387,6 +387,8 @@ export class Game {
     const ev = moveUnit(s, u, tile.x, tile.y);
     if (ev) await this.view.playEvents(ev);
     this.busy = false;
+    // bước chân có thể quyết định ván (tướng hộ tống tới đích): phải kết thúc ngay, không để kẹt giữa chừng
+    if (s.winner) { this.sel = null; this.origin = null; this.mode = 'idle'; this.refreshAll(); return this.gameOver(); }
     this.select(u);
     this.origin = { id: u.id, ...origin };
     this.refreshActions();
@@ -438,7 +440,7 @@ export class Game {
   doUndo() {
     this.snd('ui_cancel');
     const u = this.sel, o = this.origin;
-    if (!u || !o || o.id !== u.id || u.acted) return;
+    if (!u || !o || o.id !== u.id || u.acted || this.busy || this.state.winner) return;
     u.x = o.x; u.y = o.y; u.moved = false; u.movedDist = 0;
     this.view.reconcile();
     this.select(u);
