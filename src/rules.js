@@ -382,7 +382,10 @@ export function mergeUnits(s, u, tgt) {
   const move = Math.min(room, u.strength);
   // morale trung bình có trọng số
   tgt.morale = Math.round((tgt.morale * tgt.strength + u.morale * move) / (tgt.strength + move));
-  tgt.xp = Math.round((tgt.xp * tgt.strength + u.xp * move) / (tgt.strength + move));
+  // pha loãng một phần: lệch về trung bình theo quân số chỉ một nửa; cấp không tụt vì gộp
+  const avgXp = (tgt.xp * tgt.strength + u.xp * move) / (tgt.strength + move);
+  const floorXp = LEVEL.xp[levelOf(tgt.xp) - 1] ?? 0;
+  tgt.xp = Math.max(floorXp, Math.round(tgt.xp + CONFIG.mergeXpBlend * (avgXp - tgt.xp)));
   u.fort = 0;
   tgt.strength += move;
   u.strength -= move;
@@ -429,7 +432,7 @@ export function splitUnit(s, u, x, y) {
   const give = Math.floor(u.strength / 2);
   u.strength -= give;
   const n = addUnit(s, u.faction, u.role, x, y, give);
-  n.morale = u.morale; n.xp = u.xp; n.moved = true; n.acted = true;
+  n.morale = u.morale; n.xp = 0; n.moved = true; n.acted = true;
   u.moved = true; u.acted = true; u.fort = 0;
   return [{ type: 'split', unit: u.id, newUnit: n.id, x, y }];
 }

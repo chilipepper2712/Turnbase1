@@ -19,6 +19,7 @@ export const CONFIG = {
   moraleRecoverEngaged: 3,
   routRecoverMargin: 15,          // morale phải vượt ngưỡng rout + số này mới hồi tỉnh
   startMorale: 100,
+  mergeXpBlend: 0.5,              // gộp squad: xp lệch về trung bình theo quân số bao nhiêu (1 = trung bình hẳn, 0 = giữ nguyên)
 };
 
 // Địa hình. nat = phòng thủ thiên nhiên (%), str = phòng thủ công trình (%), mod = cộng/trừ phòng thủ cho mọi phe,

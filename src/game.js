@@ -9,7 +9,7 @@ import {
 import { planNextAction } from './ai.js';
 import { executeAction } from './actions.js';
 import { t, setLang, getLang, LANGS, langName } from './i18n.js';
-import { icon } from './icons.js';
+import { icon, rankIcon } from './icons.js';
 
 const SPEEDS = { normal: 1, fast: 2.4, instant: 14 };
 const $ = (id) => document.getElementById(id);
@@ -558,8 +558,8 @@ export class Game {
     const xpTxt = nx ? `${u.xp}/${nx}` : t('ui.xpmax');
     const tdef = terrainFacts(tid).def[u.faction];
     const fort = u.fort === 2 ? `<div class="fortline">${icon('tent')}${esc(t('ui.fort.on', { n: Math.round(fortifyBonus(s, u)) }))}</div>` : '';
-    const ic = (k) => icon({ strength: 'heart', morale: 'flag', xp: 'star', def: 'shield', atk: 'sword', move: 'foot', range: 'bow' }[k]);
-    return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(t(`unit.${u.faction}.${u.role}`))}<span class="stars">${icon('star', 'gold fill').repeat(lvl)}</span></h3>
+    const ic = (k) => icon({ strength: 'heart', morale: 'flag', xp: 'chevron', def: 'shield', atk: 'sword', move: 'foot', range: 'bow' }[k]);
+    return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(t(`unit.${u.faction}.${u.role}`))}<span class="stars">${rankIcon(lvl, 'gold')}</span></h3>
       <div class="pips" title="${esc(t('ui.strength'))}">${pips}</div>
       <div class="line"><span title="${esc(t('ui.strength'))}">${ic('strength')} <b>${u.strength}/${CONFIG.maxStrength}</b></span><span title="${esc(t('ui.morale'))}">${ic('morale')} <b>${mor}</b></span><span title="${esc(t('ui.xp'))}">${ic('xp')} <b>${xpTxt}</b></span></div>
       <div class="bar" title="${esc(t('ui.morale'))}"><i style="width:${mor}%;background:${morCol}"></i></div>

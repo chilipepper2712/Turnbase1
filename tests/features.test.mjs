@@ -58,15 +58,31 @@ test('kinh nghiệm: gây sát thương -> lên cấp, có trần, cấp cao đ�
   assert.ok(ev.some((e) => e.type === 'levelup' && e.unit === x.id) || levelOf(x.xp) >= 1, 'lên cấp');
 });
 
-test('kinh nghiệm: gộp lấy trung bình theo quân số, tách chép xp', () => {
+test('kinh nghiệm: gộp pha loãng một nửa và không tụt cấp, tách thì phần tách ra xp về 0', () => {
   const s = flat();
-  const inf = addUnit(s, 'human', 'infantry', 5, 5, 5); inf.xp = 30;
-  const mil = addUnit(s, 'human', 'militia', 5, 7, 5); mil.xp = 0;
+  const inf = addUnit(s, 'human', 'infantry', 5, 5, 5); inf.xp = 40;
+  const mil = addUnit(s, 'human', 'militia', 5, 7, 3); mil.xp = 0;
   mergeUnits(s, mil, inf);
-  assert.equal(inf.xp, 15, 'xp trung bình theo số quân');
+  // trung bình theo quân số = 25; lệch một nửa về đó: 40 - 7.5 = 32.5 -> 33, vẫn cấp 2
+  assert.equal(inf.xp, 33);
+  assert.equal(levelOf(inf.xp), 2);
+  // đúng mốc cấp thì pha loãng không kéo xuống dưới mốc
+  const a = addUnit(s, 'human', 'infantry', 8, 5, 5); a.xp = LEVEL.xp[1];
+  const m2 = addUnit(s, 'human', 'militia', 8, 7, 5); m2.xp = 0;
+  mergeUnits(s, m2, a);
+  assert.equal(a.xp, LEVEL.xp[1], 'cấp không tụt vì gộp');
   const big = addUnit(s, 'human', 'infantry', 1, 1, 10); big.xp = 20;
   splitUnit(s, big, 1, 2);
-  assert.equal(s.units.find((u) => u.x === 1 && u.y === 2).xp, 20);
+  assert.equal(s.units.find((u) => u.x === 1 && u.y === 2).xp, 0, 'phần tách ra là squad thường');
+  assert.equal(big.xp, 20, 'squad gốc giữ xp');
+});
+
+import { rankIcon } from '../src/icons.js';
+test('quân hàm: n vạch ^ chồng nhau, 0 cấp thì không vẽ', () => {
+  assert.equal(rankIcon(0), '');
+  const n = (k) => (rankIcon(k).match(/M/g) || []).length;
+  assert.deepEqual([n(1), n(2), n(3)], [1, 2, 3]);
+  assert.ok(!/#[0-9a-f]{3,6}|rgb/i.test(rankIcon(3)));
 });
 
 test('hạ trại: có hiệu lực ngay, cố định 15%/12%, giữ khi đứng yên, phá khi di chuyển', () => {

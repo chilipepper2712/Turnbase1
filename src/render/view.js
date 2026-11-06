@@ -294,8 +294,8 @@ export class GameView {
     badge.addChild(bg, txt);
     badge.position.set(24, -8);
     const fortG = new PIXI.Container();
-    const stars = new PIXI.Graphics();          // sao cấp bậc: hình vẽ, cùng kiểu với bộ icon của giao diện
-    stars.position.set(24, -26);
+    const stars = new PIXI.Graphics();          // quân hàm: các vạch ^ vẽ bằng code
+    stars.position.set(24, -22);
     const flag = new PIXI.Text({ text: '', style: { fontFamily: FONT, fontSize: 18, fill: 0xd8402f, fontWeight: 'bold', stroke: { color: 0xffffff, width: 4 } } });
     flag.anchor.set(0.5, 1);
     flag.position.set(0, -(sprite.height) - 4);
@@ -310,17 +310,20 @@ export class GameView {
     return us;
   }
 
-  // Sao cấp bậc: n ngôi sao vàng viền mực xếp ngang, căn giữa dưới huy hiệu số quân
+  // Quân hàm: n vạch ^ vàng viền mực xếp chồng (vạch trên cùng là vạch cuối), đáy neo ngay trên huy hiệu số quân
   drawStars(us, n) {
     if (us.starN === n) return;
     us.starN = n;
     const g = us.stars; g.clear();
-    const R = 5.2, gap = 11.5, x0 = -((n - 1) * gap) / 2;
-    for (let i = 0; i < n; i++) {
-      const cx = x0 + i * gap, pts = [];
-      for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, r = k % 2 ? R * 0.45 : R; pts.push(cx + Math.cos(a) * r, Math.sin(a) * r); }
-      g.poly(pts, true).fill(0xe0a800).stroke({ width: 1.3, color: 0x1b1b1b, join: 'round' });
-    }
+    const W = 6.5, H = 4.5, gap = 5.2;
+    const draw = (width, color) => {
+      for (let i = 0; i < n; i++) {
+        const y = -i * gap;
+        g.moveTo(-W, y).lineTo(0, y - H).lineTo(W, y).stroke({ width, color, join: 'round', cap: 'round' });
+      }
+    };
+    draw(5, 0x1b1b1b);      // viền mực trước, rồi vàng đè lên để các vạch không ăn vào nhau
+    draw(2.6, 0xe0a800);
   }
 
   // Hàng rào trước chân khi đã hạ trại (sprite Kenney; không có thì vẽ cọc bằng code)

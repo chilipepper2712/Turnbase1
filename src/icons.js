@@ -3,6 +3,7 @@
 const P = {
   heart: 'M12 20.5s-8-4.7-8-10.6A4.4 4.4 0 0 1 12 7.4a4.4 4.4 0 0 1 8 2.5c0 5.9-8 10.6-8 10.6z',
   flag: 'M5 21V4M5 4.5h12l-2.5 4 2.5 4H5',
+  chevron: 'M5.5 15L12 8.5l6.5 6.5',
   star: 'M12 3.5l2.5 5.3 5.8.7-4.3 4 1.1 5.8L12 16.4 6.9 19.3 8 13.5 3.7 9.5l5.8-.7z',
   shield: 'M12 3l7.5 3v5.5c0 4.6-3.1 8.2-7.5 9.5-4.4-1.3-7.5-4.9-7.5-9.5V6z',
   sword: 'M12 2.5l3 3.2V14H9V5.7zM6 14h12M12 14v5M12 21.5v.01',
@@ -31,3 +32,12 @@ export function icon(name, cls = '') {
   return `<svg class="ic ${fill ? 'fill ' : ''}${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
 }
 export const ICON_NAMES = Object.keys(P);
+
+// Quân hàm: n vạch ^ xếp chồng (1 vạch = có kinh nghiệm, 3 vạch = tối đa). Cùng kiểu nét với bộ icon.
+export function rankIcon(n, cls = '') {
+  if (!(n > 0)) return '';
+  const gap = 5, h = 4.5, total = h + gap * (n - 1), y0 = (24 - total) / 2;
+  let d = '';
+  for (let i = 0; i < n; i++) { const y = y0 + i * gap; d += `M5.5 ${y + h}L12 ${y}l6.5 ${h}`; }
+  return `<svg class="ic rank ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
+}

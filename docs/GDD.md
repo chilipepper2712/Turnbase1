@@ -201,8 +201,8 @@ Giống cách Civilization làm: quân tồn tại lâu thì lão luyện, bền
 - xp = sát thương gây ra, +4 khi hạ một squad, +1 khi bị đánh mà còn sống.
 - Mốc lên cấp: 12 / 30 / 55 xp. Tối đa **cấp 3**.
 - Mỗi cấp: **+8% sát thương, +4% thủ.**
-- Gộp squad: hiện xp lấy trung bình theo quân số. **Đã chốt đổi sang pha loãng một phần** ("thay máu" quân đội là chuyện thường trong chiến trận); công thức đề xuất ở mục 16. **[CHỐT ý, chưa làm]** Tách squad: hiện cả hai giữ xp (lỗ hổng với squad tinh nhuệ, xem mục 16).
-- Hiển thị bằng sao ★ cạnh squad.
+- Gộp squad: **pha loãng một phần** ("thay máu" quân đội là chuyện thường trong chiến trận): `xp_mới = xp_nhận + 0,5 × (xp_trung_bình − xp_nhận)`, cấp không tụt vì gộp; hệ số 0,5 là `mergeXpBlend` trong config. **[CHỐT ý, MẶC ĐỊNH số; đã làm]** Tách squad: **phần tách ra là squad thường, xp về 0**, squad gốc giữ xp. **[CHỐT, đã làm]**
+- Hiển thị bằng **vạch ^ xếp chồng** (1 / 2 / 3 vạch, kiểu quân hàm) cạnh squad, không dùng ngôi sao vì sao chiếm chỗ. **[CHỐT]**
 
 ## 9. Hành động đặc biệt
 
@@ -320,8 +320,8 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 
 - **[MỞ]** Bao nhiêu cấp, cấp nào mở kỹ năng, danh sách kỹ năng cho từng vai trò. Hiện trần là cấp 3 ("tinh nhuệ").
 - **Pha loãng kinh nghiệm khi gộp: pha loãng một phần.** **[CHỐT ý; công thức là đề xuất]** Hiện xp lấy trung bình theo quân số nên bơm dân quân vào squad tinh nhuệ làm nó mất cấp (ví dụ 5 quân xp 40 nhận 3 dân quân: còn xp 25, từ cấp 2 xuống cấp 1). Đề xuất: `xp_mới = xp_nhận + d × (xp_trung_bình − xp_nhận)` với `d = 0,5` (số trong config), và **cấp không bao giờ tụt vì gộp** (xp không xuống dưới mốc cấp hiện tại). Ví dụ trên ra xp 32,5, vẫn cấp 2.
-- **[MỞ]** **Tách squad tinh nhuệ:** hiện tách thì cả hai nửa giữ nguyên xp, nghĩa là một squad cấp 3 tách ra thành hai squad cấp 3 (và nhân đôi kỹ năng khi có). Đề xuất: squad tinh nhuệ **không tách được**, hoặc phần tách ra là squad thường (xp về 0).
-- **[MỞ]** **"Tinh nhuệ" định nghĩa thế nào?** Nhiều luật phụ thuộc vào đây (mang qua màn, hình phạt khi bỏ chạy, tách, kỹ năng). Đề xuất: squad đạt cấp 3 được "phong tên" thành tinh nhuệ; thêm các squad có tên do kịch bản cấp ngay từ đầu.
+- **Tách squad tinh nhuệ:** phần tách ra là squad thường, xp về 0 (chặn lỗ hổng nhân đôi cấp và kỹ năng). **[CHỐT, đã làm]**
+- **"Tinh nhuệ" (elite) = mọi squad đã có ít nhất 1 vạch (cấp ≥ 1)**, trần là 3 vạch. Mang qua màn, hình phạt khi bỏ chạy và kỹ năng đều tính trên nhóm này. **[CHỐT]** Hệ quả cần theo dõi: nhóm elite sẽ khá đông vì lên cấp 1 chỉ cần 12 xp, nên số squad mang qua màn có thể lớn; có thể cần giới hạn số slot hoặc nâng mốc cấp khi làm chiến dịch. Tên cấp (Có kinh nghiệm / Lão luyện / Tinh nhuệ) giữ như cũ, **[MỞ]** có đổi theo định nghĩa mới không.
 - **[MỞ]** **Mức phạt khi squad tinh nhuệ bỏ chạy ra khỏi bản đồ rồi quay lại màn sau.** Đề xuất một phạt duy nhất, dễ hiểu: vào màn sau với **quân số 50%** và mất **một phần xp tiến tới cấp kế (không tụt cấp)**. Tránh phạt chồng nhiều loại.
 - **[MỞ]** Nếu sau này cho người chơi **chủ động rút quân**, mức phạt phải nặng hơn rủi ro chết, nếu không thì rút quân thành chiêu thắng mọi trận.
 - **[MỞ]** **Tỉ lệ thương vong hiện tại quá cao cho permadeath** (khoảng 4–5 squad bị diệt mỗi bên mỗi ván). Cần đổi luật cho nghiêng về làm bỏ chạy hơn là diệt, và mục tiêu màn không buộc phải đánh đến cùng.
@@ -375,5 +375,7 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 | Đích bỏ chạy | Gần thành thì về thành; không thì về hậu quân nếu có tiếp viện; không có cả hai thì chạy ra khỏi bản đồ. Xác định, nhiều lượt, hiện đích để người chơi can thiệp | Mày đề xuất, dev xác nhận và thêm chi tiết |
 | Bỏ chạy hẳn khỏi bản đồ | Không tính là chết; squad thường mất khỏi màn, squad tinh nhuệ quay lại màn sau có phạt | Mày đề xuất; mức phạt còn mở |
 | Gộp squad và xp | Pha loãng một phần (đề xuất d = 0,5, cấp không tụt vì gộp) | Mày đồng ý hướng; công thức là đề xuất |
+| Tinh nhuệ | Mọi squad từ 1 vạch trở lên; trần 3 vạch; hiển thị bằng vạch ^ chồng thay sao ★ | Mày chốt |
+| Tách squad | Phần tách ra là squad thường, xp về 0 | Mày chốt |
 | Thứ tự roadmap | Mục tiêu đa dạng, rồi lưu/tải, rồi hệ trạng thái sĩ khí | Mày đồng ý |
 | Biến đổi địa hình | Dân quân đốt rừng, đặt bẫy, xây cầu | Mày đề xuất |
