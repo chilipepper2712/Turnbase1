@@ -22,6 +22,17 @@ export const CONFIG = {
   mergeXpBlend: 0.5,              // gộp squad: xp lệch về trung bình theo quân số bao nhiêu (1 = trung bình hẳn, 0 = giữ nguyên)
 };
 
+// Các mức sĩ khí. routAt (theo phe) là ngưỡng bỏ chạy. Với người chơi chỉ đổi chỉ số, không ép hành động.
+//   hăng hái: sĩ khí > eagerAt · vững: ở giữa · dao động: <= routAt + waverMargin · bỏ chạy: <= routAt
+// Orc routAt cao nên dải "vững" của Orc hẹp: dễ lên cao hứng, cũng dễ dao động (không kỷ luật).
+export const MORALE = {
+  eagerAt: 80, waverMargin: 20,
+  eager: { atk: 0.05, def: 0 },
+  wavering: { atk: -0.08, def: -3 },
+  fleeHomeTurns: 2,        // thành nhà (hoặc trại) trong tầm bao nhiêu lượt đi thì chạy về đó
+  fleeAllyRadius: 3,       // đồng đội không bỏ chạy trong bán kính này (kể cả phía trước) cũng là chỗ nương tựa
+};
+
 // Địa hình. nat = phòng thủ thiên nhiên (%), str = phòng thủ công trình (%), mod = cộng/trừ phòng thủ cho mọi phe,
 // atk = cộng/trừ sát thương cho quân đứng ở ô đó (thế cao / sa lầy).
 export const TERRAIN = {

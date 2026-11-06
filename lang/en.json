@@ -230,5 +230,19 @@
   "ui.save.badFile": "Could not read this save",
   "ui.save.exported": "File exported",
   "ui.save.continue": "Continue saved game",
-  "ui.morale.hint": "Tick: below {n} the squad flees"
+  "ui.morale.hint": "Tick: below {n} the squad flees",
+  "ui.mstate.eager": "Eager",
+  "ui.mstate.steady": "Steady",
+  "ui.mstate.wavering": "Wavering",
+  "ui.mstate.routed": "Fleeing",
+  "ui.mfx.eager": "+{a}% damage",
+  "ui.mfx.wavering": "−{a}% damage, −{d}% defense",
+  "ui.flee.home": "Fleeing to the stronghold",
+  "ui.flee.camp": "Fleeing to the camp",
+  "ui.flee.rear": "Fleeing to the rear guard",
+  "ui.flee.exit": "About to leave the battle",
+  "ui.flee.none": "Cut off, cannot flee",
+  "ui.escaped": "Left the battle",
+  "ui.escaped.demoted": "Left the battle, lost 1 level",
+  "ui.flee.exitElite": "About to leave the battle! Loses 1 level"
 }

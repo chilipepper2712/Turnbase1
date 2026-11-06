@@ -179,20 +179,25 @@ Sát thương = `sức đánh × cấp bậc × thế cao × (quân số/10) × 
 - **Thủ%** gồm thủ nền, cấp bậc, địa hình, đội hình, hạ trại. Giới hạn từ −30% đến +70%.
 - **Tinh thần:** mỗi squad có tinh thần 0–100. Mất theo % quân bị mất (và khi đồng đội kề chết); tăng khi đánh và khi hạ địch. Dưới ngưỡng thì **bỏ chạy**: mất hành động, đầu lượt tự rút lui, mất trại, không chiếm thành được; hồi tỉnh khi tinh thần vượt ngưỡng + 15. **[CHỐT ý, MẶC ĐỊNH số]**
 
-**Tinh thần và bỏ chạy: định hướng (chưa làm)**
+**Sĩ khí và bỏ chạy (đã làm, mục 3)** **[CHỐT hướng; số liệu MẶC ĐỊNH]**
 
-- Trạng thái đổi tên: **bỏ chạy** (trước là "tan vỡ"), **hồi tỉnh** (trước là "tỉnh lại"). **[CHỐT]**
-- Thanh sĩ khí đã có (0–100) nhưng hiện chỉ quyết định ngưỡng bỏ chạy. Định hướng: **sĩ khí cao thì tự tin, xông lên nhiều hơn; sĩ khí thấp thì dễ bỏ chạy.** **[CHỐT ý]**
-- Một số squad bỏ chạy **ra khỏi bản đồ luôn** thay vì kẹt lại trên bản đồ (cảm hứng: quân tan chạy trong Đông Chu Liệt Quốc); không phải squad nào cũng vậy, trường hợp này phải hiếm. **[CHỐT ý]**
-- **Sĩ khí với người chơi chỉ đổi chỉ số** (cộng/trừ sức đánh, di chuyển, ngưỡng bỏ chạy), **không ép hành động**; chỉ trạng thái bỏ chạy mới bị ép. Với **AI** thì sĩ khí đổi cả hành vi. **[CHỐT]**
-- **Đích bỏ chạy theo thứ tự ưu tiên, xác định (không xác suất):** **[CHỐT ý, chi tiết cần chốt khi làm]**
-  1. Thành nhà **đủ gần** thì chạy về thành (thành còn hồi quân 2/lượt).
-  2. Không thì chạy về phía **hậu quân** nếu hướng đó có **quân tiếp viện** (squad cùng phe không bỏ chạy).
-  3. Không có cả hai thì **chạy ra khỏi bản đồ**: đi về mép bản đồ phía sau lưng, ra khỏi khi chạm mép.
-- Chạy ra khỏi bản đồ là một hành trình **nhiều lượt**, hiện đích chạy lên bản đồ để người chơi thấy trước và can thiệp (chặn đường, hồi tỉnh nó bằng cách cứu). Mỗi lượt xét lại đích; nếu hồi tỉnh giữa đường thì quay lại chiến đấu. Nhờ vậy "hiếm" mà **không cần xác suất**, không phá trụ cột "không may rủi".
-- Squad bỏ chạy ra khỏi bản đồ **không tính là chết**: nó rời màn, không bị tính vào tiêu diệt. Đây là cách giảm thương vong cho permadeath. **[CHỐT ý]**
-- Quay lại màn sau với **hình phạt**, nhưng hình phạt chỉ có nghĩa với squad **tinh nhuệ** (vì chỉ squad tinh nhuệ mang qua màn). Squad thường bỏ chạy hẳn chỉ đơn giản là mất khỏi màn đó. **[CHỐT; phạt = giáng 1 cấp, xem mục 16]**
-- **[MỞ]** "Đủ gần" thành bao nhiêu (đề xuất: đường đi tới thành trong ≤ 2 lượt di chuyển của squad đó, tính theo chi phí đường đi chứ không phải khoảng cách thẳng), và "hậu quân có tiếp viện" cụ thể là gì (đề xuất: có ít nhất 1 squad cùng phe không bỏ chạy trong bán kính 3 ô quanh ô đích).
+- Trạng thái đổi tên: **bỏ chạy** (trước là "tan vỡ"), **hồi tỉnh** (trước là "tỉnh lại"). Nhãn giao diện: "Sĩ khí". **[CHỐT]**
+- **Bốn mức sĩ khí** (`moraleState`), theo ngưỡng bỏ chạy `routAt` của từng phe (người 25, Orc 45):
+
+| Mức | Điều kiện | Chỉ số |
+|---|---|---|
+| **Hăng hái** | sĩ khí > 80 | +5% sát thương |
+| **Vững** | giữa hai mức | không đổi |
+| **Dao động** | sĩ khí ≤ ngưỡng bỏ chạy + 20 | −8% sát thương, −3% thủ |
+| **Bỏ chạy** | sĩ khí ≤ ngưỡng bỏ chạy | mất hành động, tự chạy (bên dưới) |
+
+  Vì Orc có ngưỡng cao nên dải "vững" của Orc hẹp (65–80, người 45–80): Orc dễ hăng hái và cũng dễ dao động, đúng tính "mạnh nhưng không kỷ luật". Mọi squad bắt đầu ở 100 (hăng hái) và rơi về vững sau đòn đầu; hạ địch (+15) và ra đòn (+5) kéo sĩ khí lên lại, nên bên đang thắng giữ được hăng hái. Hệ số nằm trong `MORALE` ở config và **có trong xem trước sát thương**.
+- **Với người chơi chỉ đổi chỉ số, không ép hành động** (trừ bỏ chạy). **Với AI đổi cả hành vi:** hăng hái thì tiến nhiều hơn (×1,1) và ít sợ đe doạ (×0,9); dao động thì tiến ít hơn (×0,8) và dè chừng hơn (×1,2). **[CHỐT]**
+- **Đích bỏ chạy, xác định, xét lại mỗi lượt:** (1) thành nhà trong tầm **2 lượt đi** thì chạy về thành (nhiệm vụ phá trại: ô kề trại nhà; hộ tống: không có thành); (2) không thì chạy về **chỗ nương tựa**: squad cùng phe không bỏ chạy ở phía sau (gần thành nhà hơn) hoặc ngay sát bên (trong 3 ô); (3) không thì **chạy ra khỏi bản đồ** qua mép sau lưng; (4) không có đường thì đứng yên (bị bao vây). Tướng hộ tống không bao giờ rời trận. Mỗi lượt chạy tối đa tầm di chuyển, vừa tiến về đích vừa chọn ô xa địch. Hồi tỉnh giữa đường (sĩ khí > ngưỡng + 15) thì ngừng chạy và quay lại đánh. **[CHỐT ý; chi tiết MẶC ĐỊNH]**
+- **Hiển thị:** thẻ quân ghi tên mức sĩ khí (màu), hiệu ứng chỉ số, và với squad đang bỏ chạy thì dòng "Đang chạy về thành / về hậu quân / Sắp rút khỏi trận"; **đích chạy hiện lên bản đồ** (ô xanh, đỏ nếu là rút khỏi trận) khi chọn hoặc giữ vào squad đó. Thanh sĩ khí có vạch đứng đánh dấu các ngưỡng. **[CHỐT]**
+- **Rời hẳn bản đồ không tính là chết** (không tính vào tiêu diệt, ghi vào `escaped` trong state và bản lưu). **Elite bị giáng 1 cấp** (xp về mốc cấp thấp hơn; cấp 1 về 0, tức mất tư cách elite); squad chưa có cấp không mất gì. Chiến dịch (chưa làm) sẽ dùng `escaped` để quay lại màn sau với cấp đã giáng. **[CHỐT]**
+- **Đo (AI chiến thuật đấu AI, 60 ván cỡ nhỏ):** ~5 squad bỏ chạy mỗi ván; **rời hẳn bản đồ hiếm**: giao tranh ~0,05 squad/ván, hộ tống ~0,2 (không có thành nên dễ hơn). Cân bằng người / Orc không đổi so với trước (skirmish người ~43%). **Ván ngắn đi khoảng 2–3 lượt (15 xuống 12)** vì sĩ khí làm bên đang thắng lấn át nhanh hơn; nếu mày thấy ván quá ngắn thì giảm `MORALE` hoặc hệ số hành vi AI.
+- **Còn mở:** bỏ chạy có kéo theo đồng đội kề dao động không (hiện chỉ có mất sĩ khí khi đồng đội kề chết); kỹ năng elite giữ sĩ khí (mục 16); squad người chơi bỏ chạy hoàn toàn do luật, không có lệnh "rút quân" chủ động.
 
 ### Kinh nghiệm và cấp bậc **[CHỐT ý, MẶC ĐỊNH số]**
 
@@ -359,7 +364,7 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 
 1. **Đa dạng mục tiêu** và cấu trúc màn chơi (đòn bẩy rẻ nhất; sửa điểm yếu "chiếm thành không quyết định"; cần trước chiến dịch). **Đã làm lát cắt đầu: cố thủ, phá công trình, hộ tống (mục 10).** Đã làm thêm **đợt tiếp viện** cho Cố thủ cho cả hai bên (cơ chế chung `mission.waves`, sinh quân quanh thành nhà ở đầu lượt phe đó, có hoạt ảnh hiện dần). Chưa làm: mục tiêu ghép (nhiều giai đoạn), tiếp viện cho các nhiệm vụ khác, và tiếp viện do sự kiện (không chỉ theo vòng).
 2. **Lưu và tải** (cần trước permadeath và chiến dịch), kèm quyết định chỗ lưu đáng tin. **Đã làm cho ván đang chơi (mục 13).**
-3. **Tinh thần có hệ trạng thái** (hăng hái, vững, dao động, bỏ chạy), bỏ chạy ra khỏi bản đồ có điều kiện xác định, hồi tỉnh.
+3. **Tinh thần có hệ trạng thái** (hăng hái, vững, dao động, bỏ chạy), bỏ chạy ra khỏi bản đồ có điều kiện xác định, hồi tỉnh. **Đã làm (mục 8).**
 4. **Giảm thương vong và hệ squad tinh nhuệ:** luật gộp không phá kinh nghiệm, cấp và kỹ năng theo vai trò, mang quân qua màn.
 5. **AI bớt dễ đoán:** mỗi màn một tính cách, thỉnh thoảng đổi nước đi, phục kích. Đo bằng việc người chơi thắng bao nhiêu phần trăm.
 6. **Biến đổi địa hình bằng dân quân** (đốt, bẫy, cầu).
@@ -395,6 +400,7 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 | Squad tinh nhuệ | Gọi là "squad tinh nhuệ" (không dùng "hero"); mở kỹ năng theo cấp và theo loại quân; mang qua các màn; chết trận là mất | Mày chốt |
 | Tên trạng thái | "Bỏ chạy" thay "tan vỡ"; "hồi tỉnh" thay "tỉnh lại" | Mày yêu cầu |
 | Sĩ khí | Hướng: sĩ khí cao thì tự tin xông lên, thấp thì bỏ chạy; một số squad bỏ chạy hẳn ra khỏi bản đồ (hiếm) | Mày đề xuất; chi tiết còn mở |
+| Bốn mức sĩ khí | Hăng hái +5% sát thương / vững / dao động −8% sát thương −3% thủ / bỏ chạy; Orc dải vững hẹp hơn; AI đổi hành vi theo mức | Dev đề xuất theo hướng mày chốt; số liệu chờ mày chơi thử |
 | Sĩ khí với người chơi | Chỉ đổi chỉ số, không ép hành động (trừ bỏ chạy); AI thì đổi cả hành vi | Mày chốt |
 | Đích bỏ chạy | Gần thành thì về thành; không thì về hậu quân nếu có tiếp viện; không có cả hai thì chạy ra khỏi bản đồ. Xác định, nhiều lượt, hiện đích để người chơi can thiệp | Mày đề xuất, dev xác nhận và thêm chi tiết |
 | Bỏ chạy hẳn khỏi bản đồ | Không tính là chết; squad thường mất khỏi màn, squad tinh nhuệ quay lại màn sau có phạt | Mày đề xuất; mức phạt còn mở |

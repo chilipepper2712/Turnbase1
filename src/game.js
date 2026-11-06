@@ -4,12 +4,13 @@ import { generateMap } from './mapgen.js';
 import {
   createState, reachable, targetsFrom, previewAttack, moveUnit, attackUnit, waitUnit, mergeUnits,
   splitUnit, splitTiles, canSplit, endTurn, unitAt, key, pathTo, defensePct, statsOf, terrainId,
-  alliesOf, rangeAt, inEnemyZoc, terrainFacts, tilesInRange, threatTiles, moveCostFor, canFortify, fortifyUnit, fortifyBonus, levelOf, nextLevelXp,
+  alliesOf, rangeAt, inEnemyZoc, terrainFacts, tilesInRange, threatTiles, moveCostFor, canFortify, fortifyUnit, fortifyBonus, levelOf, nextLevelXp, fleePlan, moraleState,
 } from './rules.js';
 import { planNextAction } from './ai.js';
 import { executeAction } from './actions.js';
 import { t, setLang, getLang, LANGS, langName } from './i18n.js';
 import { icon, rankIcon } from './icons.js';
+import { MORALE } from './config.js';
 import { createMissionState, MISSION_TYPES } from './missions.js';
 import { snapshot, restoreState, summarize, parseSaveText, SLOTS } from './saves.js';
 
@@ -266,6 +267,11 @@ export class Game {
       if (statsOf(u).range[1] > 1) o.range = tilesInRange(s, u, mt.x, mt.y);
     }
     if (!o.range && !this.splitting) o.range = this.hoverRange || this.rangeTiles || undefined;
+    const watch = this.inspectTile ? unitAt(s, this.inspectTile.x, this.inspectTile.y) : u;
+    if (watch && watch.status === 'routed' && !watch.static) {         // đích bỏ chạy hiện trên bản đồ để người chơi can thiệp được
+      const p = fleePlan(s, watch);
+      if (p.dest) o.flee = { x: p.dest.x, y: p.dest.y, exit: p.kind === 'exit' };
+    }
     if (this.threat) o.threat = this.threat;
     o.hover = this.inspectTile || this.hoverTile || undefined;
     this.view.setOverlay(o);
@@ -604,7 +610,12 @@ export class Game {
       <div class="desc">${esc(t('unit.desc.objective'))}</div>`;
     }
     const mor = Math.round(u.morale);
-    const morCol = mor <= f.routAt ? '#d8402f' : mor <= f.routAt + 25 ? '#e6a800' : '#4aa86a';
+    const ms = moraleState(u);
+    const morCol = { eager: '#2f9e57', steady: '#6f9fd8', wavering: '#e6a800', routed: '#d8402f' }[ms];
+    let mfx = '';
+    if (ms === 'eager') mfx = t('ui.mfx.eager', { a: Math.round(MORALE.eager.atk * 100) });
+    else if (ms === 'wavering') mfx = t('ui.mfx.wavering', { a: Math.round(-MORALE.wavering.atk * 100), d: Math.round(-MORALE.wavering.def) });
+    else if (ms === 'routed') { const p = fleePlan(s, u); mfx = t('ui.flee.' + (p.kind === 'home' && s.mission.type === 'destroy' ? 'camp' : p.kind === 'exit' && lvl > 0 ? 'exitElite' : p.kind)); }
     const nx = nextLevelXp(u);
     const xpTxt = nx ? `${u.xp}/${nx}` : t('ui.xpmax');
     const tdef = terrainFacts(tid).def[u.faction];
@@ -613,8 +624,9 @@ export class Game {
     return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(t(`unit.${u.faction}.${u.role}`))}${u.vip ? `<span class="tag vip">${esc(t('ui.vip'))}</span>` : ''}<span class="stars">${rankIcon(lvl, 'gold')}</span></h3>
       <div class="pips" title="${esc(t('ui.strength'))}">${pips}</div>
       <div class="line"><span title="${esc(t('ui.strength'))}">${ic('strength')} <b>${u.strength}/${CONFIG.maxStrength}</b></span><span title="${esc(t('ui.xp'))}">${ic('xp')} <b>${xpTxt}</b></span></div>
-      <div class="morale"><span class="m-l">${icon('flag')} ${esc(t('ui.morale'))}</span><b style="color:${morCol}">${mor}</b></div>
-      <div class="bar" title="${esc(t('ui.morale.hint', { n: f.routAt }))}"><i style="width:${mor}%;background:${morCol}"></i><u class="tick" style="left:${f.routAt}%"></u></div>
+      <div class="morale"><span class="m-l">${icon('flag')} ${esc(t('ui.morale'))} <em style="color:${morCol}">${esc(t('ui.mstate.' + ms))}</em></span><b style="color:${morCol}">${mor}</b></div>
+      <div class="bar" title="${esc(t('ui.morale.hint', { n: f.routAt }))}"><i style="width:${mor}%;background:${morCol}"></i><u class="tick" style="left:${f.routAt}%"></u><u class="tick soft" style="left:${f.routAt + MORALE.waverMargin}%"></u><u class="tick soft" style="left:${MORALE.eagerAt}%"></u></div>
+      ${mfx ? `<div class="mfx ${ms}">${esc(mfx)}</div>` : ''}
       <div class="stats"><span title="${esc(t('ui.defense'))}">${ic('def')} <b>${def}%</b></span><span title="${esc(t('ui.atk'))}">${ic('atk')} <b>${atk}</b></span><span title="${esc(t('ui.move'))}">${ic('move')} <b>${st.move}</b></span><span title="${esc(t('ui.range'))}">${ic('range')} <b>${mn === mx ? mx : mn + '–' + mx}</b></span></div>
       <div class="terr">${esc(t('terrain.' + tid))}${tdef ? ` · ${ic('def')}${this.sg(tdef)}%` : ''}</div>
       ${fort}

@@ -408,3 +408,144 @@ test('cố thủ: đợt tiếp viện xuất hiện đúng vòng, đúng phe, �
   const waveCount = s.mission.waves.filter((w) => w.done).length;
   assert.ok(waveCount <= s.mission.waves.length);
 });
+
+// ---------- Sĩ khí và bỏ chạy ----------
+import { moraleState, fleePlan, rearEdgeY } from '../src/rules.js';
+import { MORALE, FACTIONS } from '../src/config.js';
+
+test('sĩ khí: bốn mức theo ngưỡng của từng phe (Orc dải "vững" hẹp hơn người)', () => {
+  const s = flat();
+  const h = addUnit(s, 'human', 'infantry', 3, 3), o = addUnit(s, 'orc', 'infantry', 7, 3);
+  const at = (u, m) => { u.morale = m; u.status = 'ok'; return moraleState(u); };
+  const R = FACTIONS.human.routAt, Ro = FACTIONS.orc.routAt;
+  assert.equal(at(h, 100), 'eager');
+  assert.equal(at(h, MORALE.eagerAt), 'steady');
+  assert.equal(at(h, R + MORALE.waverMargin + 1), 'steady');
+  assert.equal(at(h, R + MORALE.waverMargin), 'wavering');
+  assert.equal(at(h, R + 1), 'wavering');
+  assert.equal(at(o, Ro + MORALE.waverMargin + 1), 'steady');
+  assert.equal(at(o, Ro + MORALE.waverMargin), 'wavering');
+  assert.ok(MORALE.eagerAt - (Ro + MORALE.waverMargin) < MORALE.eagerAt - (R + MORALE.waverMargin), 'dải vững của Orc hẹp hơn');
+  h.morale = 10; h.status = 'routed';
+  assert.equal(moraleState(h), 'routed');
+});
+
+test('sĩ khí đổi chỉ số: hăng hái đánh mạnh hơn, dao động đánh yếu và thủ kém hơn; có trong xem trước', () => {
+  const s = flat();
+  const a = addUnit(s, 'human', 'infantry', 5, 5), d = addUnit(s, 'orc', 'infantry', 5, 6);
+  const dmg = (m) => { a.morale = m; return calcDamage(s, a, d).raw; };
+  const eager = dmg(100), steady = dmg(60), waver = dmg(30);
+  assert.ok(eager > steady && steady > waver, 'sát thương tăng theo sĩ khí');
+  assert.ok(Math.abs(eager / steady - (1 + MORALE.eager.atk)) < 0.02, 'đúng hệ số trong config');
+  d.morale = 100; const defHigh = defensePct(s, d, d.x, d.y);
+  d.morale = FACTIONS.orc.routAt + 5; const defLow = defensePct(s, d, d.x, d.y);
+  assert.equal(defHigh - defLow, -MORALE.wavering.def, 'dao động mất phòng thủ');
+});
+
+test('bỏ chạy: ưu tiên thành nhà gần, rồi hậu quân có tiếp viện, rồi ra khỏi map; kẹt thì đứng yên', () => {
+  const mk = () => { const s = flat(); addUnit(s, 'orc', 'infantry', 10, 0); return s; };
+  // 1. thành nhà trong 2 lượt đi
+  let s = mk(); let u = addUnit(s, 'human', 'infantry', 5, 5); u.status = 'routed';
+  assert.equal(fleePlan(s, u).kind, 'home');
+  // 2. xa thành, có squad ở phía sau -> hậu quân
+  s = mk(); u = addUnit(s, 'human', 'infantry', 5, 1); u.status = 'routed';
+  const ally = addUnit(s, 'human', 'infantry', 5, 7);
+  let p = fleePlan(s, u);
+  assert.equal(p.kind, 'rear'); assert.deepEqual(p.dest, { x: 5, y: 7 });
+  // squad cùng phe cũng đang bỏ chạy, hoặc ở phía trước, thì không phải hậu quân
+  ally.status = 'routed';
+  assert.equal(fleePlan(s, u).kind, 'exit');
+  ally.status = 'ok'; ally.y = 0; ally.x = 0;
+  assert.equal(fleePlan(s, u).kind, 'exit', 'đồng đội ở phía trước không tính');
+  // 3. ra khỏi map qua mép sau lưng
+  p = fleePlan(s, u);
+  assert.equal(p.dest.y, rearEdgeY(s, 'human'));
+  assert.equal(rearEdgeY(s, 'orc'), 0);
+  // tướng không bao giờ rời trận
+  u.vip = true;
+  assert.equal(fleePlan(s, u).kind, 'none');
+  // thành đã bị địch chiếm thì không chạy về
+  s = mk(); u = addUnit(s, 'human', 'infantry', 5, 9); u.status = 'routed';
+  s.units = s.units.filter((x) => x.id !== u.id || true);
+  const e = addUnit(s, 'orc', 'infantry', 5, 11);
+  assert.notEqual(fleePlan(s, u).kind, 'home');
+  // kẹt: bốn phía là núi cao
+  s = flat({ '5,4': 'peak', '4,5': 'peak', '6,5': 'peak', '5,6': 'peak' }); addUnit(s, 'orc', 'infantry', 10, 0);
+  u = addUnit(s, 'human', 'infantry', 5, 5); u.status = 'routed';
+  assert.equal(fleePlan(s, u).kind, 'none');
+});
+
+// bản đồ phẳng mà thành nhà lệch khỏi đường thoát về mép sau (để kiểm tra nhánh "ra khỏi map")
+function flatSide() {
+  const w = 12, h = 12;
+  const s = createState({ w, h, tiles: new Array(w * h).fill('plain'), strongholds: { human: { x: 11, y: 6 }, orc: { x: 11, y: 0 } }, spawns: { human: [], orc: [] } });
+  addUnit(s, 'orc', 'infantry', 8, 0);
+  return s;
+}
+
+test('bỏ chạy: chạy theo kế hoạch mỗi lượt, tới mép thì rời map, không tính là chết, elite bị giáng 1 cấp', () => {
+  const s = flatSide();
+  const u = addUnit(s, 'human', 'infantry', 0, 2); u.status = 'routed'; u.morale = 0; u.xp = LEVEL.xp[1] + 3;   // cấp 2
+  const startLv = levelOf(u.xp); assert.equal(startLv, 2);
+  const events = [];
+  for (let i = 0; i < 12 && s.units.some((x) => x.id === u.id); i++) { endTurn(s); events.push(...endTurn(s)); }
+  assert.ok(!s.units.some((x) => x.id === u.id), 'đã rời bản đồ');
+  assert.ok(events.some((e) => e.type === 'escape' && e.levelBefore === 2 && e.levelAfter === 1));
+  const rec = s.escaped[0];
+  assert.equal(rec.id, u.id);
+  assert.equal(levelOf(rec.xp), 1, 'bị giáng đúng 1 cấp');
+  assert.equal(rec.xp, LEVEL.xp[0], 'xp về mốc của cấp thấp hơn');
+  assert.ok(!s.units.some((x) => x.id === u.id) && s.units.filter((x) => x.faction === 'human').length === 0);
+  assert.equal(s.winner, 'orc', 'hết quân trên bàn thì thua (elimination)');
+});
+
+test('bỏ chạy: cấp 1 giáng xuống 0, squad thường không mất gì; tới thành thì dừng lại ở đó', () => {
+  const s = flatSide();
+  const u = addUnit(s, 'human', 'infantry', 0, 2); u.status = 'routed'; u.morale = 0; u.xp = LEVEL.xp[0];
+  const w = addUnit(s, 'human', 'infantry', 2, 2); w.status = 'routed'; w.morale = 0; w.xp = 3;
+  for (let i = 0; i < 12; i++) { endTurn(s); endTurn(s); }
+  const byId = (id) => s.escaped.find((e) => e.id === id);
+  assert.equal(byId(u.id).xp, 0, 'cấp 1 -> 0');
+  assert.equal(byId(w.id).xp, 3, 'chưa có cấp thì không bị trừ');
+  const h = flat(); addUnit(h, 'orc', 'infantry', 10, 0);
+  const near = addUnit(h, 'human', 'infantry', 5, 8); near.status = 'routed'; near.morale = 0;
+  endTurn(h); endTurn(h);
+  assert.deepEqual([near.x, near.y], [5, 11], 'chạy về tới thành');
+  endTurn(h); endTurn(h);
+  assert.deepEqual([near.x, near.y], [5, 11], 'về thành rồi thì ở lại');
+  assert.ok(h.units.includes(near));
+});
+
+test('bỏ chạy: hồi tỉnh giữa đường thì ngừng chạy; phá trại thì chạy về ô kề trại nhà', () => {
+  const s = flat(); addUnit(s, 'orc', 'infantry', 10, 0);
+  const u = addUnit(s, 'human', 'infantry', 5, 1); u.status = 'routed'; u.morale = FACTIONS.human.routAt;
+  endTurn(s); endTurn(s);
+  assert.ok(u.y > 1, 'đã chạy đi');
+  u.morale = 100;                                 // được cứu
+  const y = u.y; endTurn(s);
+  endTurn(s);
+  assert.equal(u.status, 'ok', 'hồi tỉnh');
+  assert.equal(u.y, y, 'không chạy tiếp');
+  const d = createMissionState(mmap(), 'destroy');
+  const camp = d.units.find((x) => x.id === d.mission.targets.human);
+  const r = d.units.find((x) => x.faction === 'human' && !x.static);
+  r.x = Math.min(d.map.w - 1, camp.x + 1); r.y = camp.y - 2 < 0 ? camp.y + 2 : camp.y - 2;
+  r.status = 'routed';
+  const p = fleePlan(d, r);
+  assert.equal(p.kind, 'home');
+  assert.equal(Math.abs(p.dest.x - camp.x) + Math.abs(p.dest.y - camp.y), 1, 'ô kề trại');
+  const e = createMissionState(mmap(), 'escort');
+  const v = e.units.find((x) => x.faction === 'orc');
+  v.status = 'routed';
+  assert.notEqual(fleePlan(e, v).kind, 'home', 'hộ tống không có thành để chạy về');
+});
+
+test('bỏ chạy: lưu và tải giữ danh sách squad đã rời trận', () => {
+  const s = flatSide();
+  const u = addUnit(s, 'human', 'infantry', 0, 2); u.status = 'routed'; u.morale = 0; u.xp = LEVEL.xp[0];
+  for (let i = 0; i < 12; i++) { endTurn(s); endTurn(s); }
+  assert.equal(s.escaped.length, 1);
+  const r = restoreState(JSON.parse(JSON.stringify(snapshot(s))));
+  assert.deepEqual(r.escaped, s.escaped);
+});
+import { snapshot, restoreState } from '../src/saves.js';

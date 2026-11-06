@@ -5,7 +5,7 @@ import { CONFIG, UNIT_VALUE, FACTIONS } from './config.js';
 import {
   key, dist, reachable, targetsFrom, previewAttack, calcDamage, defensePct, statsOf,
   enemiesOf, alliesOf, moveCost, inBounds, DIRS, unitAt, other, terrainAt,
-  canFortify, fortifyBonus, terrainDefense, canCapture,
+  canFortify, fortifyBonus, terrainDefense, canCapture, moraleState,
 } from './rules.js';
 
 // ----- trường khoảng cách tới mục tiêu (Dijkstra nhiều nguồn) -----
@@ -81,6 +81,10 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
   let score = 0;
   const x = node.x, y = node.y;
   let killed = false;
+  // sĩ khí đổi hành vi của AI: hăng hái thì xông lên, dao động thì dè chừng (người chơi chỉ bị đổi chỉ số)
+  const ms = moraleState(u);
+  const advMul = ms === 'eager' ? 1.1 : ms === 'wavering' ? 0.8 : 1;
+  const thrMul = ms === 'eager' ? 0.9 : ms === 'wavering' ? 1.2 : 1;
   if (target) {
     const pv = previewAttack(s, u, target, x, y, node.cost);
     score += (pv.dmg / CONFIG.maxStrength) * UNIT_VALUE[target.role] * 10 * w.dmg;
@@ -90,7 +94,7 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
     score -= (pv.counter / CONFIG.maxStrength) * UNIT_VALUE[u.role] * 10 * w.counter;
   }
   if (w.terrain) score += (defensePct(s, u, x, y) / 100) * 10 * w.terrain * (target ? 0.6 : 1);
-  if (w.threat) score -= (threatAt(s, u, x, y, killed ? target.id : null) / CONFIG.maxStrength) * UNIT_VALUE[u.role] * 10 * w.threat * (u.vip ? 2.2 : 1);
+  if (w.threat) score -= (threatAt(s, u, x, y, killed ? target.id : null) / CONFIG.maxStrength) * UNIT_VALUE[u.role] * 10 * w.threat * (u.vip ? 2.2 : 1) * thrMul;
   if (w.form && FACTIONS[u.faction].formation) score += adjacentAllies(s, u, x, y) * w.form * 3;
   // tiến về phía mục tiêu
   const here = field[u.y * s.map.w + u.x], there = field[y * s.map.w + x];
@@ -101,7 +105,7 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
   }
   // càng về sau càng phải tiến (chống bế tắc)
   const pressure = 1 + Math.max(0, s.turn - 4) * 0.12;
-  score += adv * w.advance * pressure * (ctx.defensive && !target ? 0.3 : 1);
+  score += adv * w.advance * pressure * (ctx.defensive && !target ? 0.3 : 1) * advMul;
   // chiếm thành địch
   if (canCapture(s, u.faction) && x === enemyHold.x && y === enemyHold.y && u.status === 'ok') score += w.capture * 3;
   // phòng thủ thành nhà khi bị đe doạ

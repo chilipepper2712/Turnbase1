@@ -1,7 +1,7 @@
 // Luật chơi thuần logic (không đụng DOM/Pixi). Mọi hàm đổi state đều trả về mảng sự kiện
 // để lớp hiển thị diễn lại bằng animation.
 import {
-  CONFIG, TERRAIN, FACTIONS, FORMATION_MAX, STATS, MATCHUP, ROSTER, FORTIFY, LEVEL,
+  CONFIG, TERRAIN, FACTIONS, FORMATION_MAX, STATS, MATCHUP, ROSTER, FORTIFY, LEVEL, MORALE,
 } from './config.js';
 
 export const key = (x, y) => x + ',' + y;
@@ -119,6 +119,17 @@ export function terrainFacts(tid) {
   };
 }
 
+// Mức sĩ khí: 'eager' | 'steady' | 'wavering' | 'routed'
+export function moraleState(u) {
+  if (u.static) return 'steady';
+  if (u.status === 'routed') return 'routed';
+  const R = FACTIONS[u.faction].routAt;
+  if (u.morale > MORALE.eagerAt) return 'eager';
+  if (u.morale <= R + MORALE.waverMargin) return 'wavering';
+  return 'steady';
+}
+const moraleMod = (u) => MORALE[moraleState(u)] || { atk: 0, def: 0 };
+
 export const levelOf = (xp) => LEVEL.xp.filter((t) => xp >= t).length;
 export const nextLevelXp = (u) => LEVEL.xp[levelOf(u.xp)] ?? null;
 
@@ -139,7 +150,7 @@ export function fortifyBonus(s, u, x = u.x, y = u.y) {
 export function defensePct(s, u, x, y) {
   const st = statsOf(u);
   const fac = FACTIONS[u.faction];
-  let pct = st.def + levelOf(u.xp || 0) * LEVEL.defPerLevel + terrainDefense(s, u.faction, x, y);
+  let pct = st.def + levelOf(u.xp || 0) * LEVEL.defPerLevel + terrainDefense(s, u.faction, x, y) + moraleMod(u).def;
   if (fac.formation) {
     let n = 0;
     for (const a of adjacentUnits(s, x, y)) if (a.faction === u.faction && a.id !== u.id) n++;
@@ -266,7 +277,7 @@ export function calcDamage(s, atk, def, fx = atk.x, fy = atk.y, movedDist = atk.
   const flank = melee ? flankCount(s, atk, def, fx, fy) : 0;
   const charge = atk.role === 'cavalry' && movedDist >= CONFIG.chargeDist ? 1 + CONFIG.chargeBonus : 1;
   const defPct = defensePct(s, def, def.x, def.y);
-  const lvl = 1 + levelOf(atk.xp || 0) * LEVEL.atkPerLevel;
+  const lvl = 1 + levelOf(atk.xp || 0) * LEVEL.atkPerLevel + moraleMod(atk).atk;
   const high = 1 + (terrainAt(s, fx, fy).atk || 0) / 100;
   const raw = st.atk * lvl * high * ratio * match * (1 + flank * CONFIG.flankBonus) * charge * (1 - defPct / 100);
   const dmg = raw <= 0 ? 0 : Math.max(1, Math.round(raw));
@@ -485,20 +496,125 @@ export function splitUnit(s, u, x, y) {
   return [{ type: 'split', unit: u.id, newUnit: n.id, x, y }];
 }
 
-// ---------- Lượt ----------
-function retreatTile(s, u) {
-  const reach = reachable(s, u);
-  const own = s.map.strongholds[u.faction];
-  const foes = enemiesOf(s, u.faction);
-  let best = null, bestScore = -Infinity;
-  for (const n of reach.tiles.values()) {
-    const md = foes.length ? Math.min(...foes.map((e) => Math.abs(e.x - n.x) + Math.abs(e.y - n.y))) : 0;
-    const score = md * 2 - (Math.abs(own.x - n.x) + Math.abs(own.y - n.y)) * 0.5;
-    if (score > bestScore) { bestScore = score; best = n; }
+// ---------- Bỏ chạy ----------
+const FLEE_SAFETY = 0.6, FLEE_DETOUR = 1;
+// Quy tắc xác định (không xác suất), xét lại mỗi lượt:
+//   1. thành nhà (nhiệm vụ phá trại: ô kề trại nhà) trong tầm <= fleeHomeTurns lượt đi -> chạy về đó
+//   2. không thì chạy về phía hậu quân nếu có squad cùng phe không bỏ chạy ở phía sau trong tầm 3 lượt đi
+//   3. không thì chạy ra khỏi bản đồ qua mép sau lưng (tướng hộ tống thì không bao giờ rời trận)
+//   kẹt (không có đường) thì đứng yên.
+// Trường chi phí từ các ô đích: chi phí đi từ mỗi ô tới đích; quân địch chặn đường, quân mình thì không.
+function costFieldFrom(s, u, goals) {
+  const { w, h } = s.map;
+  const field = new Float32Array(w * h).fill(Infinity);
+  const open = [];
+  for (const g of goals) { field[g.y * w + g.x] = 0; open.push({ x: g.x, y: g.y, c: 0 }); }
+  while (open.length) {
+    open.sort((a, b) => a.c - b.c);
+    const cur = open.shift();
+    if (cur.c > field[cur.y * w + cur.x]) continue;
+    const step = moveCost(s, u, cur.x, cur.y);        // đi từ ô kề vào cur tốn chi phí của cur
+    if (!isFinite(step)) continue;
+    for (const [dx, dy] of DIRS) {
+      const nx = cur.x + dx, ny = cur.y + dy;
+      if (!inBounds(s, nx, ny)) continue;
+      const occ = unitAt(s, nx, ny);
+      if (occ && occ.faction !== u.faction) continue;
+      const t = cur.c + step, i = ny * w + nx;
+      if (t < field[i]) { field[i] = t; open.push({ x: nx, y: ny, c: t }); }
+    }
   }
-  return best;
+  return field;
 }
 
+function homeTile(s, u) {
+  const m = s.mission;
+  if (m.type === 'escort') return null;
+  const hold = s.map.strongholds[u.faction];
+  const free = (x, y) => { const o = unitAt(s, x, y); return inBounds(s, x, y) && isFinite(moveCost(s, u, x, y)) && (!o || o.id === u.id); };
+  const at = unitAt(s, hold.x, hold.y);
+  if (at && at.faction !== u.faction) return null;                    // thành đã mất: đừng chạy về đó
+  if (m.type !== 'destroy' && free(hold.x, hold.y)) return { x: hold.x, y: hold.y };
+  const cands = DIRS.map(([dx, dy]) => ({ x: hold.x + dx, y: hold.y + dy })).filter((p) => free(p.x, p.y));
+  cands.sort((a, b) => dist(a, u) - dist(b, u) || a.x - b.x || a.y - b.y);
+  return cands[0] || null;
+}
+
+// Mép sau lưng: hàng trên hoặc dưới, phía xa thành địch
+export function rearEdgeY(s, f) {
+  const own = s.map.strongholds[f], foe = s.map.strongholds[other(f)];
+  return own.y >= foe.y ? s.map.h - 1 : 0;
+}
+
+// Trả về { kind: 'home'|'rear'|'exit'|'none', dest, field, edgeY? }. Không đổi state.
+export function fleePlan(s, u) {
+  const { w, h } = s.map, f = u.faction, move = statsOf(u).move;
+  const own = s.map.strongholds[f];
+  const here = (fld) => fld[u.y * w + u.x];
+  const home = homeTile(s, u);
+  if (home) {
+    const fld = costFieldFrom(s, u, [home]);
+    if (here(fld) <= move * MORALE.fleeHomeTurns) return { kind: 'home', dest: home, field: fld };
+  }
+  const dU = Math.abs(u.x - own.x) + Math.abs(u.y - own.y);
+  // chỗ nương tựa: squad cùng phe không bỏ chạy, ở phía sau (gần thành nhà hơn) hoặc ngay sát bên (trong fleeAllyRadius ô)
+  const allies = s.units.filter((a) => a.faction === f && a.id !== u.id && !a.static && a.status === 'ok'
+    && (Math.abs(a.x - own.x) + Math.abs(a.y - own.y) < dU || dist(a, u) <= MORALE.fleeAllyRadius));
+  if (allies.length) {
+    const fld = costFieldFrom(s, u, allies.map((a) => ({ x: a.x, y: a.y })));
+    if (here(fld) <= move * 3) {
+      const near = allies.slice().sort((a, b) => dist(a, u) - dist(b, u) || a.id - b.id)[0];
+      return { kind: 'rear', dest: { x: near.x, y: near.y }, field: fld };
+    }
+  }
+  if (!u.vip) {
+    const edgeY = rearEdgeY(s, f);
+    const goals = [];
+    for (let x = 0; x < w; x++) if (isFinite(moveCost(s, u, x, edgeY)) && (!unitAt(s, x, edgeY) || unitAt(s, x, edgeY).id === u.id)) goals.push({ x, y: edgeY });
+    if (goals.length) {
+      const fld = costFieldFrom(s, u, goals);
+      if (isFinite(here(fld))) {
+        const dest = goals.slice().sort((a, b) => Math.abs(a.x - u.x) - Math.abs(b.x - u.x) || a.x - b.x)[0];
+        return { kind: 'exit', dest, field: fld, edgeY };
+      }
+    }
+  }
+  return { kind: 'none', dest: null, field: null };
+}
+
+// Squad rời hẳn bản đồ: không tính là chết. Elite bị giáng 1 cấp (xp về mốc cấp thấp hơn), ghi vào s.escaped để chiến dịch dùng sau.
+function escapeUnit(s, u, events) {
+  const before = levelOf(u.xp || 0);
+  const xp = before > 0 ? (LEVEL.xp[before - 2] ?? 0) : u.xp;
+  s.units = s.units.filter((x) => x.id !== u.id);
+  (s.escaped ||= []).push({ ...u, xp, turn: s.turn, levelBefore: before, levelAfter: levelOf(xp) });
+  events.push({ type: 'escape', unit: u.id, x: u.x, y: u.y, faction: u.faction, role: u.role, levelBefore: before, levelAfter: levelOf(xp) });
+}
+
+function runFlee(s, u, events) {
+  const plan = fleePlan(s, u);
+  if (plan.kind === 'none') return;
+  if (plan.kind === 'exit' && u.y === plan.edgeY) { escapeUnit(s, u, events); return; }
+  const reach = reachable(s, u);
+  const cur = plan.field[u.y * s.map.w + u.x];
+  const foes = enemiesOf(s, u.faction).filter((e) => !e.static);
+  const safe = (x, y) => Math.min(8, foes.length ? Math.min(...foes.map((e) => Math.abs(e.x - x) + Math.abs(e.y - y))) : 8);
+  // vừa tiến về đích vừa thoát khỏi kẻ đuổi: chi phí còn lại tới đích trừ thưởng cho ô xa địch
+  let best = null, bestScore = cur - FLEE_SAFETY * safe(u.x, u.y);
+  for (const n of reach.tiles.values()) {
+    const c = plan.field[n.y * s.map.w + n.x];
+    if (!isFinite(c) || c > cur + FLEE_DETOUR) continue;      // không đi vòng xa khỏi đích
+    const sc = c - FLEE_SAFETY * safe(n.x, n.y);
+    if (sc < bestScore - 1e-9) { bestScore = sc; best = n; }
+  }
+  if (best && (best.x !== u.x || best.y !== u.y)) {
+    events.push({ type: 'move', unit: u.id, path: pathTo(best), routed: true });
+    u.x = best.x; u.y = best.y;
+  }
+  if (plan.kind === 'exit' && u.y === plan.edgeY) escapeUnit(s, u, events);
+}
+
+// ---------- Lượt ----------
 export function endTurn(s) {
   const events = [];
   if (s.winner) return events;
@@ -542,15 +658,10 @@ export function endTurn(s) {
     u.moved = false; u.acted = false; u.movedDist = 0;
     if (u.status === 'routed') u.fort = 0;
   }
-  // bỏ chạy: tự rút lui
-  for (const u of alliesOf(s, next)) {
-    if (u.status !== 'routed') continue;
+  // bỏ chạy: mỗi squad đang bỏ chạy tự chạy theo kế hoạch (về thành / hậu quân / ra khỏi bản đồ)
+  for (const u of alliesOf(s, next).filter((x) => x.status === 'routed')) {
     u.moved = true; u.acted = true;
-    const n = retreatTile(s, u);
-    if (n && (n.x !== u.x || n.y !== u.y)) {
-      events.push({ type: 'move', unit: u.id, path: pathTo(n), routed: true });
-      u.x = n.x; u.y = n.y;
-    }
+    runFlee(s, u, events);
   }
   // chiếm thành
   const enemyHold = s.map.strongholds[other(next)];

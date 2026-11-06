@@ -440,6 +440,11 @@ export class GameView {
       g.ellipse(c.x, c.y, 13, 6.5).fill({ color: 0xd8402f, alpha: 0.88 });      // oval 2:1 nằm trên mặt đất isometric
     }
     if (o.dest) paint([o.dest], 0xf2c200, 0.6);
+    if (o.flee) {                                              // đích bỏ chạy: vòng + dấu mũi tên; đỏ nếu là rút khỏi trận
+      const c = tileToWorld(o.flee.x, o.flee.y), col = o.flee.exit ? 0xd8402f : 0x3a78d8;
+      g.poly(dia(o.flee.x, o.flee.y, 0.8), true).fill({ color: col, alpha: 0.22 }).stroke({ width: 3, color: col });
+      g.moveTo(c.x - 9, c.y - 4).lineTo(c.x, c.y + 6).lineTo(c.x + 9, c.y - 4).stroke({ width: 3.2, color: col, cap: 'round', join: 'round' });
+    }
     if (o.selected) g.poly(dia(o.selected.x, o.selected.y, 1), true).stroke({ width: 3, color: 0xf2c200 });
     if (o.hover) g.poly(dia(o.hover.x, o.hover.y, 0.9), true).stroke({ width: 1.6, color: 0x1b1b1b, alpha: 0.55 });
     if (o.path && o.path.length > 1) {
@@ -797,6 +802,7 @@ export class GameView {
       case 'damage': this.snd(this._shooter ? 'arrow_hit' : 'hit_flesh'); break;
       case 'die': this.snd('unit_die'); break;
       case 'rout': this.snd('rout'); break;
+      case 'escape': this.snd('rout'); break;
       case 'heal': this.snd('heal'); break;
       case 'merge': this.snd('merge'); break;
       case 'split': this.snd('split'); break;
@@ -871,6 +877,13 @@ export class GameView {
           const us = this.sprites.get(ev.unit);
           if (us) { us.flag.text = this.t('ui.routed'); this.float(this.t('ui.routed'), us.root.x, us.root.y - 56, 0xffd54a, 22); }
           await wait(250 / this.speed);
+          break;
+        }
+        case 'escape': {
+          const us = this.sprites.get(ev.unit);
+          const c = tileToWorld(ev.x, ev.y);
+          this.float(this.t(ev.levelBefore > ev.levelAfter ? 'ui.escaped.demoted' : 'ui.escaped'), c.x, c.y - 56, 0xffd54a, 22);
+          if (us) { await this.tween(500, (k) => { us.root.alpha = 1 - k; us.root.position.y = c.y + 8 + k * 14; }); us.root.destroy({ children: true }); this.sprites.delete(ev.unit); }
           break;
         }
         case 'fortify': {
