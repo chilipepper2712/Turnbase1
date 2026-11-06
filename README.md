@@ -5,8 +5,9 @@ Chạy trên trình duyệt (chuột + touch, landscape). Người chơi (quân 
 
 ## Bản doodle đã đóng băng
 
-Bản doodle hoàn chỉnh cuối cùng (trước khi chuyển sang art 3D isometric) được đánh dấu bằng git tag **`doodle-v1`**.
-Khôi phục: `git checkout doodle-v1` (xem) hoặc `git checkout -b doodle doodle-v1` (làm tiếp từ đó).
+Bản doodle hoàn chỉnh cuối cùng (trước khi chuyển sang art 3D isometric) là commit **`68b7ea0`** trên nhánh `claude/strategy-game-prototype-dv6kf7`.
+Xem lại: `git checkout 68b7ea0`. Làm tiếp từ đó: `git checkout -b doodle 68b7ea0`.
+(Không dùng git tag vì máy chủ git của session này từ chối đẩy tag.)
 
 ## Chạy
 
