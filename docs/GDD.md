@@ -184,9 +184,15 @@ Sát thương = `sức đánh × cấp bậc × thế cao × (quân số/10) × 
 - Trạng thái đổi tên: **bỏ chạy** (trước là "tan vỡ"), **hồi tỉnh** (trước là "tỉnh lại"). **[CHỐT]**
 - Thanh sĩ khí đã có (0–100) nhưng hiện chỉ quyết định ngưỡng bỏ chạy. Định hướng: **sĩ khí cao thì tự tin, xông lên nhiều hơn; sĩ khí thấp thì dễ bỏ chạy.** **[CHỐT ý]**
 - Một số squad bỏ chạy **ra khỏi bản đồ luôn** thay vì kẹt lại trên bản đồ (cảm hứng: quân tan chạy trong Đông Chu Liệt Quốc); không phải squad nào cũng vậy, trường hợp này phải hiếm. **[CHỐT ý]**
-- **[MỞ]** Sĩ khí ép người chơi hành động thế nào? Tao khuyên: với **AI** thì đổi hành vi, với **người chơi** chỉ đổi chỉ số (cộng/trừ sức đánh, di chuyển, ngưỡng bỏ chạy), chỉ bỏ chạy mới bị ép. Ép người chơi xông lên dễ gây bực.
-- **[MỞ]** "Hiếm" thực hiện bằng xác suất sẽ **mâu thuẫn với trụ cột "không may rủi"**. Đề xuất: điều kiện xác định (ví dụ sĩ khí về 0, quân số còn rất ít, không còn đồng đội hay thành nhà trong tầm, chỉ huy đã chết) và hiện cảnh báo "sắp bỏ chạy hẳn" để người chơi can thiệp được.
-- **[MỞ]** Squad bỏ chạy hẳn khỏi bản đồ thì **mất vĩnh viễn** hay chỉ rời màn đó (quay lại màn sau với quân số, sĩ khí, kinh nghiệm bị phạt)? Lựa chọn sau giảm vòng xoáy thua, nhưng người chơi có thể lợi dụng nếu được tự rút quân.
+- **Sĩ khí với người chơi chỉ đổi chỉ số** (cộng/trừ sức đánh, di chuyển, ngưỡng bỏ chạy), **không ép hành động**; chỉ trạng thái bỏ chạy mới bị ép. Với **AI** thì sĩ khí đổi cả hành vi. **[CHỐT]**
+- **Đích bỏ chạy theo thứ tự ưu tiên, xác định (không xác suất):** **[CHỐT ý, chi tiết cần chốt khi làm]**
+  1. Thành nhà **đủ gần** thì chạy về thành (thành còn hồi quân 2/lượt).
+  2. Không thì chạy về phía **hậu quân** nếu hướng đó có **quân tiếp viện** (squad cùng phe không bỏ chạy).
+  3. Không có cả hai thì **chạy ra khỏi bản đồ**: đi về mép bản đồ phía sau lưng, ra khỏi khi chạm mép.
+- Chạy ra khỏi bản đồ là một hành trình **nhiều lượt**, hiện đích chạy lên bản đồ để người chơi thấy trước và can thiệp (chặn đường, hồi tỉnh nó bằng cách cứu). Mỗi lượt xét lại đích; nếu hồi tỉnh giữa đường thì quay lại chiến đấu. Nhờ vậy "hiếm" mà **không cần xác suất**, không phá trụ cột "không may rủi".
+- Squad bỏ chạy ra khỏi bản đồ **không tính là chết**: nó rời màn, không bị tính vào tiêu diệt. Đây là cách giảm thương vong cho permadeath. **[CHỐT ý]**
+- Quay lại màn sau với **hình phạt**, nhưng hình phạt chỉ có nghĩa với squad **tinh nhuệ** (vì chỉ squad tinh nhuệ mang qua màn). Squad thường bỏ chạy hẳn chỉ đơn giản là mất khỏi màn đó. **[CHỐT ý; mức phạt còn mở, xem mục 16]**
+- **[MỞ]** "Đủ gần" thành bao nhiêu (đề xuất: đường đi tới thành trong ≤ 2 lượt di chuyển của squad đó, tính theo chi phí đường đi chứ không phải khoảng cách thẳng), và "hậu quân có tiếp viện" cụ thể là gì (đề xuất: có ít nhất 1 squad cùng phe không bỏ chạy trong bán kính 3 ô quanh ô đích).
 
 ### Kinh nghiệm và cấp bậc **[CHỐT ý, MẶC ĐỊNH số]**
 
@@ -195,7 +201,7 @@ Giống cách Civilization làm: quân tồn tại lâu thì lão luyện, bền
 - xp = sát thương gây ra, +4 khi hạ một squad, +1 khi bị đánh mà còn sống.
 - Mốc lên cấp: 12 / 30 / 55 xp. Tối đa **cấp 3**.
 - Mỗi cấp: **+8% sát thương, +4% thủ.**
-- Gộp squad: xp lấy trung bình theo quân số. Tách squad: cả hai giữ xp.
+- Gộp squad: hiện xp lấy trung bình theo quân số. **Đã chốt đổi sang pha loãng một phần** ("thay máu" quân đội là chuyện thường trong chiến trận); công thức đề xuất ở mục 16. **[CHỐT ý, chưa làm]** Tách squad: hiện cả hai giữ xp (lỗ hổng với squad tinh nhuệ, xem mục 16).
 - Hiển thị bằng sao ★ cạnh squad.
 
 ## 9. Hành động đặc biệt
@@ -313,7 +319,11 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 **Chưa chốt:**
 
 - **[MỞ]** Bao nhiêu cấp, cấp nào mở kỹ năng, danh sách kỹ năng cho từng vai trò. Hiện trần là cấp 3 ("tinh nhuệ").
-- **[MỞ]** **Gộp quân đang pha loãng kinh nghiệm:** kinh nghiệm lấy trung bình theo quân số, nên bơm dân quân vào squad tinh nhuệ làm nó **mất cấp**. Với đội quân tinh nhuệ thì cần luật khác (ví dụ giữ kinh nghiệm của squad nhận, hoặc pha loãng một phần).
+- **Pha loãng kinh nghiệm khi gộp: pha loãng một phần.** **[CHỐT ý; công thức là đề xuất]** Hiện xp lấy trung bình theo quân số nên bơm dân quân vào squad tinh nhuệ làm nó mất cấp (ví dụ 5 quân xp 40 nhận 3 dân quân: còn xp 25, từ cấp 2 xuống cấp 1). Đề xuất: `xp_mới = xp_nhận + d × (xp_trung_bình − xp_nhận)` với `d = 0,5` (số trong config), và **cấp không bao giờ tụt vì gộp** (xp không xuống dưới mốc cấp hiện tại). Ví dụ trên ra xp 32,5, vẫn cấp 2.
+- **[MỞ]** **Tách squad tinh nhuệ:** hiện tách thì cả hai nửa giữ nguyên xp, nghĩa là một squad cấp 3 tách ra thành hai squad cấp 3 (và nhân đôi kỹ năng khi có). Đề xuất: squad tinh nhuệ **không tách được**, hoặc phần tách ra là squad thường (xp về 0).
+- **[MỞ]** **"Tinh nhuệ" định nghĩa thế nào?** Nhiều luật phụ thuộc vào đây (mang qua màn, hình phạt khi bỏ chạy, tách, kỹ năng). Đề xuất: squad đạt cấp 3 được "phong tên" thành tinh nhuệ; thêm các squad có tên do kịch bản cấp ngay từ đầu.
+- **[MỞ]** **Mức phạt khi squad tinh nhuệ bỏ chạy ra khỏi bản đồ rồi quay lại màn sau.** Đề xuất một phạt duy nhất, dễ hiểu: vào màn sau với **quân số 50%** và mất **một phần xp tiến tới cấp kế (không tụt cấp)**. Tránh phạt chồng nhiều loại.
+- **[MỞ]** Nếu sau này cho người chơi **chủ động rút quân**, mức phạt phải nặng hơn rủi ro chết, nếu không thì rút quân thành chiêu thắng mọi trận.
 - **[MỞ]** **Tỉ lệ thương vong hiện tại quá cao cho permadeath** (khoảng 4–5 squad bị diệt mỗi bên mỗi ván). Cần đổi luật cho nghiêng về làm bỏ chạy hơn là diệt, và mục tiêu màn không buộc phải đánh đến cùng.
 - **[MỞ]** Chống vòng xoáy thua (mất tinh nhuệ, màn sau yếu đi, càng mất thêm): tặng quân, màn dễ xen kẽ, thưởng sau màn.
 - **[MỞ]** **Lưu/tải chưa có.** Chiến dịch với permadeath cần lưu liên tục và đáng tin. Bản Artifact lưu bằng trình duyệt có thể mất (cửa sổ riêng tư, xoá dữ liệu trang, đổi máy), cần chỗ lưu tốt hơn hoặc xuất/nhập file lưu.
@@ -361,4 +371,9 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 | Squad tinh nhuệ | Gọi là "squad tinh nhuệ" (không dùng "hero"); mở kỹ năng theo cấp và theo loại quân; mang qua các màn; chết trận là mất | Mày chốt |
 | Tên trạng thái | "Bỏ chạy" thay "tan vỡ"; "hồi tỉnh" thay "tỉnh lại" | Mày yêu cầu |
 | Sĩ khí | Hướng: sĩ khí cao thì tự tin xông lên, thấp thì bỏ chạy; một số squad bỏ chạy hẳn ra khỏi bản đồ (hiếm) | Mày đề xuất; chi tiết còn mở |
+| Sĩ khí với người chơi | Chỉ đổi chỉ số, không ép hành động (trừ bỏ chạy); AI thì đổi cả hành vi | Mày chốt |
+| Đích bỏ chạy | Gần thành thì về thành; không thì về hậu quân nếu có tiếp viện; không có cả hai thì chạy ra khỏi bản đồ. Xác định, nhiều lượt, hiện đích để người chơi can thiệp | Mày đề xuất, dev xác nhận và thêm chi tiết |
+| Bỏ chạy hẳn khỏi bản đồ | Không tính là chết; squad thường mất khỏi màn, squad tinh nhuệ quay lại màn sau có phạt | Mày đề xuất; mức phạt còn mở |
+| Gộp squad và xp | Pha loãng một phần (đề xuất d = 0,5, cấp không tụt vì gộp) | Mày đồng ý hướng; công thức là đề xuất |
+| Thứ tự roadmap | Mục tiêu đa dạng, rồi lưu/tải, rồi hệ trạng thái sĩ khí | Mày đồng ý |
 | Biến đổi địa hình | Dân quân đốt rừng, đặt bẫy, xây cầu | Mày đề xuất |
