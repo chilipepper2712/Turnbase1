@@ -33,7 +33,7 @@
   "diff.easy": "Dễ: đánh quân gần nhất",
   "diff.tactical": "Chiến thuật: dùng địa hình",
   "ui.strength": "Quân số",
-  "ui.morale": "Tinh thần",
+  "ui.morale": "Sĩ khí",
   "ui.defense": "Phòng thủ",
   "ui.move": "Di chuyển",
   "ui.range": "Tầm đánh",
@@ -229,5 +229,6 @@
   "ui.save.loaded": "Đã tải ván",
   "ui.save.badFile": "Không đọc được bản lưu này",
   "ui.save.exported": "Đã xuất file",
-  "ui.save.continue": "Tiếp tục ván đã lưu"
+  "ui.save.continue": "Tiếp tục ván đã lưu",
+  "ui.morale.hint": "Vạch đứng: dưới {n} thì bỏ chạy"
 }

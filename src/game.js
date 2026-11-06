@@ -498,6 +498,7 @@ export class Game {
     const f = s.current;
     $('turninfo').innerHTML = `<span class="chip" style="background:${FACTIONS[f].fill}"></span>${esc(t('ui.turn', { n: s.turn }))} · ${esc(t('faction.' + f))}`;
     const mi = $('missioninfo'), m = s.mission;
+    document.body.classList.toggle('has-mission', m.type !== 'skirmish');
     mi.textContent = m.type === 'skirmish' ? '' : m.turns ? t('mission.info.' + m.type, { n: Math.min(s.turn, m.turns), total: m.turns }) : t('mission.' + m.type);
     const wave = (m.waves || []).filter((w) => !w.done).sort((a, b) => a.at - b.at)[0];
     if (wave) mi.textContent += ' · ' + t(wave.faction === 'human' ? 'mission.wave.ours' : 'mission.wave.theirs', { n: wave.at });
@@ -611,8 +612,9 @@ export class Game {
     const ic = (k) => icon({ strength: 'heart', morale: 'flag', xp: 'chevron', def: 'shield', atk: 'sword', move: 'foot', range: 'bow' }[k]);
     return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(t(`unit.${u.faction}.${u.role}`))}${u.vip ? `<span class="tag vip">${esc(t('ui.vip'))}</span>` : ''}<span class="stars">${rankIcon(lvl, 'gold')}</span></h3>
       <div class="pips" title="${esc(t('ui.strength'))}">${pips}</div>
-      <div class="line"><span title="${esc(t('ui.strength'))}">${ic('strength')} <b>${u.strength}/${CONFIG.maxStrength}</b></span><span title="${esc(t('ui.morale'))}">${ic('morale')} <b>${mor}</b></span><span title="${esc(t('ui.xp'))}">${ic('xp')} <b>${xpTxt}</b></span></div>
-      <div class="bar" title="${esc(t('ui.morale'))}"><i style="width:${mor}%;background:${morCol}"></i></div>
+      <div class="line"><span title="${esc(t('ui.strength'))}">${ic('strength')} <b>${u.strength}/${CONFIG.maxStrength}</b></span><span title="${esc(t('ui.xp'))}">${ic('xp')} <b>${xpTxt}</b></span></div>
+      <div class="morale"><span class="m-l">${icon('flag')} ${esc(t('ui.morale'))}</span><b style="color:${morCol}">${mor}</b></div>
+      <div class="bar" title="${esc(t('ui.morale.hint', { n: f.routAt }))}"><i style="width:${mor}%;background:${morCol}"></i><u class="tick" style="left:${f.routAt}%"></u></div>
       <div class="stats"><span title="${esc(t('ui.defense'))}">${ic('def')} <b>${def}%</b></span><span title="${esc(t('ui.atk'))}">${ic('atk')} <b>${atk}</b></span><span title="${esc(t('ui.move'))}">${ic('move')} <b>${st.move}</b></span><span title="${esc(t('ui.range'))}">${ic('range')} <b>${mn === mx ? mx : mn + '–' + mx}</b></span></div>
       <div class="terr">${esc(t('terrain.' + tid))}${tdef ? ` · ${ic('def')}${this.sg(tdef)}%` : ''}</div>
       ${fort}

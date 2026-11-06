@@ -229,5 +229,6 @@
   "ui.save.loaded": "Game loaded",
   "ui.save.badFile": "Could not read this save",
   "ui.save.exported": "File exported",
-  "ui.save.continue": "Continue saved game"
+  "ui.save.continue": "Continue saved game",
+  "ui.morale.hint": "Tick: below {n} the squad flees"
 }
