@@ -381,7 +381,7 @@ export class Game {
 
   async doMove(tile) {
     const s = this.state, u = this.sel;
-    const origin = { x: u.x, y: u.y };
+    const origin = { x: u.x, y: u.y, fort: u.fort };
     this.busy = true;
     this.view.setOverlay({});
     const ev = moveUnit(s, u, tile.x, tile.y);
@@ -441,7 +441,7 @@ export class Game {
     this.snd('ui_cancel');
     const u = this.sel, o = this.origin;
     if (!u || !o || o.id !== u.id || u.acted || this.busy || this.state.winner) return;
-    u.x = o.x; u.y = o.y; u.moved = false; u.movedDist = 0;
+    u.x = o.x; u.y = o.y; u.moved = false; u.movedDist = 0; u.fort = o.fort || 0;   // trả lại cả trại đã dựng
     this.view.reconcile();
     this.select(u);
   }
