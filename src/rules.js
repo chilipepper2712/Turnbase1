@@ -14,6 +14,7 @@ export function createState(map) {
   const state = {
     map, units: [], current: 'human', turn: 1, nextId: 1,
     capture: { human: 0, orc: 0 }, winner: null, winReason: null,
+    mission: { type: 'skirmish' },
   };
   for (const f of ['human', 'orc']) {
     map.spawns[f].forEach((p, i) => addUnit(state, f, ROSTER[i % ROSTER.length], p.x, p.y));
@@ -38,6 +39,7 @@ export function cloneState(s) {
     ...s,
     units: s.units.map((u) => ({ ...u })),
     capture: { ...s.capture },
+    mission: { ...s.mission },
   };
 }
 
@@ -62,7 +64,7 @@ export function adjacentUnits(s, x, y) {
 }
 
 export function inEnemyZoc(s, f, x, y) {
-  return adjacentUnits(s, x, y).some((u) => u.faction !== f);
+  return adjacentUnits(s, x, y).some((u) => u.faction !== f && !u.static);
 }
 
 // Chi phí vào một loại địa hình theo phe + vai trò (không cần state)
@@ -138,6 +140,7 @@ export function rangeAt(s, u, x, y) {
 export function canMerge(src, tgt) {
   if (src.id === tgt.id || src.faction !== tgt.faction) return false;
   if (src.status === 'routed' || tgt.status === 'routed') return false;
+  if (src.vip || src.static || tgt.static) return false;     // tướng hộ tống không bị gộp mất
   if (tgt.strength >= CONFIG.maxStrength) return false;
   if (src.role === tgt.role) return true;
   return src.role === 'militia' && (tgt.role === 'infantry' || tgt.role === 'archer');
@@ -275,6 +278,7 @@ export function previewAttack(s, atk, def, fx = atk.x, fy = atk.y, movedDist = a
 }
 
 function checkRout(u, events) {
+  if (u.static) return;
   const f = FACTIONS[u.faction];
   if (u.status === 'ok' && u.morale <= f.routAt) {
     u.status = 'routed';
@@ -305,20 +309,46 @@ function removeIfDead(s, u, events) {
 }
 
 function gainXp(u, amount, events) {
-  if (amount <= 0 || u.strength <= 0) return;
+  if (amount <= 0 || u.strength <= 0 || u.static) return;
   const before = levelOf(u.xp);
   u.xp += amount;
   const after = levelOf(u.xp);
   if (after > before) events.push({ type: 'levelup', unit: u.id, level: after });
 }
 
-function checkElimination(s) {
-  for (const f of ['human', 'orc']) {
-    if (!s.units.some((u) => u.faction === f)) {
-      s.winner = other(f);
-      s.winReason = 'elimination';
-    }
+const FACTION_IDS = ['human', 'orc'];
+const win = (s, f, reason) => { if (!s.winner) { s.winner = f; s.winReason = reason; } };
+
+// Bên f có được chiếm thành địch không (tuỳ nhiệm vụ)
+export function canCapture(s, f) {
+  const m = s.mission;
+  if (m.type === 'skirmish') return true;
+  if (m.type === 'escort') return false;
+  return f === m.attacker;           // hold, destroy: chỉ bên tấn công
+}
+
+// Mọi điều kiện thắng ngoài chuyện hết lượt. Gọi sau mỗi hành động có thể quyết định ván.
+export function checkVictory(s) {
+  if (s.winner) return;
+  const m = s.mission;
+  for (const f of FACTION_IDS) {
+    if (!s.units.some((u) => u.faction === f && !u.static)) { win(s, other(f), 'elimination'); return; }
   }
+  if (m.type === 'destroy' && !s.units.some((u) => u.id === m.targetId)) win(s, m.attacker, 'destroyed');
+  if (m.type === 'escort') {
+    const vip = s.units.find((u) => u.id === m.vipId);
+    if (!vip) win(s, m.hunter, 'vip_dead');
+    else if (vip.x === m.goal.x && vip.y === m.goal.y && vip.status === 'ok') win(s, m.escort, 'vip_arrived');
+  }
+}
+
+// Hết số vòng: bên phòng thủ / bên săn thắng
+function checkTimeLimit(s) {
+  const m = s.mission;
+  if (s.winner || !m.turns || s.turn <= m.turns) return;
+  if (m.type === 'hold') win(s, m.defender, 'survive');
+  else if (m.type === 'destroy') win(s, m.defender, 'time');
+  else if (m.type === 'escort') win(s, m.hunter, 'late');
 }
 
 // Atk phải đứng đúng vị trí tấn công. Trả về events.
@@ -350,7 +380,7 @@ export function attackUnit(s, atk, def) {
     checkRout(atk, events);
     // bị bỏ chạy trong lúc ra đòn: hết lượt
   }
-  checkElimination(s);
+  checkVictory(s);
   return events;
 }
 
@@ -364,6 +394,7 @@ export function moveUnit(s, u, x, y) {
   const path = pathTo(node);
   const events = [{ type: 'move', unit: u.id, path }];
   u.x = x; u.y = y; u.moved = true; u.movedDist = node.cost; u.fort = 0;
+  checkVictory(s);
   return events;
 }
 
@@ -462,6 +493,7 @@ export function endTurn(s) {
   const own = s.map.strongholds[next];
 
   for (const u of alliesOf(s, next)) {
+    if (u.static) { u.acted = true; u.moved = true; continue; }
     const t = terrainAt(s, u.x, u.y);
     const onOwnHold = u.x === own.x && u.y === own.y;
     let heal = 0;
@@ -494,7 +526,9 @@ export function endTurn(s) {
   // chiếm thành
   const enemyHold = s.map.strongholds[other(next)];
   const holder = unitAt(s, enemyHold.x, enemyHold.y);
-  if (holder && holder.faction === next && holder.status === 'ok') {
+  if (!canCapture(s, next)) {
+    s.capture[next] = 0;
+  } else if (holder && holder.faction === next && holder.status === 'ok') {
     s.capture[next]++;
     events.push({ type: 'capture', faction: next, progress: s.capture[next] });
     if (s.capture[next] >= CONFIG.captureTurns) {
@@ -503,7 +537,8 @@ export function endTurn(s) {
   } else {
     s.capture[next] = 0;
   }
-  checkElimination(s);
+  checkVictory(s);
+  checkTimeLimit(s);
   return events;
 }
 

@@ -94,25 +94,28 @@ export const STATS = {
     infantry: { atk: 6,   def: 20, move: 4, range: [1, 1] },
     archer:   { atk: 5,   def: 5,  move: 4, range: [2, 3] },
     cavalry:  { atk: 7,   def: 10, move: 7, range: [1, 1] },
+    objective: { atk: 0,  def: 35, move: 0, range: [1, 1] },   // công trình mục tiêu: đứng yên, không đánh trả
   },
   orc: {
     militia:  { atk: 4.2, def: 3,  move: 4, range: [1, 1] },
     infantry: { atk: 6.5, def: 20, move: 4, range: [1, 1] },
     archer:   { atk: 5.2, def: 6,  move: 4, range: [2, 3] },
     cavalry:  { atk: 7.4, def: 11, move: 7, range: [1, 1] },
+    objective: { atk: 0,  def: 35, move: 0, range: [1, 1] },
   },
 };
 
 // Hệ số khắc chế: MATCHUP[vai trò tấn công][vai trò phòng thủ]
 export const MATCHUP = {
-  militia:  { militia: 1.0, infantry: 0.8, archer: 1.1, cavalry: 1.5 }, // giáo chống kỵ
-  infantry: { militia: 1.2, infantry: 1.0, archer: 1.2, cavalry: 0.9 },
-  archer:   { militia: 1.2, infantry: 1.0, archer: 1.0, cavalry: 0.8 },
-  cavalry:  { militia: 1.3, infantry: 0.9, archer: 1.4, cavalry: 1.0 },
+  militia:  { militia: 1.0, infantry: 0.8, archer: 1.1, cavalry: 1.5, objective: 1.0 }, // giáo chống kỵ
+  infantry: { militia: 1.2, infantry: 1.0, archer: 1.2, cavalry: 0.9, objective: 1.0 },
+  archer:   { militia: 1.2, infantry: 1.0, archer: 1.0, cavalry: 0.8, objective: 0.6 },
+  cavalry:  { militia: 1.3, infantry: 0.9, archer: 1.4, cavalry: 1.0, objective: 0.6 },
+  objective: { militia: 1, infantry: 1, archer: 1, cavalry: 1, objective: 1 },
 };
 
 // Giá trị tương đối của một squad (dùng cho AI)
-export const UNIT_VALUE = { militia: 1, infantry: 2, archer: 2, cavalry: 2.5 };
+export const UNIT_VALUE = { militia: 1, infantry: 2, archer: 2, cavalry: 2.5, objective: 3 };
 
 // Đội hình xuất phát (theo thứ tự các ô spawn do mapgen sinh ra)
 // Cỡ bản đồ người chơi chọn. Khung chữ nhật dọc. Quân, làng, tháp, mỏ tăng theo diện tích.
@@ -125,5 +128,16 @@ export const BASE_AREA = 16 * 20;
 export const mapScale = (w, h) => (w * h) / BASE_AREA;
 // Số squad mỗi bên theo diện tích: 7 / 16 / 28
 export const armySize = (w, h) => Math.max(7, Math.round(7 * mapScale(w, h)));
+
+// Loại nhiệm vụ. skirmish = giao tranh (chiếm thành hoặc tiêu diệt). Số lượt tính theo "vòng" (cả hai phe đã đi).
+export const MISSIONS = {
+  skirmish: {},
+  // turns: số vòng ở bản đồ nhỏ (bản đồ dài hơn thì tăng theo chiều dài^0.6).
+  // extra: bên tấn công được thêm chừng này squad vì bên giữ có thành và địa thế. Số tuyệt đối: đo trên bản nhỏ,
+  // bản vừa/lớn thêm nhiều hơn thì bên giữ bị đè bẹp.
+  hold:    { turns: 14, extra: 2 },       // giữ được N vòng thì thắng; bên tấn công thắng nếu chiếm thành / tiêu diệt
+  destroy: { turns: 16, extra: 2 },       // bên tấn công phải phá công trình mục tiêu trước hết N vòng
+  escort:  { turns: 16 },                 // hộ tống tướng tới đích trước hết N vòng; tướng chết thì thua
+};
 
 export const ROSTER = ['infantry', 'infantry', 'archer', 'archer', 'militia', 'militia', 'cavalry'];

@@ -27,7 +27,7 @@ function stepCost(tid, cavalry) {
 }
 
 // Dijkstra chi phí di chuyển từ một ô, trả mảng khoảng cách
-function costField(map, from, cavalry = false) {
+export function costField(map, from, cavalry = false) {
   const { w, h, tiles } = map;
   const dist = new Float32Array(w * h).fill(Infinity);
   const open = [{ x: from.x, y: from.y, c: 0 }];

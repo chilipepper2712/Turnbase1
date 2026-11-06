@@ -10,6 +10,7 @@ import { planNextAction } from './ai.js';
 import { executeAction } from './actions.js';
 import { t, setLang, getLang, LANGS, langName } from './i18n.js';
 import { icon, rankIcon } from './icons.js';
+import { createMissionState, MISSION_TYPES } from './missions.js';
 
 const SPEEDS = { normal: 1, fast: 2.4, instant: 14 };
 const $ = (id) => document.getElementById(id);
@@ -54,10 +55,17 @@ export class Game {
     this.busy = false;
     this.sel = null; this.pending = null; this.origin = null;
     this.view.speed = this.speed;
-    const st = createState(map);
+    const st = createMissionState(map, this.settings.mission || 'skirmish', 'human');
     this.view.reset(st);
     this.refreshAll();
-    if (!hold) this.beginTurn();
+    if (!hold) { this.briefMission(); this.beginTurn(); }
+  }
+
+  // Nhắc mục tiêu nhiệm vụ lúc bắt đầu (giao tranh thì thôi, ai cũng biết)
+  briefMission() {
+    const m = this.state.mission;
+    if (m.type === 'skirmish') return;
+    this.toast(t('mission.brief.' + m.type, { n: m.turns }), 5200);
   }
 
   snd(name, opts) { this.audio?.play(name, opts); }
@@ -78,11 +86,11 @@ export class Game {
     this._bt = setTimeout(() => { b.hidden = true; }, 1300 / Math.min(this.speed, 3));
   }
 
-  toast(text) {
+  toast(text, ms = 1800) {
     const el = $('toast');
     el.textContent = text; el.hidden = false;
     clearTimeout(this._tt);
-    this._tt = setTimeout(() => { el.hidden = true; }, 1800);
+    this._tt = setTimeout(() => { el.hidden = true; }, ms);
   }
 
   // ---------- AI ----------
@@ -178,7 +186,7 @@ export class Game {
       if (statsOf(u).range[1] > 1) this.rangeTiles = tilesInRange(s, u, u.x, u.y);
     }
     // xem một đơn vị địch: hiện vùng nó có thể đánh tới ở lượt sau
-    if (u.faction !== s.current) this.threat = threatTiles(s, u);
+    if (u.faction !== s.current && !u.static) this.threat = threatTiles(s, u);
     this.refreshOverlay();
     this.refreshActions();
     this.hidePreview();
@@ -312,7 +320,7 @@ export class Game {
     } else {
       this.inspectTile = tile;
       const u = unitAt(s, tile.x, tile.y);
-      this.threat = u && u.faction !== s.current ? threatTiles(s, u) : null;
+      this.threat = u && u.faction !== s.current && !u.static ? threatTiles(s, u) : null;
     }
     this.pending = null; this.hidePreview();
     this.refreshOverlay();
@@ -457,6 +465,8 @@ export class Game {
     const s = this.state;
     const f = s.current;
     $('turninfo').innerHTML = `<span class="chip" style="background:${FACTIONS[f].fill}"></span>${esc(t('ui.turn', { n: s.turn }))} · ${esc(t('faction.' + f))}`;
+    const mi = $('missioninfo'), m = s.mission;
+    mi.textContent = m.type === 'skirmish' ? '' : t('mission.info.' + m.type, { n: Math.min(s.turn, m.turns), total: m.turns });
     const ci = $('captureinfo');
     ci.classList.remove('danger');
     if (s.capture.human > 0) ci.textContent = t('ui.capture.progress', { n: s.capture.human, total: CONFIG.captureTurns });
@@ -552,6 +562,12 @@ export class Game {
     else if (u.faction === s.current && u.acted) status = t('ui.status.done');
     else if (u.faction === s.current && u.moved) status = t('ui.status.moved');
     const pips = Array.from({ length: CONFIG.maxStrength }, (_, i) => `<b class="${i < u.strength ? 'on ' + u.faction : ''}"></b>`).join('');
+    if (u.static) {
+      return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(t(`unit.${u.faction}.${u.role}`))}</h3>
+      <div class="pips" title="${esc(t('ui.strength'))}">${pips}</div>
+      <div class="line"><span title="${esc(t('ui.strength'))}">${icon('heart')} <b>${u.strength}/${CONFIG.maxStrength}</b></span><span title="${esc(t('ui.defense'))}">${icon('shield')} <b>${def}%</b></span></div>
+      <div class="desc">${esc(t('unit.desc.objective'))}</div>`;
+    }
     const mor = Math.round(u.morale);
     const morCol = mor <= f.routAt ? '#d8402f' : mor <= f.routAt + 25 ? '#e6a800' : '#4aa86a';
     const nx = nextLevelXp(u);
@@ -559,7 +575,7 @@ export class Game {
     const tdef = terrainFacts(tid).def[u.faction];
     const fort = u.fort === 2 ? `<div class="fortline">${icon('tent')}${esc(t('ui.fort.on', { n: Math.round(fortifyBonus(s, u)) }))}</div>` : '';
     const ic = (k) => icon({ strength: 'heart', morale: 'flag', xp: 'chevron', def: 'shield', atk: 'sword', move: 'foot', range: 'bow' }[k]);
-    return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(t(`unit.${u.faction}.${u.role}`))}<span class="stars">${rankIcon(lvl, 'gold')}</span></h3>
+    return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(t(`unit.${u.faction}.${u.role}`))}${u.vip ? `<span class="tag vip">${esc(t('ui.vip'))}</span>` : ''}<span class="stars">${rankIcon(lvl, 'gold')}</span></h3>
       <div class="pips" title="${esc(t('ui.strength'))}">${pips}</div>
       <div class="line"><span title="${esc(t('ui.strength'))}">${ic('strength')} <b>${u.strength}/${CONFIG.maxStrength}</b></span><span title="${esc(t('ui.morale'))}">${ic('morale')} <b>${mor}</b></span><span title="${esc(t('ui.xp'))}">${ic('xp')} <b>${xpTxt}</b></span></div>
       <div class="bar" title="${esc(t('ui.morale'))}"><i style="width:${mor}%;background:${morCol}"></i></div>
@@ -639,6 +655,7 @@ export class Game {
         <div>
           <h3>${esc(t('ui.group.game'))}</h3>
           ${field('m-diff', t('ui.difficulty'), `<select id="m-diff">${['easy', 'tactical'].map((d) => opt(d, t('diff.' + d), this.settings.difficulty)).join('')}</select>`)}
+          ${field('m-mission', t('ui.mission'), `<select id="m-mission">${MISSION_TYPES.map((k) => opt(k, t('mission.' + k), this.settings.mission || 'skirmish')).join('')}</select>`)}
           ${field('m-size', t('ui.mapSize'), `<select id="m-size">${Object.entries(MAP_SIZES).map(([k, v]) => opt(k, `${t('ui.size.' + k)} (${v.w}×${v.h})`, this.settings.mapSize || 'small')).join('')}</select>`)}
           ${field('m-seed', t('ui.seed'), `<input id="m-seed" type="number" min="0" value="${this.seed}">`)}
         </div>
@@ -666,6 +683,7 @@ export class Game {
       this.audio?.applyVolumes();
       this.settings.idle = $('m-idle').value === '1';
       this.settings.mapSize = $('m-size').value;
+      this.settings.mission = $('m-mission').value;
       this.view.setIdle(this.settings.idle);
       this.settings.clouds = $('m-clouds').value === '1';
       this.view.setClouds(this.settings.clouds);

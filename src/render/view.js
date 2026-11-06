@@ -106,6 +106,22 @@ export class GameView {
     // trang trí đối tượng
     this.deco = [];
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) this.placeDeco(x, y);
+    this.drawGoal();
+  }
+
+  // Ô đích của nhiệm vụ hộ tống: ô vàng nhạt + cờ cắm giữa ô
+  drawGoal() {
+    const m = this.state.mission;
+    if (!m || !m.goal) return;
+    const c = tileToWorld(m.goal.x, m.goal.y);
+    const g = new PIXI.Graphics();
+    const hw = TW / 2, hh = TH / 2;
+    g.poly([c.x, c.y - hh, c.x + hw, c.y, c.x, c.y + hh, c.x - hw, c.y], true)
+      .fill({ color: 0xe0a800, alpha: 0.32 }).stroke({ width: 3, color: 0xe0a800, join: 'round' });
+    g.moveTo(c.x, c.y + 4).lineTo(c.x, c.y - 34).stroke({ width: 2.6, color: 0x1b1b1b, cap: 'round' });
+    g.poly([c.x, c.y - 34, c.x + 20, c.y - 27, c.x, c.y - 19], true).fill(0xe0a800).stroke({ width: 1.8, color: 0x1b1b1b, join: 'round' });
+    g.zIndex = c.y + 1;
+    this.objects.addChild(g);
   }
 
   bakeChunk(i0, j0) {
@@ -276,7 +292,10 @@ export class GameView {
   // ---------- Đơn vị ----------
   makeUnit(u) {
     const A = this.assets;
-    const res = A.unit(u.role, u.faction);
+    // công trình mục tiêu: dùng sprite công trình (người: pháo đài nhỏ, Orc: lều lớn), không phải sprite quân
+    const res = u.static
+      ? A.building(u.faction === 'human' ? 'keep' : 'tent', mixPaper(FACTIONS[u.faction].fill, 0.55), 0.97)
+      : A.unit(u.role, u.faction);
     const root = new PIXI.Container();
     // bóng xám nhẹ dưới chân (phe được phân biệt bằng hình quân và huy hiệu số)
     const shadow = new PIXI.Graphics();
@@ -284,7 +303,7 @@ export class GameView {
     const body = new PIXI.Container();
     const sprite = new PIXI.Sprite(res.texture);
     sprite.anchor.set(res.anchor[0], res.anchor[1]);
-    sprite.scale.set(1 / RES);
+    sprite.scale.set((u.static ? 1.45 : 1) / RES);          // công trình mục tiêu phải nổi hơn công trình nền
     body.addChild(sprite);
     const badge = new PIXI.Container();
     const bg = new PIXI.Graphics();
@@ -300,11 +319,18 @@ export class GameView {
     flag.anchor.set(0.5, 1);
     flag.position.set(0, -(sprite.height) - 4);
     root.addChild(shadow, body, fortG, badge, stars, flag);
+    if (u.vip) {
+      // cờ vàng của tướng hộ tống: cán + cờ tam giác, viền mực
+      const vg = new PIXI.Graphics();
+      vg.moveTo(-22, 2).lineTo(-22, -34).stroke({ width: 2.4, color: 0x1b1b1b, cap: 'round' });
+      vg.poly([-22, -34, -4, -28, -22, -21], true).fill(0xe0a800).stroke({ width: 1.6, color: 0x1b1b1b, join: 'round' });
+      root.addChild(vg);
+    }
     const c = tileToWorld(u.x, u.y);
     root.position.set(c.x, c.y + 8);
     root.zIndex = c.y + 8 + 0.1;
     this.objects.addChild(root);
-    const us = { id: u.id, root, body, sprite, badge, txt, flag, fortG, stars, fort: -1, shown: u.strength, facing: u.faction === 'human' ? 1 : -1, bx: 0, by: 0 };
+    const us = { id: u.id, root, body, sprite, badge, txt, flag, fortG, stars, fort: -1, shown: u.strength, facing: u.static || u.faction === 'human' ? 1 : -1, bx: 0, by: 0 };
     us.sprite.scale.x = Math.abs(us.sprite.scale.x) * (us.facing < 0 ? -1 : 1);
     this.sprites.set(u.id, us);
     return us;
