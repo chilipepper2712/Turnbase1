@@ -61,11 +61,19 @@ export class Game {
     if (!hold) { this.briefMission(); this.beginTurn(); }
   }
 
-  // Nhắc mục tiêu nhiệm vụ lúc bắt đầu (giao tranh thì thôi, ai cũng biết)
-  briefMission() {
-    const m = this.state.mission;
-    if (m.type === 'skirmish') return;
-    this.toast(t('mission.brief.' + m.type, { n: m.turns }), 5200);
+  // Bảng nhiệm vụ: tự hiện lúc bắt đầu (trừ giao tranh), mở lại bất cứ lúc nào bằng nút trên thanh trên cùng
+  briefMission() { if (this.state.mission.type !== 'skirmish') this.showMission(true); }
+
+  showMission(start = false) {
+    const m = this.state.mission, el = $('modal'), n = m.turns || 0;
+    const row = (label, txt) => `<p class="mrow"><b>${esc(t(label))}</b> ${esc(txt)}</p>`;
+    const note = t('mission.note.' + m.type);
+    const waves = (m.waves || []).map((w) => w.at).join(', ');
+    el.innerHTML = `<div class="card"><div class="head"><h2>${esc(t('mission.' + m.type))}</h2>${start ? '' : `<button data-m="x" class="icon" aria-label="${esc(t('ui.close'))}">${icon('x')}</button>`}</div>
+      <div class="body">${row('ui.missionWin', t('mission.win.' + m.type, { n }))}${row('ui.missionLose', t('mission.lose.' + m.type, { n }))}${note && note !== 'mission.note.' + m.type ? row('ui.missionNote', note + (waves ? ' ' + t('mission.waves', { list: waves }) : '')) : ''}</div>
+      <div class="btns"><button data-m="x" class="primary">${esc(t(start ? 'ui.missionStart' : 'ui.missionClose'))}</button></div></div>`;
+    el.hidden = false;
+    el.onclick = (e) => { if (e.target === el || e.target.closest('button[data-m]')) { el.hidden = true; el.onclick = null; } };
   }
 
   snd(name, opts) { this.audio?.play(name, opts); }
@@ -132,6 +140,7 @@ export class Game {
     if (idle > 0 && !this.confirmEnd) {
       this.confirmEnd = true;
       this.renderEndTurn();
+      this.toast(t('ui.endTurnIdle', { n: idle }), 3500);       // giải thích nằm ngoài nút, nút chỉ giữ chữ ngắn
       clearTimeout(this._ce);
       this._ce = setTimeout(() => { this.confirmEnd = false; this.renderEndTurn(); }, 3500);
       return;
@@ -485,7 +494,7 @@ export class Game {
     const idle = mine ? this.idleUnits().length : 0;
     b.classList.toggle('confirm', this.confirmEnd);
     b.classList.toggle('pulse', mine && !this.busy && idle === 0 && !this.sel);
-    b.textContent = this.confirmEnd && idle ? t('ui.endTurnIdle', { n: idle }) : t('ui.endTurn');
+    b.textContent = this.confirmEnd && idle ? t('ui.endTurnConfirm') : t('ui.endTurn');
   }
 
   refreshActions() {
@@ -626,6 +635,9 @@ export class Game {
     soundBtn.addEventListener('click', () => { this.audio?.setMuted(!this.settings.muted); if (!this.audio) this.settings.muted = !this.settings.muted; this.save(); paint(); });
     paint();
     $('btn-menu').addEventListener('click', () => this.openMenu());
+    $('btn-mission').innerHTML = icon('flag');
+    $('btn-mission').setAttribute('aria-label', t('ui.missionBtn')); $('btn-mission').title = t('ui.missionBtn');
+    $('btn-mission').addEventListener('click', () => { if (!this.busy) this.showMission(false); });
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') this.cancel();
       if (e.key === 'Enter' && this.pending) this.confirmAttack();
