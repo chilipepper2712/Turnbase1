@@ -234,17 +234,17 @@ Dân quân ngoài việc bổ sung quân còn có thể **đốt rừng, đặt 
 - Thành của mình bị chiếm thì thua. **[MẶC ĐỊNH]**
 - **Mục tiêu về lâu dài là mix, tuỳ màn, tuỳ chiến dịch.** **[CHỐT]**
 
-**Loại nhiệm vụ (chọn trong menu, áp dụng cho map mới; người chơi luôn là phe người):** **[CHỐT ba loại; số liệu MẶC ĐỊNH]**
+**Loại nhiệm vụ (chọn trong menu, áp dụng cho map mới; người chơi luôn là phe người):** **[CHỐT ba loại và luật; số liệu MẶC ĐỊNH]**
 
-| Nhiệm vụ | Người chơi | Thắng | Thua |
+| Nhiệm vụ | Thắng | Thua | Đặc điểm |
 |---|---|---|---|
-| **Giao tranh** (cũ) | Hai bên như nhau | Chiếm thành 2 lượt, hoặc quét sạch địch | Ngược lại |
-| **Cố thủ** | Phòng thủ; địch có thêm 1 squad lúc đầu và **2 đợt tiếp viện** (vòng 5 và 9 ở cỡ nhỏ, mỗi đợt 1 squad, hiện sẵn trên HUD) | Giữ được 14 vòng (cỡ nhỏ) | Thành bị chiếm, hoặc bị quét sạch. Chỉ bên tấn công được chiếm thành |
-| **Phá công trình** | Tấn công; có thêm 3 squad | Phá công trình mục tiêu của địch trong 16 vòng; hoặc chiếm thành, hoặc quét sạch | Hết hạn, hoặc bị quét sạch |
-| **Hộ tống** | Hộ tống "tướng" (squad bộ binh có cờ vàng, sẵn cấp cựu binh) tới ô đích có cờ, trong 16 vòng | Tướng đặt chân lên ô đích | Tướng chết, hoặc hết hạn. Không bên nào chiếm thành. Tướng không bị gộp vào squad khác |
+| **Giao tranh** (cũ) | Chiếm thành địch giữ 2 lượt, hoặc quét sạch địch | Ngược lại | Hai bên như nhau |
+| **Cố thủ** | Giữ tới hết N lượt (12 ở cỡ nhỏ), **hoặc chiếm thành địch giữ 2 lượt**, hoặc quét sạch địch | Địch chiếm thành ta giữ 2 lượt, hoặc quân ta bị quét sạch | Địch đông hơn 1 squad từ đầu; địch có 2 đợt tiếp viện (lượt 5, 9), **ta có 1 đợt (lượt 7)**; lượt hiện sẵn trên HUD |
+| **Phá thành** | **Phá thành địch** (thành là mục tiêu 10 máu), hoặc quét sạch địch | Thành ta bị địch phá, hoặc quân ta bị quét sạch | **Không chiếm đóng, không hạn giờ.** Thành của **cả hai bên** đều là mục tiêu; không còn công trình riêng (lều) |
+| **Hộ tống** | Đưa tướng tới điểm rút (ô có cờ vàng), hoặc quét sạch địch | Tướng chết, hoặc quân ta bị quét sạch | **Không có thành của cả hai phe**, quân xuất hiện sẵn giữa map; không chiếm đóng, không hạn giờ. Tướng = squad bộ binh cờ vàng, sẵn cấp cựu binh, không gộp vào squad khác |
 
-- Số vòng ghi cho cỡ nhỏ; cỡ vừa / lớn nhân với (chiều dài / 20)^0,6. Số squad thêm là số tuyệt đối, không theo tỉ lệ (thêm nhiều trên bản đồ lớn thì bên giữ bị đè bẹp).
-- **Công trình mục tiêu** là một "đơn vị tĩnh": 10 máu, thủ 35% (cộng địa hình), không đánh trả, không gây ZOC, không bỏ chạy, không lên cấp. Cung thủ và kỵ binh phá kém (×0,6). Người là "Công trình", Orc là "Doanh trại". Nhờ vậy dùng lại trọn bộ đánh / xem trước / hoạt ảnh / chết có sẵn.
+- Số lượt ghi cho cỡ nhỏ; cỡ vừa / lớn nhân với (chiều dài / 20)^0,6. Số squad thêm là số tuyệt đối, không theo tỉ lệ.
+- **Thành trong Phá thành** là một "đơn vị tĩnh" nằm đúng trên ô thành: 10 máu, thủ 25% cộng địa hình (người 30%, Orc 15%), không đánh trả, không gây ZOC, không bỏ chạy, không lên cấp, không ai đứng lên được (nên không hồi quân trong thành). Cung thủ và kỵ binh phá kém (×0,6). Nhờ vậy dùng lại trọn bộ đánh / xem trước / hoạt ảnh / chết có sẵn. Hình thành vẽ sẵn của map, đơn vị tĩnh chỉ hiện huy hiệu máu.
 - Luật thắng thua nằm trong `rules.js` (`checkVictory`, `checkTimeLimit`, `canCapture`); `missions.js` chỉ đặt công trình / tướng / ô đích lên map.
 
 ## 11. AI
@@ -256,9 +256,9 @@ Dân quân ngoài việc bổ sung quân còn có thể **đốt rừng, đặt 
 
 AI chiến thuật có áp lực tiến công tăng dần theo lượt để không bế tắc. **[MẶC ĐỊNH]**
 
-**AI theo nhiệm vụ** **[MẶC ĐỊNH]**: bên giữ (cố thủ, phá công trình) giảm lực tiến công và bám quanh điểm cần giữ (thành nhà, hoặc công trình mục tiêu); bên săn tướng ưu tiên đánh tướng (điểm cộng thêm, hạ được tướng thưởng gấp đôi); tướng do AI điều khiển chỉ nhìn về ô đích và tránh nguy hiểm gấp 2,2 lần quân thường, các squad còn lại vừa dọn đường vừa theo về đích.
+**AI theo nhiệm vụ** **[MẶC ĐỊNH]**: bên giữ trong Cố thủ giảm lực tiến công và bám quanh thành nhà; đánh vào thành mục tiêu (Phá thành) được cộng điểm thêm; bên săn tướng ưu tiên đánh tướng (điểm cộng thêm, hạ được tướng thưởng gấp đôi); tướng do AI điều khiển chỉ nhìn về ô đích và tránh nguy hiểm gấp 2,2 lần quân thường, các squad còn lại vừa dọn đường vừa theo về đích.
 
-**Cân bằng đo bằng AI chiến thuật đấu AI chiến thuật (40 ván cỡ nhỏ):** cố thủ ~60% bên giữ thắng; phá công trình ~47% bên tấn công thắng (cỡ nhỏ); hộ tống ~35% bên hộ tống thắng (người chơi giỏi hơn AI nên con số này không phải mục tiêu cho người). Cỡ vừa: cố thủ ~47%, phá ~43%, hộ tống ~29%. Cỡ lớn: cố thủ ~53%, phá ~30%, hộ tống ~17%. **Hộ tống cỡ lớn và phá công trình cỡ lớn chưa cân, cần chỉnh khi làm chiến dịch.**
+**Cân bằng đo bằng AI chiến thuật đấu AI chiến thuật (30 ván):** cỡ nhỏ: Cố thủ ~90% bên giữ thắng, Phá thành ~43% người thắng (đối xứng nên ~50% là mong đợi; phần lớn ván AI vẫn kết thúc bằng quét sạch vì AI chưa ưu tiên phá thành), Hộ tống ~63% bên hộ tống thắng. Cỡ vừa: Cố thủ ~77%, Phá thành ~47%, Hộ tống ~37%. **Cố thủ đang nghiêng về bên giữ theo AI**, nhưng người chơi đánh khác AI nên chưa biết thực tế khó hay dễ; cần chơi thử rồi chỉnh số lượt / số quân. Cỡ lớn chưa đo lại sau đợt đổi luật.
 
 ## 12. Giao diện và điều khiển
 
@@ -351,7 +351,7 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 
 *Đây là đề xuất của dev, chưa được đồng ý. Thứ tự là ý kiến, đảo lại được.*
 
-1. **Đa dạng mục tiêu** và cấu trúc màn chơi (đòn bẩy rẻ nhất; sửa điểm yếu "chiếm thành không quyết định"; cần trước chiến dịch). **Đã làm lát cắt đầu: cố thủ, phá công trình, hộ tống (mục 10).** Đã làm thêm **đợt tiếp viện** cho Cố thủ (cơ chế chung `mission.waves`, sinh quân quanh thành nhà ở đầu lượt phe đó, có hoạt ảnh hiện dần). Chưa làm: mục tiêu ghép (nhiều giai đoạn), tiếp viện cho các nhiệm vụ khác, và tiếp viện do sự kiện (không chỉ theo vòng).
+1. **Đa dạng mục tiêu** và cấu trúc màn chơi (đòn bẩy rẻ nhất; sửa điểm yếu "chiếm thành không quyết định"; cần trước chiến dịch). **Đã làm lát cắt đầu: cố thủ, phá công trình, hộ tống (mục 10).** Đã làm thêm **đợt tiếp viện** cho Cố thủ cho cả hai bên (cơ chế chung `mission.waves`, sinh quân quanh thành nhà ở đầu lượt phe đó, có hoạt ảnh hiện dần). Chưa làm: mục tiêu ghép (nhiều giai đoạn), tiếp viện cho các nhiệm vụ khác, và tiếp viện do sự kiện (không chỉ theo vòng).
 2. **Lưu và tải** (cần trước permadeath và chiến dịch), kèm quyết định chỗ lưu đáng tin.
 3. **Tinh thần có hệ trạng thái** (hăng hái, vững, dao động, bỏ chạy), bỏ chạy ra khỏi bản đồ có điều kiện xác định, hồi tỉnh.
 4. **Giảm thương vong và hệ squad tinh nhuệ:** luật gộp không phá kinh nghiệm, cấp và kỹ năng theo vai trò, mang quân qua màn.
@@ -397,6 +397,9 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 | Elite mang qua màn | Người chơi tự chọn số squad elite mang sang; phạt bỏ chạy ra khỏi map = giáng 1 cấp | Mày chốt |
 | Tinh nhuệ | Mọi squad từ 1 vạch trở lên; trần 3 vạch; hiển thị bằng vạch ^ chồng thay sao ★ | Mày chốt |
 | Tách squad | Phần tách ra là squad thường, xp về 0 | Mày chốt |
-| Loại nhiệm vụ | Ba loại đầu: cố thủ, phá công trình, hộ tống; công trình mục tiêu là đơn vị tĩnh; tuỳ chọn trong menu | Mày xác nhận ba loại |
+| Loại nhiệm vụ | Ba loại đầu: cố thủ, phá thành, hộ tống; tuỳ chọn trong menu | Mày xác nhận ba loại |
+| Phá thành | Mục tiêu là thành của mỗi bên (bỏ công trình riêng), không chiếm đóng, không hạn giờ | Mày chốt |
+| Hộ tống | Bỏ thành của cả hai phe, chỉ còn: tướng tới điểm rút / hạ tướng / quét sạch (dev giữ ô rút và bỏ hạn giờ, chờ mày xác nhận) | Mày chốt, dev diễn giải |
+| Cố thủ | Cả hai bên đều chiếm được thành đối phương để thắng; hạn 12 lượt; người cũng có 1 đợt tiếp viện | Mày chốt |
 | Thứ tự roadmap | Mục tiêu đa dạng, rồi lưu/tải, rồi hệ trạng thái sĩ khí | Mày đồng ý |
 | Biến đổi địa hình | Dân quân đốt rừng, đặt bẫy, xây cầu | Mày đề xuất |

@@ -66,11 +66,30 @@ export class Game {
 
   showMission(start = false) {
     const m = this.state.mission, el = $('modal'), n = m.turns || 0;
-    const row = (label, txt) => `<p class="mrow"><b>${esc(t(label))}</b> ${esc(txt)}</p>`;
-    const note = t('mission.note.' + m.type);
-    const waves = (m.waves || []).map((w) => w.at).join(', ');
-    el.innerHTML = `<div class="card"><div class="head"><h2>${esc(t('mission.' + m.type))}</h2>${start ? '' : `<button data-m="x" class="icon" aria-label="${esc(t('ui.close'))}">${icon('x')}</button>`}</div>
-      <div class="body">${row('ui.missionWin', t('mission.win.' + m.type, { n }))}${row('ui.missionLose', t('mission.lose.' + m.type, { n }))}${note && note !== 'mission.note.' + m.type ? row('ui.missionNote', note + (waves ? ' ' + t('mission.waves', { list: waves }) : '')) : ''}</div>
+    const list = (prefix) => {            // đọc các khoá prefix.1, prefix.2... cho tới khi hết
+      const out = [];
+      for (let i = 1; ; i++) { const k = `${prefix}.${i}`, v = t(k, { n }); if (v === k) break; out.push(v); }
+      return out;
+    };
+    const ul = (items, ic) => `<ul>${items.map((x) => `<li>${ic ? icon(ic) : '<i class="dot"></i>'}<span>${esc(x)}</span></li>`).join('')}</ul>`;
+    const chips = [];
+    if (m.turns) chips.push(t('mission.chip.turns', { n: m.turns }));
+    for (const [side, key] of [['human', 'mission.chip.ours'], ['orc', 'mission.chip.theirs']]) {
+      const at = (m.waves || []).filter((w) => w.faction === side).map((w) => w.at);
+      if (at.length) chips.push(t(key, { list: at.join(', ') }));
+    }
+    const notes = list(`mission.note.${m.type}`);
+    el.innerHTML = `<div class="card mission">
+      <div class="head"><h2>${esc(t('mission.' + m.type))}</h2>${start ? '' : `<button data-m="x" class="icon" aria-label="${esc(t('ui.close'))}" title="${esc(t('ui.close'))}">${icon('x')}</button>`}</div>
+      <div class="body">
+        <p class="lead">${esc(t('mission.lead.' + m.type, { n }))}</p>
+        ${chips.length ? `<div class="chips">${chips.map((c) => `<span class="pill">${esc(c)}</span>`).join('')}</div>` : ''}
+        <div class="conds">
+          <section class="cond win"><h4>${icon('check')}${esc(t('ui.missionWin'))}</h4>${ul(list(`mission.win.${m.type}`))}</section>
+          <section class="cond lose"><h4>${icon('x')}${esc(t('ui.missionLose'))}</h4>${ul(list(`mission.lose.${m.type}`))}</section>
+        </div>
+        ${notes.length ? `<h3>${esc(t('ui.missionNote'))}</h3>${ul(notes)}` : ''}
+      </div>
       <div class="btns"><button data-m="x" class="primary">${esc(t(start ? 'ui.missionStart' : 'ui.missionClose'))}</button></div></div>`;
     el.hidden = false;
     el.onclick = (e) => { if (e.target === el || e.target.closest('button[data-m]')) { el.hidden = true; el.onclick = null; } };
@@ -477,9 +496,9 @@ export class Game {
     const f = s.current;
     $('turninfo').innerHTML = `<span class="chip" style="background:${FACTIONS[f].fill}"></span>${esc(t('ui.turn', { n: s.turn }))} · ${esc(t('faction.' + f))}`;
     const mi = $('missioninfo'), m = s.mission;
-    mi.textContent = m.type === 'skirmish' ? '' : t('mission.info.' + m.type, { n: Math.min(s.turn, m.turns), total: m.turns });
-    const wave = (m.waves || []).find((w) => !w.done);
-    if (wave) mi.textContent += ' · ' + t('mission.wave', { n: wave.at });
+    mi.textContent = m.type === 'skirmish' ? '' : m.turns ? t('mission.info.' + m.type, { n: Math.min(s.turn, m.turns), total: m.turns }) : t('mission.' + m.type);
+    const wave = (m.waves || []).filter((w) => !w.done).sort((a, b) => a.at - b.at)[0];
+    if (wave) mi.textContent += ' · ' + t(wave.faction === 'human' ? 'mission.wave.ours' : 'mission.wave.theirs', { n: wave.at });
     const ci = $('captureinfo');
     ci.classList.remove('danger');
     if (s.capture.human > 0) ci.textContent = t('ui.capture.progress', { n: s.capture.human, total: CONFIG.captureTurns });

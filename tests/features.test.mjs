@@ -270,19 +270,29 @@ test('nhiệm vụ: mọi loại dựng được, có đủ thông số, skirmis
   const h = createMissionState(mmap(), 'hold');
   assert.equal(h.mission.defender, 'human');
   assert.ok(h.units.filter((u) => u.faction === 'orc').length > h.units.filter((u) => u.faction === 'human').length, 'bên tấn công đông hơn');
-  assert.ok(!canCapture(h, 'human') && canCapture(h, 'orc'), 'chỉ bên tấn công chiếm thành');
+  assert.ok(canCapture(h, 'human') && canCapture(h, 'orc'), 'cố thủ: ai chiếm được thành đối phương cũng thắng');
+  assert.ok(h.mission.waves.some((w) => w.faction === 'human') && h.mission.waves.some((w) => w.faction === 'orc'), 'cả hai bên có tiếp viện');
   const d = createMissionState(mmap(), 'destroy');
-  const tgt = d.units.find((u) => u.id === d.mission.targetId);
-  assert.ok(tgt && tgt.static && tgt.faction === 'orc' && tgt.acted);
+  for (const f of ['human', 'orc']) {
+    const t = d.units.find((u) => u.id === d.mission.targets[f]);
+    const hold = d.map.strongholds[f];
+    assert.ok(t && t.static && t.faction === f && t.x === hold.x && t.y === hold.y, 'thành ' + f + ' là mục tiêu tĩnh');
+  }
+  assert.ok(!canCapture(d, 'human') && !canCapture(d, 'orc'), 'phá thành: không chiếm đóng');
   const e = createMissionState(mmap(), 'escort');
   assert.ok(e.units.find((u) => u.id === e.mission.vipId).vip);
   assert.ok(!canCapture(e, 'human') && !canCapture(e, 'orc'));
+  for (const f of ['human', 'orc']) {
+    const hs = e.map.strongholds[f];
+    assert.equal(e.map.tiles[hs.y * e.map.w + hs.x], 'plain', 'hộ tống: không có thành');
+  }
+  assert.ok(!e.mission.turns, 'hộ tống không hạn giờ');
 });
 
-test('cố thủ: hết số vòng thì bên giữ thắng, thành bị chiếm thì bên tấn công thắng', () => {
+test('cố thủ: hết số lượt thì bên giữ thắng; bên nào chiếm thành đối phương 2 lượt cũng thắng', () => {
   const s = createMissionState(mmap(), 'hold');
   s.turn = s.mission.turns;
-  endTurn(s); endTurn(s);                       // sang vòng turns+1
+  endTurn(s); endTurn(s);
   assert.equal(s.winner, 'human');
   assert.equal(s.winReason, 'survive');
   const c = createMissionState(mmap(), 'hold');
@@ -290,39 +300,46 @@ test('cố thủ: hết số vòng thì bên giữ thắng, thành bị chiếm 
   c.units = c.units.filter((u) => !(u.x === hold.x && u.y === hold.y));
   const orc = c.units.find((u) => u.faction === 'orc');
   orc.x = hold.x; orc.y = hold.y;
-  endTurn(c);                                    // sang lượt orc: tiến độ chiếm 1
-  endTurn(c); endTurn(c);                        // orc đứng yên, tới lượt orc lần nữa
+  endTurn(c); endTurn(c); endTurn(c);
   assert.equal(c.winner, 'orc');
   assert.equal(c.winReason, 'capture');
+  // phe người chiếm thành orc cũng thắng
+  const p = createMissionState(mmap(), 'hold');
+  const oh = p.map.strongholds.orc;
+  p.units = p.units.filter((u) => !(u.x === oh.x && u.y === oh.y));
+  const mine = p.units.find((u) => u.faction === 'human');
+  mine.x = oh.x; mine.y = oh.y;
+  endTurn(p); endTurn(p); endTurn(p); endTurn(p);
+  assert.equal(p.winner, 'human');
+  assert.equal(p.winReason, 'capture');
 });
 
-test('phá công trình: đánh được, không đánh trả, không gây ZOC, hạ xong là bên tấn công thắng', () => {
+test('phá thành: đánh được thành, không đánh trả, không gây ZOC; phá thành địch thắng, thành mình bị phá thì thua', () => {
   const s = createMissionState(mmap(), 'destroy');
-  const tgt = s.units.find((u) => u.id === s.mission.targetId);
-  // đặt một squad người sát công trình
+  const tgt = s.units.find((u) => u.id === s.mission.targets.orc);
   const free = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => ({ x: tgt.x + dx, y: tgt.y + dy }))
     .find((p) => !s.units.some((u) => u.x === p.x && u.y === p.y));
   const a = s.units.find((u) => u.faction === 'human' && u.role === 'infantry');
   a.x = free.x; a.y = free.y; a.acted = false;
   const before = tgt.strength;
   const ev = attackUnit(s, a, tgt);
-  assert.ok(tgt.strength < before, 'công trình mất máu');
+  assert.ok(tgt.strength < before, 'thành mất máu');
   assert.ok(!ev.some((e) => e.type === 'counter'), 'không đánh trả');
   assert.equal(tgt.status, 'ok', 'không bỏ chạy');
-  assert.equal(levelOf(tgt.xp), 0);
-  // hạ nốt
   tgt.strength = 1; a.acted = false;
   attackUnit(s, a, tgt);
   assert.equal(s.winner, 'human');
   assert.equal(s.winReason, 'destroyed');
-});
 
-test('phá công trình: hết hạn mà chưa phá được thì bên giữ thắng', () => {
-  const s = createMissionState(mmap(), 'destroy');
-  s.turn = s.mission.turns;
-  endTurn(s); endTurn(s);
-  assert.equal(s.winner, 'orc');
-  assert.equal(s.winReason, 'time');
+  const r = createMissionState(mmap(), 'destroy');
+  const mine = r.units.find((u) => u.id === r.mission.targets.human);
+  const foe = r.units.find((u) => u.faction === 'orc' && u.role === 'infantry');
+  const spot = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => ({ x: mine.x + dx, y: mine.y + dy }))
+    .find((p) => !r.units.some((u) => u.x === p.x && u.y === p.y));
+  foe.x = spot.x; foe.y = spot.y; mine.strength = 1;
+  attackUnit(r, foe, mine);
+  assert.equal(r.winner, 'orc');
+  assert.equal(r.winReason, 'destroyed');
 });
 
 test('hộ tống: tướng tới đích thì thắng, tướng chết thì thua, tướng không bị gộp mất', () => {
@@ -370,7 +387,7 @@ test('cố thủ: đợt tiếp viện xuất hiện đúng vòng, đúng phe, �
   for (let i = 0; i < 2 * (wave.at + 1) && !s.winner; i++) {
     const before = count();
     const ev = endTurn(s);
-    if (ev.some((e) => e.type === 'reinforce')) { seen++; assert.equal(s.turn, wave.at); assert.ok(count() > before); }
+    if (ev.some((e) => e.type === 'reinforce' && e.faction === 'orc')) { seen++; assert.equal(s.turn, wave.at); assert.ok(count() > before); }
   }
   assert.ok(wave.done);
   assert.ok(seen >= 1 && count() >= n0, 'có tiếp viện');

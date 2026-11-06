@@ -86,6 +86,7 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
     score += (pv.dmg / CONFIG.maxStrength) * UNIT_VALUE[target.role] * 10 * w.dmg;
     if (pv.kills) { score += valueOf(target) * 10 * w.kill * (target.vip ? 2 : 1); killed = true; }
     if (target.vip) score += pv.dmg * 1.5;
+    if (target.static) score += pv.dmg * 3;               // thành mục tiêu: đánh vào là đang thắng
     score -= (pv.counter / CONFIG.maxStrength) * UNIT_VALUE[u.role] * 10 * w.counter;
   }
   if (w.terrain) score += (defensePct(s, u, x, y) / 100) * 10 * w.terrain * (target ? 0.6 : 1);
@@ -171,11 +172,11 @@ export function planNextAction(s, level = 'tactical') {
   const f = s.current;
   const ownHold = s.map.strongholds[f];
   const enemyHold = s.map.strongholds[other(f)];
-  const danger = enemiesOf(s, f).some((e) => Math.abs(e.x - ownHold.x) + Math.abs(e.y - ownHold.y) <= 7);
+  const danger = s.mission.type !== 'escort' && enemiesOf(s, f).some((e) => Math.abs(e.x - ownHold.x) + Math.abs(e.y - ownHold.y) <= 7);
   const fields = {};
   const m = s.mission;
-  const defensive = (m.type === 'hold' || m.type === 'destroy') && m.defender === f;
-  const guardPos = m.type === 'destroy' && defensive ? m.target : ownHold;
+  const defensive = m.type === 'hold' && m.defender === f;
+  const guardPos = ownHold;
   const ctx = {
     ownHold, enemyHold, danger, defensive, guardPos,
     fieldFor: (u) => {

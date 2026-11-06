@@ -94,14 +94,14 @@ export const STATS = {
     infantry: { atk: 6,   def: 20, move: 4, range: [1, 1] },
     archer:   { atk: 5,   def: 5,  move: 4, range: [2, 3] },
     cavalry:  { atk: 7,   def: 10, move: 7, range: [1, 1] },
-    objective: { atk: 0,  def: 35, move: 0, range: [1, 1] },   // công trình mục tiêu: đứng yên, không đánh trả
+    objective: { atk: 0,  def: 25, move: 0, range: [1, 1] },   // thành trong nhiệm vụ phá thành: đứng yên, không đánh trả
   },
   orc: {
     militia:  { atk: 4.2, def: 3,  move: 4, range: [1, 1] },
     infantry: { atk: 6.5, def: 20, move: 4, range: [1, 1] },
     archer:   { atk: 5.2, def: 6,  move: 4, range: [2, 3] },
     cavalry:  { atk: 7.4, def: 11, move: 7, range: [1, 1] },
-    objective: { atk: 0,  def: 35, move: 0, range: [1, 1] },
+    objective: { atk: 0,  def: 25, move: 0, range: [1, 1] },
   },
 };
 
@@ -129,16 +129,16 @@ export const mapScale = (w, h) => (w * h) / BASE_AREA;
 // Số squad mỗi bên theo diện tích: 7 / 16 / 28
 export const armySize = (w, h) => Math.max(7, Math.round(7 * mapScale(w, h)));
 
-// Loại nhiệm vụ. skirmish = giao tranh (chiếm thành hoặc tiêu diệt). Số lượt tính theo "vòng" (cả hai phe đã đi).
+// Loại nhiệm vụ. skirmish = giao tranh (chiếm thành hoặc tiêu diệt). Số lượt tính theo "lượt" hiện trên HUD (cả hai phe đã đi).
+//   hold:    bên người giữ thành tới hết N lượt; địch đông hơn và có tiếp viện. Ai chiếm được thành đối phương 2 lượt cũng thắng.
+//   destroy: thành của MỖI bên là mục tiêu có máu; phá thành địch trước thì thắng. Không chiếm đóng, không hạn giờ.
+//   escort:  không có thành, quân xuất hiện giữa map; đưa tướng tới điểm rút, hoặc hạ tướng địch. Không hạn giờ.
+// waves: đợt tiếp viện. at = lượt (tính ở bản nhỏ, co giãn theo số lượt), n = số squad, side = 'attacker' (bên tấn công) hoặc 'defender'.
 export const MISSIONS = {
   skirmish: {},
-  // turns: số vòng ở bản đồ nhỏ (bản đồ dài hơn thì tăng theo chiều dài^0.6).
-  // extra: bên tấn công được thêm chừng này squad vì bên giữ có thành và địa thế. Số tuyệt đối: đo trên bản nhỏ,
-  // bản vừa/lớn thêm nhiều hơn thì bên giữ bị đè bẹp.
-  // waves: đợt tiếp viện của bên tấn công, at = vòng xuất hiện (tính ở bản nhỏ, co giãn theo số vòng), n = số squad
-  hold:    { turns: 14, extra: 1, waves: [{ at: 5, n: 1 }, { at: 9, n: 1 }] },       // giữ được N vòng thì thắng; bên tấn công thắng nếu chiếm thành / tiêu diệt
-  destroy: { turns: 16, extra: 3 },       // bên tấn công phải phá công trình mục tiêu trước hết N vòng
-  escort:  { turns: 16 },                 // hộ tống tướng tới đích trước hết N vòng; tướng chết thì thua
+  hold:    { turns: 12, extra: 1, waves: [{ at: 5, n: 1, side: 'attacker' }, { at: 9, n: 1, side: 'attacker' }, { at: 7, n: 1, side: 'defender' }] },
+  destroy: {},
+  escort:  {},
 };
 
 export const ROSTER = ['infantry', 'infantry', 'archer', 'archer', 'militia', 'militia', 'cavalry'];

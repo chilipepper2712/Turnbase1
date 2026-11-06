@@ -341,9 +341,7 @@ const win = (s, f, reason) => { if (!s.winner) { s.winner = f; s.winReason = rea
 // Bên f có được chiếm thành địch không (tuỳ nhiệm vụ)
 export function canCapture(s, f) {
   const m = s.mission;
-  if (m.type === 'skirmish') return true;
-  if (m.type === 'escort') return false;
-  return f === m.attacker;           // hold, destroy: chỉ bên tấn công
+  return m.type === 'skirmish' || m.type === 'hold';      // phá thành và hộ tống không có chiếm đóng
 }
 
 // Mọi điều kiện thắng ngoài chuyện hết lượt. Gọi sau mỗi hành động có thể quyết định ván.
@@ -353,7 +351,9 @@ export function checkVictory(s) {
   for (const f of FACTION_IDS) {
     if (!s.units.some((u) => u.faction === f && !u.static)) { win(s, other(f), 'elimination'); return; }
   }
-  if (m.type === 'destroy' && !s.units.some((u) => u.id === m.targetId)) win(s, m.attacker, 'destroyed');
+  if (m.type === 'destroy') {
+    for (const f of FACTION_IDS) if (!s.units.some((u) => u.id === m.targets[f])) { win(s, other(f), 'destroyed'); return; }
+  }
   if (m.type === 'escort') {
     const vip = s.units.find((u) => u.id === m.vipId);
     if (!vip) win(s, m.hunter, 'vip_dead');
@@ -361,13 +361,11 @@ export function checkVictory(s) {
   }
 }
 
-// Hết số vòng: bên phòng thủ / bên săn thắng
+// Hết số lượt: bên giữ thành thắng (chỉ nhiệm vụ cố thủ có hạn giờ)
 function checkTimeLimit(s) {
   const m = s.mission;
   if (s.winner || !m.turns || s.turn <= m.turns) return;
   if (m.type === 'hold') win(s, m.defender, 'survive');
-  else if (m.type === 'destroy') win(s, m.defender, 'time');
-  else if (m.type === 'escort') win(s, m.hunter, 'late');
 }
 
 // Atk phải đứng đúng vị trí tấn công. Trả về events.
@@ -521,7 +519,7 @@ export function endTurn(s) {
   for (const u of alliesOf(s, next)) {
     if (u.static) { u.acted = true; u.moved = true; continue; }
     const t = terrainAt(s, u.x, u.y);
-    const onOwnHold = u.x === own.x && u.y === own.y;
+    const onOwnHold = u.x === own.x && u.y === own.y && terrainId(s, u.x, u.y) === 'stronghold';   // nhiệm vụ hộ tống bỏ thành
     let heal = 0;
     if (t.heal) heal = CONFIG.healVillage;
     if (onOwnHold) heal = CONFIG.healStronghold;
