@@ -60,11 +60,11 @@ test('kinh nghiệm: gây sát thương -> lên cấp, có trần, cấp cao đ�
 
 test('kinh nghiệm: gộp pha loãng một nửa và không tụt cấp, tách thì phần tách ra xp về 0', () => {
   const s = flat();
-  const inf = addUnit(s, 'human', 'infantry', 5, 5, 5); inf.xp = 40;
+  const inf = addUnit(s, 'human', 'infantry', 5, 5, 5); inf.xp = 50;
   const mil = addUnit(s, 'human', 'militia', 5, 7, 3); mil.xp = 0;
   mergeUnits(s, mil, inf);
-  // trung bình theo quân số = 25; lệch một nửa về đó: 40 - 7.5 = 32.5 -> 33, vẫn cấp 2
-  assert.equal(inf.xp, 33);
+  // trung bình theo quân số = 31,25; lệch một nửa về đó: 50 - 9,4 = 40,6 -> 41, vẫn cấp 2
+  assert.equal(inf.xp, 41);
   assert.equal(levelOf(inf.xp), 2);
   // đúng mốc cấp thì pha loãng không kéo xuống dưới mốc
   const a = addUnit(s, 'human', 'infantry', 8, 5, 5); a.xp = LEVEL.xp[1];

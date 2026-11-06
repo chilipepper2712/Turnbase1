@@ -46,7 +46,7 @@ export const FORTIFY = { human: 15, orc: 12, scaleMin: 0.5, scaleMax: 1.6 };
 
 // Kinh nghiệm và cấp bậc (có trần). Cấp = số mốc xp đã đạt.
 export const LEVEL = {
-  xp: [12, 30, 55],             // mốc lên cấp 1, 2, 3 (cấp tối đa 3)
+  xp: [18, 40, 70],             // mốc lên cấp 1, 2, 3 (cấp tối đa 3). Đo: ~3 squad/ván đạt cấp 1; cấp 3 chỉ đạt qua nhiều màn
   atkPerLevel: 0.08,            // +8% sát thương mỗi cấp
   defPerLevel: 4,               // +4% phòng thủ mỗi cấp
   perDamage: 1,                 // xp = sát thương gây ra
