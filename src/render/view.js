@@ -292,8 +292,8 @@ export class GameView {
   // ---------- Đơn vị ----------
   makeUnit(u) {
     const A = this.assets;
-    // thành mục tiêu (nhiệm vụ phá thành) là đơn vị tĩnh nằm đúng trên ô thành: hình thành đã có sẵn, ở đây chỉ hiện huy hiệu máu
-    const res = A.unit(u.static ? 'infantry' : u.role, u.faction);
+    // trại mục tiêu (nhiệm vụ phá trại) là đơn vị tĩnh: vẽ bằng sprite lều tô màu phe
+    const res = u.static ? A.building('tent', mixPaper(FACTIONS[u.faction].fill, 0.55), 0.97) : A.unit(u.role, u.faction);
     const root = new PIXI.Container();
     // bóng xám nhẹ dưới chân (phe được phân biệt bằng hình quân và huy hiệu số)
     const shadow = new PIXI.Graphics();
@@ -301,8 +301,7 @@ export class GameView {
     const body = new PIXI.Container();
     const sprite = new PIXI.Sprite(res.texture);
     sprite.anchor.set(res.anchor[0], res.anchor[1]);
-    sprite.scale.set(1 / RES);
-    if (u.static) { sprite.visible = false; shadow.visible = false; }
+    sprite.scale.set((u.static ? 1.7 : 1) / RES);          // trại phải nổi hơn công trình nền
     body.addChild(sprite);
     const badge = new PIXI.Container();
     const bg = new PIXI.Graphics();

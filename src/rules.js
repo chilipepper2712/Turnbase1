@@ -523,6 +523,11 @@ export function endTurn(s) {
     let heal = 0;
     if (t.heal) heal = CONFIG.healVillage;
     if (onOwnHold) heal = CONFIG.healStronghold;
+    // phá trại: quân đứng sát trại nhà (không ai đứng lên trại được) thì hồi quân như ở thành
+    if (s.mission.type === 'destroy') {
+      const camp = s.units.find((c) => c.id === s.mission.targets[next]);
+      if (camp && dist(camp, u) === 1) heal = Math.max(heal, CONFIG.healStronghold);
+    }
     if (heal && u.strength < CONFIG.maxStrength) {
       const add = Math.min(heal, CONFIG.maxStrength - u.strength);
       u.strength += add;

@@ -276,9 +276,10 @@ test('nhiệm vụ: mọi loại dựng được, có đủ thông số, skirmis
   for (const f of ['human', 'orc']) {
     const t = d.units.find((u) => u.id === d.mission.targets[f]);
     const hold = d.map.strongholds[f];
-    assert.ok(t && t.static && t.faction === f && t.x === hold.x && t.y === hold.y, 'thành ' + f + ' là mục tiêu tĩnh');
+    assert.ok(t && t.static && t.faction === f && t.x === hold.x && t.y === hold.y, 'trại ' + f + ' là mục tiêu tĩnh');
+    assert.equal(d.map.tiles[hold.y * d.map.w + hold.x], 'plain', 'không còn thành');
   }
-  assert.ok(!canCapture(d, 'human') && !canCapture(d, 'orc'), 'phá thành: không chiếm đóng');
+  assert.ok(!canCapture(d, 'human') && !canCapture(d, 'orc'), 'phá trại: không chiếm đóng');
   const e = createMissionState(mmap(), 'escort');
   assert.ok(e.units.find((u) => u.id === e.mission.vipId).vip);
   assert.ok(!canCapture(e, 'human') && !canCapture(e, 'orc'));
@@ -314,7 +315,20 @@ test('cố thủ: hết số lượt thì bên giữ thắng; bên nào chiếm 
   assert.equal(p.winReason, 'capture');
 });
 
-test('phá thành: đánh được thành, không đánh trả, không gây ZOC; phá thành địch thắng, thành mình bị phá thì thua', () => {
+test('phá trại: quân sát trại nhà hồi quân, quân xa thì không', () => {
+  const s = createMissionState(mmap(), 'destroy');
+  const camp = s.units.find((u) => u.id === s.mission.targets.human);
+  const mine = s.units.filter((u) => u.faction === 'human' && !u.static);
+  const near = mine[0], far = mine[1];
+  const spot = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => ({ x: camp.x + dx, y: camp.y + dy })).find((p) => !s.units.some((u) => u.x === p.x && u.y === p.y));
+  near.x = spot.x; near.y = spot.y; near.strength = 5;
+  far.x = 0; far.y = 0; far.strength = 5;
+  endTurn(s); endTurn(s);                    // tới đầu lượt phe người
+  assert.equal(near.strength, 5 + CONFIG.healStronghold);
+  assert.equal(far.strength, 5);
+});
+
+test('phá trại: đánh được trại, không đánh trả, không gây ZOC; phá thành địch thắng, thành mình bị phá thì thua', () => {
   const s = createMissionState(mmap(), 'destroy');
   const tgt = s.units.find((u) => u.id === s.mission.targets.orc);
   const free = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => ({ x: tgt.x + dx, y: tgt.y + dy }))

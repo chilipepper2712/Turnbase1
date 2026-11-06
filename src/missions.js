@@ -35,13 +35,14 @@ export function createMissionState(map, type = 'skirmish', actor = 'human') {
       waves: cfg.waves.map((w) => ({ at: Math.round(w.at * k), n: w.n, faction: w.side === 'attacker' ? foe : actor, done: false })) };
     spawnSquads(s, foe, cfg.extra);
   } else if (type === 'destroy') {
-    // thành mỗi bên thành một đơn vị tĩnh có máu, đặt ngay trên ô thành
+    // mỗi bên có một trại: đơn vị tĩnh có máu, đặt đúng chỗ thành cũ
     const targets = {};
     for (const f of ['human', 'orc']) {
       const h = map.strongholds[f];
       const t = addUnit(s, f, 'objective', h.x, h.y);
       t.static = true; t.acted = true; t.moved = true;
       targets[f] = t.id;
+      map.tiles[h.y * map.w + h.x] = 'plain';          // không còn thành: chỉ có trại (đơn vị tĩnh) trên ô này
     }
     s.mission = { type, targets };
   } else if (type === 'escort') {

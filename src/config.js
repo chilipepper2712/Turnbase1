@@ -94,7 +94,7 @@ export const STATS = {
     infantry: { atk: 6,   def: 20, move: 4, range: [1, 1] },
     archer:   { atk: 5,   def: 5,  move: 4, range: [2, 3] },
     cavalry:  { atk: 7,   def: 10, move: 7, range: [1, 1] },
-    objective: { atk: 0,  def: 25, move: 0, range: [1, 1] },   // thành trong nhiệm vụ phá thành: đứng yên, không đánh trả
+    objective: { atk: 0,  def: 25, move: 0, range: [1, 1] },   // trại trong nhiệm vụ phá trại: đứng yên, không đánh trả
   },
   orc: {
     militia:  { atk: 4.2, def: 3,  move: 4, range: [1, 1] },
@@ -131,7 +131,7 @@ export const armySize = (w, h) => Math.max(7, Math.round(7 * mapScale(w, h)));
 
 // Loại nhiệm vụ. skirmish = giao tranh (chiếm thành hoặc tiêu diệt). Số lượt tính theo "lượt" hiện trên HUD (cả hai phe đã đi).
 //   hold:    bên người giữ thành tới hết N lượt; địch đông hơn và có tiếp viện. Ai chiếm được thành đối phương 2 lượt cũng thắng.
-//   destroy: thành của MỖI bên là mục tiêu có máu; phá thành địch trước thì thắng. Không chiếm đóng, không hạn giờ.
+//   destroy: trại của MỖI bên (thay thành) là mục tiêu có máu; phá trại địch trước thì thắng. Quân sát trại nhà hồi quân. Không chiếm đóng, không hạn giờ.
 //   escort:  không có thành, quân xuất hiện giữa map; đưa tướng tới điểm rút, hoặc hạ tướng địch. Không hạn giờ.
 // waves: đợt tiếp viện. at = lượt (tính ở bản nhỏ, co giãn theo số lượt), n = số squad, side = 'attacker' (bên tấn công) hoặc 'defender'.
 export const MISSIONS = {
