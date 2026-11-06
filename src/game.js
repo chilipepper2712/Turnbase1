@@ -469,6 +469,8 @@ export class Game {
     $('turninfo').innerHTML = `<span class="chip" style="background:${FACTIONS[f].fill}"></span>${esc(t('ui.turn', { n: s.turn }))} · ${esc(t('faction.' + f))}`;
     const mi = $('missioninfo'), m = s.mission;
     mi.textContent = m.type === 'skirmish' ? '' : t('mission.info.' + m.type, { n: Math.min(s.turn, m.turns), total: m.turns });
+    const wave = (m.waves || []).find((w) => !w.done);
+    if (wave) mi.textContent += ' · ' + t('mission.wave', { n: wave.at });
     const ci = $('captureinfo');
     ci.classList.remove('danger');
     if (s.capture.human > 0) ci.textContent = t('ui.capture.progress', { n: s.capture.human, total: CONFIG.captureTurns });

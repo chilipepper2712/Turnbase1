@@ -911,6 +911,13 @@ export class GameView {
           await wait(250 / this.speed);
           break;
         }
+        case 'reinforce': {
+          const us = ev.units.map((id) => s.units.find((u) => u.id === id)).filter(Boolean).map((u) => this.makeUnit(u));
+          us.forEach((x) => { x.root.alpha = 0; });
+          if (us.length) await this.ensureVisible(s.units.find((u) => u.id === ev.units[0]).x, s.units.find((u) => u.id === ev.units[0]).y);
+          await this.tween(350, (k) => { us.forEach((x) => { x.root.alpha = k; }); });
+          break;
+        }
         case 'vanish': {
           const us = this.sprites.get(ev.unit);
           if (us) { await this.tween(200, (k) => { us.root.alpha = 1 - k; }); us.root.destroy({ children: true }); this.sprites.delete(ev.unit); }

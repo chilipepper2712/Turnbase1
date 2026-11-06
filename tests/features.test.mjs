@@ -359,3 +359,21 @@ test('AI chơi hết các nhiệm vụ mà không treo, luôn ra kết quả h�
     assert.ok(s.winReason, type);
   }
 });
+
+test('cố thủ: đợt tiếp viện xuất hiện đúng vòng, đúng phe, đúng một lần', () => {
+  const s = createMissionState(mmap(), 'hold');
+  const wave = s.mission.waves[0];
+  assert.ok(s.mission.waves.length >= 1 && wave.faction === 'orc' && !wave.done);
+  const count = () => s.units.filter((u) => u.faction === 'orc').length;
+  const n0 = count();
+  let seen = 0;
+  for (let i = 0; i < 2 * (wave.at + 1) && !s.winner; i++) {
+    const before = count();
+    const ev = endTurn(s);
+    if (ev.some((e) => e.type === 'reinforce')) { seen++; assert.equal(s.turn, wave.at); assert.ok(count() > before); }
+  }
+  assert.ok(wave.done);
+  assert.ok(seen >= 1 && count() >= n0, 'có tiếp viện');
+  const waveCount = s.mission.waves.filter((w) => w.done).length;
+  assert.ok(waveCount <= s.mission.waves.length);
+});

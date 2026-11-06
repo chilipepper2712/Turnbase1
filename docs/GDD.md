@@ -239,8 +239,8 @@ Dân quân ngoài việc bổ sung quân còn có thể **đốt rừng, đặt 
 | Nhiệm vụ | Người chơi | Thắng | Thua |
 |---|---|---|---|
 | **Giao tranh** (cũ) | Hai bên như nhau | Chiếm thành 2 lượt, hoặc quét sạch địch | Ngược lại |
-| **Cố thủ** | Phòng thủ; địch có thêm 2 squad | Giữ được 14 vòng (cỡ nhỏ) | Thành bị chiếm, hoặc bị quét sạch. Chỉ bên tấn công được chiếm thành |
-| **Phá công trình** | Tấn công; có thêm 2 squad | Phá công trình mục tiêu của địch trong 16 vòng; hoặc chiếm thành, hoặc quét sạch | Hết hạn, hoặc bị quét sạch |
+| **Cố thủ** | Phòng thủ; địch có thêm 1 squad lúc đầu và **2 đợt tiếp viện** (vòng 5 và 9 ở cỡ nhỏ, mỗi đợt 1 squad, hiện sẵn trên HUD) | Giữ được 14 vòng (cỡ nhỏ) | Thành bị chiếm, hoặc bị quét sạch. Chỉ bên tấn công được chiếm thành |
+| **Phá công trình** | Tấn công; có thêm 3 squad | Phá công trình mục tiêu của địch trong 16 vòng; hoặc chiếm thành, hoặc quét sạch | Hết hạn, hoặc bị quét sạch |
 | **Hộ tống** | Hộ tống "tướng" (squad bộ binh có cờ vàng, sẵn cấp cựu binh) tới ô đích có cờ, trong 16 vòng | Tướng đặt chân lên ô đích | Tướng chết, hoặc hết hạn. Không bên nào chiếm thành. Tướng không bị gộp vào squad khác |
 
 - Số vòng ghi cho cỡ nhỏ; cỡ vừa / lớn nhân với (chiều dài / 20)^0,6. Số squad thêm là số tuyệt đối, không theo tỉ lệ (thêm nhiều trên bản đồ lớn thì bên giữ bị đè bẹp).
@@ -258,7 +258,7 @@ AI chiến thuật có áp lực tiến công tăng dần theo lượt để kh�
 
 **AI theo nhiệm vụ** **[MẶC ĐỊNH]**: bên giữ (cố thủ, phá công trình) giảm lực tiến công và bám quanh điểm cần giữ (thành nhà, hoặc công trình mục tiêu); bên săn tướng ưu tiên đánh tướng (điểm cộng thêm, hạ được tướng thưởng gấp đôi); tướng do AI điều khiển chỉ nhìn về ô đích và tránh nguy hiểm gấp 2,2 lần quân thường, các squad còn lại vừa dọn đường vừa theo về đích.
 
-**Cân bằng đo bằng AI chiến thuật đấu AI chiến thuật (40 ván cỡ nhỏ):** cố thủ ~60% bên giữ thắng; phá công trình ~50% bên tấn công thắng; hộ tống ~35% bên hộ tống thắng (người chơi giỏi hơn AI nên con số này không phải mục tiêu cho người). Cỡ vừa: cố thủ ~47%, phá ~43%, hộ tống ~29%. Cỡ lớn: cố thủ ~53%, phá ~30%, hộ tống ~17%. **Hộ tống cỡ lớn và phá công trình cỡ lớn chưa cân, cần chỉnh khi làm chiến dịch.**
+**Cân bằng đo bằng AI chiến thuật đấu AI chiến thuật (40 ván cỡ nhỏ):** cố thủ ~60% bên giữ thắng; phá công trình ~47% bên tấn công thắng (cỡ nhỏ); hộ tống ~35% bên hộ tống thắng (người chơi giỏi hơn AI nên con số này không phải mục tiêu cho người). Cỡ vừa: cố thủ ~47%, phá ~43%, hộ tống ~29%. Cỡ lớn: cố thủ ~53%, phá ~30%, hộ tống ~17%. **Hộ tống cỡ lớn và phá công trình cỡ lớn chưa cân, cần chỉnh khi làm chiến dịch.**
 
 ## 12. Giao diện và điều khiển
 
@@ -351,7 +351,7 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 
 *Đây là đề xuất của dev, chưa được đồng ý. Thứ tự là ý kiến, đảo lại được.*
 
-1. **Đa dạng mục tiêu** và cấu trúc màn chơi (đòn bẩy rẻ nhất; sửa điểm yếu "chiếm thành không quyết định"; cần trước chiến dịch). **Đã làm lát cắt đầu: cố thủ, phá công trình, hộ tống (mục 10).** Chưa làm: mục tiêu ghép (nhiều giai đoạn), chống đợt tiếp viện, cơ chế tiếp viện giữa màn.
+1. **Đa dạng mục tiêu** và cấu trúc màn chơi (đòn bẩy rẻ nhất; sửa điểm yếu "chiếm thành không quyết định"; cần trước chiến dịch). **Đã làm lát cắt đầu: cố thủ, phá công trình, hộ tống (mục 10).** Đã làm thêm **đợt tiếp viện** cho Cố thủ (cơ chế chung `mission.waves`, sinh quân quanh thành nhà ở đầu lượt phe đó, có hoạt ảnh hiện dần). Chưa làm: mục tiêu ghép (nhiều giai đoạn), tiếp viện cho các nhiệm vụ khác, và tiếp viện do sự kiện (không chỉ theo vòng).
 2. **Lưu và tải** (cần trước permadeath và chiến dịch), kèm quyết định chỗ lưu đáng tin.
 3. **Tinh thần có hệ trạng thái** (hăng hái, vững, dao động, bỏ chạy), bỏ chạy ra khỏi bản đồ có điều kiện xác định, hồi tỉnh.
 4. **Giảm thương vong và hệ squad tinh nhuệ:** luật gộp không phá kinh nghiệm, cấp và kỹ năng theo vai trò, mang quân qua màn.

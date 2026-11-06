@@ -153,7 +153,7 @@
   "mission.destroy": "Phá công trình",
   "mission.escort": "Hộ tống",
   "mission.brief.skirmish": "Chiếm thành địch và giữ 2 lượt, hoặc quét sạch quân địch.",
-  "mission.brief.hold": "Cố thủ: giữ vững {n} vòng. Địch đông hơn, thua nếu thành bị chiếm hoặc quân ta bị quét sạch.",
+  "mission.brief.hold": "Cố thủ: giữ vững {n} vòng. Địch đông hơn và sẽ có thêm quân tiếp viện giữa chừng. Thua nếu thành bị chiếm hoặc quân ta bị quét sạch.",
   "mission.brief.destroy": "Phá công trình của địch trước hết {n} vòng. Cũng thắng nếu chiếm thành hoặc quét sạch địch.",
   "mission.brief.escort": "Hộ tống tướng (có cờ vàng) tới ô đích có cờ trước hết {n} vòng. Tướng ngã xuống là thua.",
   "mission.info.hold": "Cố thủ: vòng {n}/{total}",
@@ -175,5 +175,6 @@
   "unit.orc.objective": "Doanh trại",
   "unit.desc.objective": "Phải bị phá để thắng. Đứng yên, không đánh trả, rất chắc. Cung thủ và kỵ binh phá kém.",
   "ui.vip": "Tướng",
-  "ui.goal": "Đích"
+  "ui.goal": "Đích",
+  "mission.wave": "Tiếp viện địch: vòng {n}"
 }

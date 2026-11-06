@@ -4,8 +4,8 @@
 //     hold    -> actor là bên phòng thủ
 //     destroy -> actor là bên tấn công (phải phá công trình của phe kia)
 //     escort  -> actor là bên hộ tống tướng
-import { MISSIONS, LEVEL, ROSTER } from './config.js';
-import { createState, addUnit, other, unitAt } from './rules.js';
+import { MISSIONS, LEVEL } from './config.js';
+import { createState, addUnit, other, unitAt, spawnSquads } from './rules.js';
 import { costField } from './mapgen.js';
 
 export const MISSION_TYPES = Object.keys(MISSIONS);
@@ -24,32 +24,16 @@ function pickTile(map, state, field, lo, hi, prefer) {
   return best && { x: best.x, y: best.y };
 }
 
-// Thêm quân cho phe f quanh thành nhà (các ô đi được gần thành nhất, chưa có quân)
-function addReinforcements(s, f, n) {
-  const map = s.map, hold = map.strongholds[f], foe = map.strongholds[other(f)];
-  const field = costField(map, hold, false);
-  const cands = [];
-  for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) {
-    const c = field[y * map.w + x];
-    if (!isFinite(c) || c < 2 || map.tiles[y * map.w + x] === 'stronghold' || unitAt(s, x, y)) continue;
-    if (!OPEN.has(map.tiles[y * map.w + x]) && map.tiles[y * map.w + x] !== 'forest') continue;
-    cands.push({ x, y, c, e: Math.abs(x - foe.x) + Math.abs(y - foe.y) });
-  }
-  cands.sort((a, b) => a.c - b.c || a.e - b.e || a.x - b.x);
-  for (let i = 0; i < n && i < cands.length; i++) {
-    const u = addUnit(s, f, ROSTER[i % ROSTER.length], cands[i].x, cands[i].y);
-    u.moved = false; u.acted = false;
-  }
-}
-
 export function createMissionState(map, type = 'skirmish', actor = 'human') {
   const s = createState(map);
   const cfg = { ...(MISSIONS[type] || {}) };
   if (cfg.turns) cfg.turns = Math.round(cfg.turns * Math.pow(map.h / 20, 0.6));   // bản đồ dài hơn thì cần nhiều vòng hơn
   const foe = other(actor);
   if (type === 'hold') {
-    s.mission = { type, defender: actor, attacker: foe, turns: cfg.turns };
-    addReinforcements(s, foe, cfg.extra);
+    const k = cfg.turns / MISSIONS.hold.turns;
+    s.mission = { type, defender: actor, attacker: foe, turns: cfg.turns,
+      waves: (cfg.waves || []).map((w) => ({ at: Math.round(w.at * k), n: w.n, faction: foe, done: false })) };
+    spawnSquads(s, foe, cfg.extra);
   } else if (type === 'destroy') {
     // công trình của phe bị đánh, đặt cách thành nhà chừng 6 ô đường đi
     const field = costField(map, map.strongholds[foe], false);
@@ -58,7 +42,7 @@ export function createMissionState(map, type = 'skirmish', actor = 'human') {
     const t = addUnit(s, foe, 'objective', at.x, at.y);
     t.static = true; t.acted = true; t.moved = true;
     s.mission = { type, attacker: actor, defender: foe, turns: cfg.turns, targetId: t.id, target: at };
-    addReinforcements(s, actor, cfg.extra);
+    spawnSquads(s, actor, cfg.extra);
   } else if (type === 'escort') {
     const vip = s.units.find((u) => u.faction === actor && u.role === 'infantry');
     const from = costField(map, map.strongholds[actor], false);

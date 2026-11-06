@@ -135,8 +135,9 @@ export const MISSIONS = {
   // turns: số vòng ở bản đồ nhỏ (bản đồ dài hơn thì tăng theo chiều dài^0.6).
   // extra: bên tấn công được thêm chừng này squad vì bên giữ có thành và địa thế. Số tuyệt đối: đo trên bản nhỏ,
   // bản vừa/lớn thêm nhiều hơn thì bên giữ bị đè bẹp.
-  hold:    { turns: 14, extra: 2 },       // giữ được N vòng thì thắng; bên tấn công thắng nếu chiếm thành / tiêu diệt
-  destroy: { turns: 16, extra: 2 },       // bên tấn công phải phá công trình mục tiêu trước hết N vòng
+  // waves: đợt tiếp viện của bên tấn công, at = vòng xuất hiện (tính ở bản nhỏ, co giãn theo số vòng), n = số squad
+  hold:    { turns: 14, extra: 1, waves: [{ at: 5, n: 1 }, { at: 9, n: 1 }] },       // giữ được N vòng thì thắng; bên tấn công thắng nếu chiếm thành / tiêu diệt
+  destroy: { turns: 16, extra: 3 },       // bên tấn công phải phá công trình mục tiêu trước hết N vòng
   escort:  { turns: 16 },                 // hộ tống tướng tới đích trước hết N vòng; tướng chết thì thua
 };
 

@@ -175,5 +175,6 @@
   "unit.orc.objective": "War camp",
   "unit.desc.objective": "Must be destroyed to win. Static, never fights back, very sturdy. Archers and cavalry do poorly against it.",
   "ui.vip": "Commander",
-  "ui.goal": "Goal"
+  "ui.goal": "Goal",
+  "mission.wave": "Enemy reinforcements: round {n}"
 }

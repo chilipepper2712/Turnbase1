@@ -34,12 +34,31 @@ export function addUnit(state, faction, role, x, y, strength = CONFIG.maxStrengt
   return u;
 }
 
+// Thêm n squad cho phe f vào các ô trống đi được gần thành nhà nhất (dùng cho đợt tiếp viện và quân thêm lúc đầu)
+export function spawnSquads(s, f, n) {
+  const hold = s.map.strongholds[f], foe = s.map.strongholds[other(f)];
+  const cands = [];
+  for (let y = 0; y < s.map.h; y++) for (let x = 0; x < s.map.w; x++) {
+    const t = terrainId(s, x, y);
+    if (t === 'stronghold' || t === 'bridge' || unitAt(s, x, y)) continue;
+    const tt = TERRAIN[t];
+    if (!isFinite(tt.cost) || tt.noCavalry) continue;
+    cands.push({ x, y, d: Math.abs(x - hold.x) + Math.abs(y - hold.y), e: Math.abs(x - foe.x) + Math.abs(y - foe.y) });
+  }
+  cands.sort((a, b) => a.d - b.d || a.e - b.e || a.x - b.x || a.y - b.y);
+  const out = [];
+  for (let i = 0; i < n && i < cands.length; i++) {
+    out.push(addUnit(s, f, ROSTER[i % ROSTER.length], cands[i].x, cands[i].y));
+  }
+  return out;
+}
+
 export function cloneState(s) {
   return {
     ...s,
     units: s.units.map((u) => ({ ...u })),
     capture: { ...s.capture },
-    mission: { ...s.mission },
+    mission: { ...s.mission, waves: s.mission.waves && s.mission.waves.map((w) => ({ ...w })) },
   };
 }
 
@@ -489,6 +508,13 @@ export function endTurn(s) {
   s.current = next;
   if (next === 'human') s.turn++;
   events.push({ type: 'turn', faction: next, turn: s.turn });
+  // đợt tiếp viện: xuất hiện đầu lượt của phe được tiếp viện, quanh thành nhà
+  for (const w of s.mission.waves || []) {
+    if (w.done || w.faction !== next || s.turn < w.at) continue;
+    w.done = true;
+    const made = spawnSquads(s, next, w.n);
+    if (made.length) events.push({ type: 'reinforce', faction: next, units: made.map((u) => u.id) });
+  }
   const fac = FACTIONS[next];
   const own = s.map.strongholds[next];
 
