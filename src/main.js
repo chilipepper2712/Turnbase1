@@ -1,6 +1,7 @@
 import { initI18n, setLang, t } from './i18n.js';
 import { Assets } from './render/assets.js';
 import { GameView } from './render/view.js';
+import { SaveStore, SLOTS, validate, summarize } from './saves.js';
 import { Game } from './game.js';
 import { createState } from './rules.js';
 import { AudioManager } from './audio.js';
@@ -40,6 +41,8 @@ async function main() {
   const game = new Game(view, settings, save);
   const audio = new AudioManager(settings);
   game.audio = audio;
+  const saves = new SaveStore();
+  game.saves = saves;
   view.snd = (n, o) => audio.play(n, o);
   window.__game = game; window.__audio = audio;       // tiện debug / test tự động
   game.newGame(seed, true);                           // bản đồ hiện ra phía sau màn mở đầu, lượt chưa bắt đầu
@@ -52,14 +55,31 @@ async function main() {
   const startBtn = document.getElementById('splash-start');
   startBtn.innerHTML = icon('play') + ' ' + t('ui.start');
   splash.hidden = false;
-  startBtn.addEventListener('click', async () => {
-    startBtn.disabled = true;
+  // snap = null: ván mới; có snap: tiếp tục ván đã lưu
+  const begin = async (snap) => {
+    startBtn.disabled = true; contBtn.disabled = true;
     splash.classList.add('leaving');
     await audio.unlock();
     audio.startPlaylist();
     audio.play('ui_confirm');
-    setTimeout(() => { splash.hidden = true; document.getElementById('hud').hidden = false; game.beginTurn(); }, 350);
-  });
+    setTimeout(() => {
+      splash.hidden = true; document.getElementById('hud').hidden = false;
+      if (snap) { try { game.loadSnap(snap); } catch { game.beginTurn(); } } else game.beginTurn();
+    }, 350);
+  };
+  startBtn.addEventListener('click', () => begin(null));
+  // Nút "Tiếp tục": chỉ hiện khi có ván đã lưu (tự động hoặc ô thủ công), lấy bản mới nhất
+  const contBtn = document.getElementById('splash-continue');
+  saves.init().then(async () => {
+    let best = null;
+    for (const slot of SLOTS) { const s = await saves.read(slot); if (s && (!best || s.savedAt > best.savedAt)) best = s; }
+    if (!best) return;
+    try { validate(best); } catch { return; }
+    const sum = summarize(best);
+    contBtn.innerHTML = `<span class="c-main">${icon('play')} ${t('ui.save.continue')}</span><small>${t('mission.' + sum.mission)} · ${t('ui.turn', { n: sum.turn })}</small>`;
+    contBtn.hidden = false;
+    contBtn.addEventListener('click', () => begin(best));
+  }).catch(() => {});
   if (q.get('autostart')) startBtn.click();
   if (assets.report.fallback.length) console.info('[assets] đang dùng fallback code cho:', assets.report.fallback.join(', '));
 }

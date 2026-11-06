@@ -281,6 +281,12 @@ AI chiến thuật có áp lực tiến công tăng dần theo lượt để kh�
 - **Đa ngôn ngữ:** mỗi ngôn ngữ một file JSON phẳng trong `lang/`; thiếu key thì lùi về tiếng Việt. **[CHỐT]**
 - **Kiểm thử:** `npm test` (23 test: luật, map, địa hình, cấp bậc, hạ trại, ràng buộc map). `node tools/simulate.mjs` chạy AI vs AI headless để đo cân bằng.
 - **Nơi lưu seed, cài đặt:** URL (`?seed=`, `?ai=`, `?speed=`, `?lang=`) và localStorage.
+- **Lưu / tải ván** (`src/saves.js`): **[CHỐT hướng; số ô là MẶC ĐỊNH]**
+  - **Bản lưu** = JSON gồm toàn bộ bản đồ (không sinh lại từ seed, nên đổi thuật toán sinh map không làm hỏng bản lưu cũ), quân, lượt, tiến độ chiếm, nhiệm vụ (đợt tiếp viện nào đã xong, tướng, trại), cấp độ AI. Kiểm tra chặt khi đọc (file hỏng, quân ngoài map, phe lạ bị từ chối, không đụng tới ván đang chơi). Có số phiên bản.
+  - **Chỗ lưu, theo thứ tự tin cậy:** (1) `db` của nền tảng Artifact: phía máy chủ, **riêng từng tài khoản** (`data/users/<id>`), sống qua mọi lần republish, không mất khi xoá dữ liệu trình duyệt; (2) localStorage làm bản sao nhanh; (3) **xuất / nhập file .json** để giữ tay. Khi đọc lấy bản mới hơn giữa (1) và (2). Giao diện nói thẳng chỗ nào đang lưu ("Lưu trên tài khoản" hay "Chỉ lưu trong trình duyệt, có thể mất").
+  - **Ô lưu:** 1 ô **tự động** (đầu mỗi lượt của người chơi, không phải bấm) + 3 ô thủ công (ghi đè phải bấm hai lần để xác nhận). Chỉ lưu thủ công được ở lượt của người chơi, khi không chạy hoạt ảnh.
+  - **Tiếp tục:** màn mở đầu có nút "Tiếp tục ván đã lưu" (bản mới nhất trong mọi ô) khi có bản lưu.
+  - **Chưa có:** hoàn tác sau khi tải (nút Hoàn tác chỉ nhớ trong ván đang chơi), lưu giữa lúc AI đang đi, lưu tiến trình chiến dịch.
 
 ## 14. Kinh tế (mốc 2, chưa làm)
 
@@ -344,7 +350,7 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 - **[MỞ]** Nếu sau này cho người chơi **chủ động rút quân**, mức phạt phải nặng hơn rủi ro chết, nếu không thì rút quân thành chiêu thắng mọi trận.
 - **[MỞ]** **Tỉ lệ thương vong hiện tại quá cao cho permadeath** (khoảng 4–5 squad bị diệt mỗi bên mỗi ván). Cần đổi luật cho nghiêng về làm bỏ chạy hơn là diệt, và mục tiêu màn không buộc phải đánh đến cùng.
 - **[MỞ]** Chống vòng xoáy thua (mất tinh nhuệ, màn sau yếu đi, càng mất thêm): tặng quân, màn dễ xen kẽ, thưởng sau màn.
-- **[MỞ]** **Lưu/tải chưa có.** Chiến dịch với permadeath cần lưu liên tục và đáng tin. Bản Artifact lưu bằng trình duyệt có thể mất (cửa sổ riêng tư, xoá dữ liệu trang, đổi máy), cần chỗ lưu tốt hơn hoặc xuất/nhập file lưu.
+- **Lưu/tải ván đã có (mục 13).** Còn **[MỞ]** cho chiến dịch: lưu tiến trình chiến dịch (danh sách elite mang qua màn, cấp, kỹ năng) là một loại bản lưu khác, chưa làm; bản lưu hiện chỉ là một ván đang chơi.
 - **[MỞ]** Bất đối xứng ở cấp luật giữa người và Orc (xem mục 17).
 
 ## 17. Roadmap đề xuất
@@ -352,7 +358,7 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 *Đây là đề xuất của dev, chưa được đồng ý. Thứ tự là ý kiến, đảo lại được.*
 
 1. **Đa dạng mục tiêu** và cấu trúc màn chơi (đòn bẩy rẻ nhất; sửa điểm yếu "chiếm thành không quyết định"; cần trước chiến dịch). **Đã làm lát cắt đầu: cố thủ, phá công trình, hộ tống (mục 10).** Đã làm thêm **đợt tiếp viện** cho Cố thủ cho cả hai bên (cơ chế chung `mission.waves`, sinh quân quanh thành nhà ở đầu lượt phe đó, có hoạt ảnh hiện dần). Chưa làm: mục tiêu ghép (nhiều giai đoạn), tiếp viện cho các nhiệm vụ khác, và tiếp viện do sự kiện (không chỉ theo vòng).
-2. **Lưu và tải** (cần trước permadeath và chiến dịch), kèm quyết định chỗ lưu đáng tin.
+2. **Lưu và tải** (cần trước permadeath và chiến dịch), kèm quyết định chỗ lưu đáng tin. **Đã làm cho ván đang chơi (mục 13).**
 3. **Tinh thần có hệ trạng thái** (hăng hái, vững, dao động, bỏ chạy), bỏ chạy ra khỏi bản đồ có điều kiện xác định, hồi tỉnh.
 4. **Giảm thương vong và hệ squad tinh nhuệ:** luật gộp không phá kinh nghiệm, cấp và kỹ năng theo vai trò, mang quân qua màn.
 5. **AI bớt dễ đoán:** mỗi màn một tính cách, thỉnh thoảng đổi nước đi, phục kích. Đo bằng việc người chơi thắng bao nhiêu phần trăm.
@@ -401,5 +407,6 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 | Phá trại | Mục tiêu là trại hình lều của mỗi bên (thay thành), không chiếm đóng, không hạn giờ; quân sát trại nhà hồi 2 quân/lượt. Mày đổi ý từ "phá thành" | Mày chốt |
 | Hộ tống | Bỏ thành của cả hai phe, chỉ còn: tướng tới điểm rút / hạ tướng / quét sạch (dev giữ ô rút và bỏ hạn giờ, chờ mày xác nhận) | Mày chốt, dev diễn giải |
 | Cố thủ | Cả hai bên đều chiếm được thành đối phương để thắng; hạn 12 lượt; người cũng có 1 đợt tiếp viện | Mày chốt |
+| Lưu / tải ván | Lưu bản đồ đầy đủ trong bản lưu; chỗ lưu chính là db của tài khoản, dự phòng localStorage, và xuất/nhập file; 1 ô tự động đầu lượt + 3 ô thủ công | Dev quyết, mày duyệt khi chơi |
 | Thứ tự roadmap | Mục tiêu đa dạng, rồi lưu/tải, rồi hệ trạng thái sĩ khí | Mày đồng ý |
 | Biến đổi địa hình | Dân quân đốt rừng, đặt bẫy, xây cầu | Mày đề xuất |

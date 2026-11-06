@@ -11,6 +11,7 @@ import { executeAction } from './actions.js';
 import { t, setLang, getLang, LANGS, langName } from './i18n.js';
 import { icon, rankIcon } from './icons.js';
 import { createMissionState, MISSION_TYPES } from './missions.js';
+import { snapshot, restoreState, summarize, parseSaveText, SLOTS } from './saves.js';
 
 const SPEEDS = { normal: 1, fast: 2.4, instant: 14 };
 const $ = (id) => document.getElementById(id);
@@ -99,6 +100,7 @@ export class Game {
 
   async beginTurn() {
     const f = this.state.current;
+    if (f === 'human' && !this.state.winner) this.autosave();          // đầu lượt người chơi: điểm lưu an toàn nhất
     this.snd(f === 'human' ? 'turn_player' : 'turn_enemy');
     this.banner(t(f === 'human' ? 'ui.yourTurn' : 'ui.enemyTurn'), f);
     this.refreshAll();
@@ -708,6 +710,7 @@ export class Game {
       <div class="btns">
         <button data-m="new" class="primary">${esc(t('ui.newMap'))}</button>
         <button data-m="restart">${esc(t('ui.restart'))}</button>
+        <button data-m="saves">${esc(t('ui.save.title'))}</button>
       </div></div>`;
     m.hidden = false;
     const apply = async () => {
@@ -737,7 +740,98 @@ export class Game {
       m.hidden = true;
       if (act === 'new') this.newGame(Math.floor(Math.random() * 1e6));
       else if (act === 'restart') this.newGame(+$('m-seed').value || this.seed);
+      else if (act === 'saves') { this.refreshAll(); this.openSaves(); }
       else this.refreshAll();
+    };
+  }
+
+  // ---------- Lưu / tải ----------
+  snapNow() { return snapshot(this.state, { difficulty: this.settings.difficulty, mapSize: this.settings.mapSize }); }
+
+  autosave() {
+    if (!this.saves || this.state.winner) return;
+    this.saves.write('auto', this.snapNow()).catch(() => {});
+  }
+
+  // Dựng lại ván từ bản lưu. Ném lỗi nếu bản lưu hỏng (state hiện tại không bị đụng tới)
+  loadSnap(snap) {
+    const st = restoreState(snap);
+    this.map = st.map; this.seed = st.map.seed >>> 0;
+    this.settings.mission = st.mission.type;
+    if (snap.meta?.difficulty) this.settings.difficulty = snap.meta.difficulty;
+    this.busy = false; this.confirmEnd = false; this.moveTarget = null;
+    this.sel = null; this.pending = null; this.origin = null; this.splitting = false; this.mode = 'idle';
+    this.view.speed = this.speed;
+    this.view.reset(st);
+    this.refreshAll();
+    this.beginTurn();
+  }
+
+  async openSaves() {
+    const m = $('modal'), saves = this.saves;
+    if (!saves) return;
+    const st = await saves.init();
+    const list = await saves.list();
+    const fmt = (ms) => new Date(ms).toLocaleString(getLang(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const canWrite = !this.busy && !this.state.winner && this.state.current === 'human';
+    const rows = SLOTS.map((slot) => {
+      const info = list[slot];
+      const label = t(slot === 'auto' ? 'ui.save.auto' : 'ui.save.slot', { n: slot.replace('s', '') });
+      const sub = !info ? t('ui.save.empty') : info.broken ? t('ui.save.broken') : `${t('mission.' + info.mission)} · ${t('ui.turn', { n: info.turn })} · ${fmt(info.savedAt)}`;
+      const load = info && !info.broken ? `<button data-s="load" data-slot="${slot}" data-ask="${esc(t('ui.save.confirmLoad'))}">${esc(t('ui.save.load'))}</button>` : '';
+      const save = slot === 'auto' ? '' : `<button data-s="save" data-slot="${slot}" ${canWrite ? '' : 'disabled'} ${info ? `data-ask="${esc(t('ui.save.confirmSave'))}"` : ''}>${esc(t('ui.save.save'))}</button>`;
+      return `<li><div class="s-main"><b>${esc(label)}</b><small>${esc(sub)}</small></div><div class="s-btns">${save}${load}</div></li>`;
+    }).join('');
+    const where = st.remote ? ['ok', 'ui.save.where.remote'] : st.local ? ['warn', 'ui.save.where.local'] : ['bad', 'ui.save.where.none'];
+    m.innerHTML = `<div class="card saves">
+      <div class="head"><h2>${esc(t('ui.save.title'))}</h2><button data-s="close" class="icon" aria-label="${esc(t('ui.close'))}" title="${esc(t('ui.close'))}">${icon('x')}</button></div>
+      <div class="body">
+        <p class="where ${where[0]}">${icon(where[0] === 'ok' ? 'check' : 'ban')}<span>${esc(t(where[1]))}</span></p>
+        <ul class="slots">${rows}</ul>
+        <h3>${esc(t('ui.save.file'))}</h3>
+        <div class="file-btns">
+          <button data-s="export" ${st.download ? '' : 'disabled'}>${esc(t('ui.save.export'))}</button>
+          <button data-s="import">${esc(t('ui.save.import'))}</button>
+          <input type="file" id="save-file" accept=".json,application/json" hidden>
+        </div>
+        ${canWrite ? '' : `<p class="note">${esc(t('ui.save.cannotNow'))}</p>`}
+      </div>
+      <div class="btns"><button data-s="close" class="primary">${esc(t('ui.close'))}</button></div></div>`;
+    m.hidden = false;
+    const fail = (key) => { this.snd('ui_deny'); this.toast(t(key), 2600); };
+    const fileIn = $('save-file');
+    fileIn.onchange = async () => {
+      const f = fileIn.files && fileIn.files[0];
+      if (!f) return;
+      try { const snap = parseSaveText(await f.text()); m.hidden = true; this.loadSnap(snap); this.toast(t('ui.save.loaded')); }
+      catch { fail('ui.save.badFile'); }
+    };
+    let ask = null;       // nút đang chờ bấm lần hai để xác nhận
+    m.onclick = async (e) => {
+      const b = e.target.closest('button[data-s]');
+      if (e.target === m || (b && b.dataset.s === 'close')) { m.hidden = true; m.onclick = null; return; }
+      if (!b || b.disabled) return;
+      const act = b.dataset.s, slot = b.dataset.slot;
+      if (b.dataset.ask && ask !== b) {                       // ghi đè / thay ván đang chơi: bấm hai lần
+        if (ask) ask.textContent = ask.dataset.label;
+        ask = b; b.dataset.label = b.textContent; b.textContent = b.dataset.ask; b.classList.add('confirm');
+        setTimeout(() => { if (ask === b) { b.textContent = b.dataset.label; b.classList.remove('confirm'); ask = null; } }, 3500);
+        return;
+      }
+      ask = null;
+      if (act === 'save') {
+        const r = await saves.write(slot, this.snapNow());
+        this.snd('ui_confirm');
+        this.toast(t(r.remote ? 'ui.save.saved' : r.local ? 'ui.save.savedLocal' : 'ui.save.failed'), 2600);
+        this.openSaves();
+      } else if (act === 'load') {
+        const snap = await saves.read(slot);
+        try { m.hidden = true; m.onclick = null; this.loadSnap(snap); this.toast(t('ui.save.loaded')); }
+        catch { m.hidden = false; fail('ui.save.badFile'); }
+      } else if (act === 'export') {
+        try { await saves.exportFile(this.snapNow()); this.toast(t('ui.save.exported'), 2600); }
+        catch (err) { if (err && err.code !== 'declined') fail('ui.save.failed'); }
+      } else if (act === 'import') fileIn.click();
     };
   }
 
