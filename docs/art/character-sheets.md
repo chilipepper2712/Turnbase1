@@ -57,6 +57,13 @@ Cho **sinh vật / quân cưỡi** (kỵ binh, kỵ lợn rừng, xác ngựa): 
 
 ### Phe người
 
+**Trang bị chung của phe người** (ghép ngay sau khối nhân vật của mọi quân người có giáp; mày chốt):
+```
+the grey armor is steel lamellar made of small vertical rectangular plates laced together in staggered horizontal rows with visible lacing between rows, a short straight double-edged sword like a dirk worn at the left hip: tapering steel blade, brass ferrule and brass pommel cap, dark brown hardwood grip that swells in the middle, in a dark brown leather scabbard with a band of round brass studs,
+```
+Với dân quân, cung thủ, bộ binh: thay chữ "grey padded armored vest" / "grey lamellar armor" bằng giáp lá như trên. Kỵ binh và thủy binh không mặc giáp xám nhưng vẫn đeo đoản kiếm.
+
+
 **Dân quân** (`human_militia.png`)
 ```
 a medieval East Asian militia spearman, clean-shaven, black cloth cap, grey padded armored vest with tan trim and a black belt over dark long sleeves, long brown cotton robe, black boots, holding a long wooden spear with an iron blade diagonally across the body, accent color: tan trim,
@@ -84,9 +91,15 @@ a medieval East Asian river boatman soldier, clean-shaven, hair in a top bun wit
 
 ### Phe Orc
 
+**Vóc dáng chung của Orc** (ghép vào mọi khối Orc, kể cả âm binh gốc Orc; mày chốt): to lớn, thô kệch hơn người rõ rệt:
+```
+a big crude brutish orc body: hulking and heavy, much larger and bulkier than a human, thick neck, massive hunched shoulders, barrel chest and pot belly, long heavy arms with huge hands and thick fingers, short thick legs, coarse lumpy green skin, heavy jaw and brow, crude rough-hewn proportions, not lean, not slender, not athletic,
+```
+
+
 **Orc phỉ** (`orc_militia.png`)
 ```
-a green-skinned orc raider with small tusks, plain iron skullcap helmet, single grey iron shoulder pauldron, brown leather tunic with straps, cloth-wrapped legs and arms, round wooden shield with an iron boss, long spear with a broad iron blade, lean build, accent color: iron grey,
+a green-skinned orc raider with small tusks, plain iron skullcap helmet, single grey iron shoulder pauldron, brown leather tunic with straps, cloth-wrapped legs and arms, round wooden shield with an iron boss, long spear with a broad iron blade, accent color: iron grey,
 ```
 
 **Orc chiến binh** (`orc_infantry.png`)
@@ -96,7 +109,7 @@ a huge hulking green-skinned orc brute with big lower tusks, spiked grey iron sh
 
 **Orc cung thủ** (`orc_archer.png`)
 ```
-a lean green-skinned orc archer with a long ear and small tusks, grey cloth hood and wrapped grey tunic, leather straps across the chest, orange-brown leather quiver on the back, short wooden bow, cloth-wrapped legs, accent color: orange-brown quiver,
+a green-skinned orc archer with a long ear and small tusks, grey cloth hood and wrapped grey tunic, leather straps across the chest, orange-brown leather quiver on the back, short wooden bow, cloth-wrapped legs, accent color: orange-brown quiver,
 ```
 
 **Kỵ lợn rừng** (`orc_cavalry.png`)
@@ -106,7 +119,7 @@ an orc rider with a horned dark iron helmet, round shield painted red with a whi
 
 **Goblin** (`orc_goblin.png`)
 ```
-a small crouching forest goblin with bright green skin and big pointed ears, hood and cloak covered in leaves and moss, brown leather belt and pouch, holding a curved dagger and a small hand axe, wiry build, accent color: leaf green,
+a small crouching forest goblin with bright green skin and big pointed ears, hood and cloak covered in leaves and moss, brown leather belt and pouch, holding a curved dagger and a small hand axe, wiry build (goblins stay small and wiry, the orc bulk rule does not apply), accent color: leaf green,
 ```
 
 ### Âm binh (màu nhấn: lửa ma xanh lục nhạt trong hốc mắt)
@@ -127,7 +140,8 @@ an eerie East Asian dark-taoist necromancer commander, tall gaunt figure in a lo
 
 ## Ví dụ đã chạy và đạt: Cung thủ người (kèm sprite `human_archer.png`)
 
-Kết quả: `docs/art/sheets/archer_human.png`, bản âm binh: `docs/art/sheets/archer_undead.png`.
+Kết quả: `docs/art/sheets/archer_human.png` (đã có giáp lá + đoản kiếm), bản âm binh: `docs/art/sheets/archer_undead.png` (chạy trước khi thêm giáp lá + đoản kiếm, cần chạy lại), cung thủ Orc vóc to thô: `docs/art/sheets/archer_orc.png`.
+Prompt bản cuối của cung thủ người thêm khối "Trang bị chung của phe người" vào ngay sau phần mô tả áo.
 
 ```
 Character model sheet of the archer shown in the reference pixel sprite, redrawn faithfully in a new painterly style: keep EXACTLY his costume, colors and silhouette from the reference and add nothing foreign. One large heroic full-body view on the left, a row of three smaller full-body views on the right showing front, side profile and back, three head-and-shoulders expression studies (neutral, battle cry, grim) and one close-up of the face and weapon detail, identical original character in every view, single character only, off-white paper background with a soft ground shadow under the feet, professional character sheet presentation. Character: a medieval East Asian foot archer in his thirties, clean-shaven face, short black hair, a plain brown cloth cylindrical cap (not fur, no brim, no ear flaps), a grey padded armored vest with dark moss-green trim edges and a black belt, worn over a long brown cotton robe with long sleeves, plain black boots, a simple long wooden self bow with a dark red-brown stave, a yellow-ochre leather quiver of arrows at the hip, athletic build. Stylized painterly 2D concept art, flat color blocks with visible dry gouache brush texture, shape-driven rendering with almost no outlines, hard-edged cel shadows in two to three values with warm bounce color, limited palette of brown, grey and moss green with a yellow-ochre accent, big simple cloth folds, mature angular face, strong readable silhouette, even neutral studio lighting, high-end game cinematic character art, sharp. Original character, not Mongolian, not nomadic, no fur hat, no mustache, no recurve horn bow, no text, no labels, no watermark, no logos, no frame borders, no background scenery, no extra characters, no babyface, no distorted hands, no extra fingers
