@@ -621,24 +621,21 @@ export class GameView {
 
   // Mây: vị trí là hàm của thời gian (không giữ trạng thái), nên vẽ lúc nào cũng khớp. Trôi theo một hướng gió,
   // mờ dần khi ra khỏi / vào mép bản đồ rồi quay lại từ phía đầu gió.
-  // Nền chấm bi phía sau bản đồ (thay màu trơn): lưới chấm cố định theo thế giới, trôi và co giãn cùng bản đồ
+  // Nền chấm bi phía sau bản đồ: đứng yên theo màn hình (không trôi, không co giãn theo camera)
   buildDotBg() {
-    if (this.dotBg) { this.dotBg.destroy(); this.dotBg = null; }
-    const b = this.mapBounds;
-    if (!b) return;
+    if (this.dotBg) return;
     if (!this._dotTex) {
       const S = 28 * RES, c = makeCanvas(S, S), ctx = c.getContext('2d');
       ctx.fillStyle = 'rgba(74,72,64,0.5)';
-      ctx.fillRect(S / 2 - RES, S / 2 - RES, RES * 2, RES * 2);       // chấm 2x2 đơn vị thế giới, cách nhau 28
+      ctx.fillRect(S / 2 - RES, S / 2 - RES, RES * 2, RES * 2);       // chấm 2x2 px, cách nhau 28px
       this._dotTex = PIXI.Texture.from(c);
       this._dotTex.source.style.scaleMode = 'nearest';
     }
-    const pad = 3200;
-    const ts = new PIXI.TilingSprite({ texture: this._dotTex, width: b.maxX - b.minX + pad * 2, height: b.maxY - b.minY + pad * 2 });
-    ts.position.set(b.minX - pad, b.minY - pad);
+    const ts = new PIXI.TilingSprite({ texture: this._dotTex, width: this.app.screen.width, height: this.app.screen.height });
     ts.tileScale.set(1 / RES);
-    this.world.addChildAt(ts, 0);
+    this.app.stage.addChildAt(ts, 0);
     this.dotBg = ts;
+    this.app.renderer.on('resize', () => { ts.width = this.app.screen.width; ts.height = this.app.screen.height; });
   }
 
   // Đốm nước lấp lánh: mỗi ô sông có vài điểm, mỗi điểm lặp chu kỳ riêng: chấm -> dấu cộng -> chấm -> tắt (bước 0.2 giây, theo lưới 2px của nền)
