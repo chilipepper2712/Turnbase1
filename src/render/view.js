@@ -6,6 +6,7 @@ import { terrainId, levelOf } from '../rules.js';
 import { RES, TERRAIN_DECO } from './assets.js';
 import { drawGroundTile, makeCanvas, drawCloud, INK } from './doodle.js';
 import { paintPixelGround } from './pixelground.js';
+import { makePixelCloud } from './pixelcloud.js';
 
 export const TW = 96, TH = 48;
 const CHUNK = 8;
@@ -63,7 +64,8 @@ export class GameView {
     this.fx = new PIXI.Container();
     this.cloudShadow = new PIXI.Container();   // bóng mây đổ lên nền: dưới ô tô màu và quân
     this.cloudLayer = new PIXI.Container();    // mây: trên cùng
-    this.world.addChild(this.ground, this.cloudShadow, this.hl, this.objects, this.fx, this.cloudLayer);
+    this.waterFx = new PIXI.Graphics();          // đốm nước lấp lánh (chỉ nền pixel), nằm trên nền, dưới quân
+    this.world.addChild(this.ground, this.waterFx, this.cloudShadow, this.hl, this.objects, this.fx, this.cloudLayer);
     app.stage.addChild(this.world);
     this.zoom = 1;
     this.buildMap();
@@ -109,11 +111,13 @@ export class GameView {
       for (let i = 0; i < w; i += CHUNK) this.bakeChunk(i, j);
     }
     this.drawBorder();
+    this.buildWater();
     this.buildClouds();
     // trang trí đối tượng
     this.deco = [];
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) this.placeDeco(x, y);
     this.drawGoal();
+    this.startAmbient();
   }
 
   // Ô đích của nhiệm vụ hộ tống: ô vàng nhạt + cờ cắm giữa ô
@@ -266,10 +270,16 @@ export class GameView {
       const isHuman = own.human.x === x && own.human.y === y;
       const f = isHuman ? 'human' : this.state.sides[1];
       const kenney = A.has('castle') && A.has('castleTall');
-      const sp = kenney
+      const pxCastle = this.tileStyle === 'pixel' ? A.pixelDeco('castle', isHuman ? 0 : f === 'undead' ? 2 : 1) : null;
+      let sp;
+      if (pxCastle) {
+        sp = new PIXI.Sprite(pxCastle.texture);
+        sp.anchor.set(pxCastle.anchor[0], pxCastle.anchor[1]);
+        sp.scale.set(92 / pxCastle.w / pxCastle.up);
+      } else sp = kenney
         ? this.mk(A.building(isHuman ? 'castle' : 'castleTall', mixPaper(FACTIONS[f].fill, 0.55), 0.97), 1.0)
         : this.mk(A.building(isHuman ? 'castle_town' : 'stronghold', FACTIONS[f].fill), 1.0);
-      this.place(sp, c.x, c.y + (kenney ? 14 : 20), c.y + 2, { x, y });
+      this.place(sp, c.x, c.y + (pxCastle ? 12 : kenney ? 14 : 20), c.y + 2, { x, y });
       // cờ tiến độ chiếm
       const label = new PIXI.Text({ text: '', style: { fontFamily: FONT, fontSize: 20, fill: 0xffffff, stroke: { color: 0x1b1b1b, width: 4 }, fontWeight: 'bold' } });
       label.anchor.set(0.5, 1);
@@ -300,6 +310,16 @@ export class GameView {
       sp.scale.set((wpa * scaleMul) / res.up);
       const [px, py] = jit ? uv((rng() - 0.5) * jit, (rng() - 0.5) * jit) : [c.x, c.y];
       this.place(sp, px, py + 6, z, tile);
+    };
+    // công trình pixel art: đặt theo bề rộng mong muốn (đơn vị thế giới); nằm sau quân đứng cùng ô
+    const bld = (group, variant, targetW, du, dv, tile) => {
+      const res = A.pixelDeco(group, variant);
+      if (!res) return;
+      const sp = new PIXI.Sprite(res.texture);
+      sp.anchor.set(res.anchor[0], res.anchor[1]);
+      sp.scale.set(targetW / res.w / res.up);
+      const [px, py] = uv(du, dv);
+      this.place(sp, px, py + 10, c.y + 2, tile);
     };
     switch (t) {
       case 'plain':
@@ -333,6 +353,19 @@ export class GameView {
         return true;
       case 'river': case 'bridge':
         return true;
+      case 'village': {
+        const first = [0, 1, 2, 3, 4, 5, 7][rng.int(7)];
+        bld('house', first, 54, 0, 0, { x, y });
+        if (rng() < 0.6) bld('house', [0, 1, 2, 3, 5, 7][rng.int(6)], 42, 0.3, 0.28);
+        if (rng() < 0.4) bld('house', 6, 26, -0.3, 0.3);
+        return true;
+      }
+      case 'fort':
+        bld('tower', rng.int(5), 44, 0, 0, { x, y });
+        return true;
+      case 'mine':
+        bld('mine', 0, 58, 0, 0, { x, y });
+        return true;
       default:
         return false;
     }
@@ -365,7 +398,8 @@ export class GameView {
   makeUnit(u) {
     const A = this.assets;
     // trại mục tiêu (nhiệm vụ phá trại) là đơn vị tĩnh: vẽ bằng sprite lều tô màu phe
-    const res = u.static ? A.building('tent', mixPaper(FACTIONS[u.faction].fill, 0.55), 0.97) : A.unit(u.role === 'marine' && u.afloat ? 'marineboat' : u.role, u.faction, u.origin);
+    const pxCamp = u.static && this.tileStyle === 'pixel' ? A.pixelDeco('camp', u.faction === 'human' ? 0 : u.faction === 'undead' ? 2 : 1) : null;
+    const res = pxCamp || (u.static ? A.building('tent', mixPaper(FACTIONS[u.faction].fill, 0.55), 0.97) : A.unit(u.role === 'marine' && u.afloat ? 'marineboat' : u.role, u.faction, u.origin));
     const root = new PIXI.Container();
     // bóng xám nhẹ dưới chân (phe được phân biệt bằng hình quân và huy hiệu số)
     const shadow = new PIXI.Graphics();
@@ -373,7 +407,8 @@ export class GameView {
     const body = new PIXI.Container();
     const sprite = new PIXI.Sprite(res.texture);
     sprite.anchor.set(res.anchor[0], res.anchor[1]);
-    sprite.scale.set((u.static ? 1.7 : 1) / RES);          // trại phải nổi hơn công trình nền
+    if (pxCamp) sprite.scale.set(64 / pxCamp.w / pxCamp.up);
+    else sprite.scale.set((u.static ? 1.7 : 1) / RES);          // trại phải nổi hơn công trình nền
     body.addChild(sprite);
     const badge = new PIXI.Container();
     const bg = new PIXI.Graphics();
@@ -496,7 +531,7 @@ export class GameView {
       this.setShown(us, u.strength);
       us.root.visible = !(u.hidden && u.faction !== this.viewer);   // quân ẩn: chỉ phe mình thấy
       const mine = u.faction === s.current;
-      us.body.alpha = mine && u.acted && u.status === 'ok' && !s.winner ? 0.55 : 1;
+      us.body.alpha = mine && u.acted && u.status === 'ok' && !s.winner && !u.static ? 0.55 : 1;
       us.flag.text = u.status === 'routed' ? this.t('ui.routed') : '';
       this.drawStars(us, levelOf(u.xp || 0));
       this.drawFort(us, u.fort || 0);
@@ -559,13 +594,15 @@ export class GameView {
 
   startAmbient() {
     clearTimeout(this._ambT);
-    if (!this.idleOn && !this.cloudsOn) return;
+    if (!this.idleOn && !this.cloudsOn && !this.hasWater()) return;
     const tick = () => {
-      if (!this.idleOn && !this.cloudsOn) return;
+      if (!this.idleOn && !this.cloudsOn && !this.hasWater()) return;
       if (!document.hidden && this.app && !this.tweens.length) {
-        if (this.idleOn) this.updateIdle();
-        if (this.cloudsOn) this.updateClouds();
-        this.app.render();
+        let dirty = false;
+        if (this.idleOn) { this.updateIdle(); dirty = true; }
+        if (this.cloudsOn) { this.updateClouds(); dirty = true; }
+        if (this.hasWater() && this.updateWater()) dirty = true;
+        if (dirty) this.app.render();
       }
       this._ambT = setTimeout(tick, 100);
     };
@@ -583,6 +620,45 @@ export class GameView {
 
   // Mây: vị trí là hàm của thời gian (không giữ trạng thái), nên vẽ lúc nào cũng khớp. Trôi theo một hướng gió,
   // mờ dần khi ra khỏi / vào mép bản đồ rồi quay lại từ phía đầu gió.
+  // Đốm nước lấp lánh: mỗi ô sông có vài điểm, mỗi điểm lặp chu kỳ riêng: chấm -> dấu cộng -> chấm -> tắt (bước 0.2 giây, theo lưới 2px của nền)
+  buildWater() {
+    this.waterFx.clear();
+    this.sparkles = [];
+    this._wf = -1;
+    if (this.tileStyle !== 'pixel') return;
+    const s = this.state, { w, h } = s.map;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (terrainId(s, x, y) !== 'river') continue;
+      const c = tileToWorld(x, y);
+      for (let k = 0; k < 3; k++) {
+        const r1 = hash2(77 + k, x, y), r2 = hash2(91 + k, x * 3 + 1, y * 5 + 2), r3 = hash2(53 + k, x + 9, y + 4), r4 = hash2(31 + k, x * 7, y * 11);
+        const u = (r1 - 0.5) * 0.62, v = (r2 - 0.5) * 0.62;
+        const px = c.x + (u * TW) / 2 - (v * TW) / 2, py = c.y + (u * TH) / 2 + (v * TH) / 2;
+        this.sparkles.push({ x: Math.round(px / 2) * 2, y: Math.round(py / 2) * 2, phase: Math.floor(r3 * 14), period: 11 + Math.floor(r4 * 6) });
+      }
+    }
+  }
+
+  hasWater() { return this.tileStyle === 'pixel' && !!this.sparkles && this.sparkles.length > 0; }
+
+  // Trả true nếu khung hình lấp lánh đã đổi (cần vẽ lại)
+  updateWater() {
+    const f = Math.floor(performance.now() / 200);
+    if (f === this._wf) return false;
+    this._wf = f;
+    const g = this.waterFx;
+    g.clear();
+    for (const sp of this.sparkles) {
+      const q = (f + sp.phase) % sp.period;
+      if (q > 2) continue;
+      if (q === 1) {
+        g.rect(sp.x - 2, sp.y, 2, 2).rect(sp.x + 2, sp.y, 2, 2).rect(sp.x, sp.y - 2, 2, 2).rect(sp.x, sp.y + 2, 2, 2).fill({ color: 0xbfe2f4 });
+      }
+      g.rect(sp.x, sp.y, 2, 2).fill({ color: 0xf4fbff });
+    }
+    return true;
+  }
+
   buildClouds() {
     for (const c of [this.cloudShadow, this.cloudLayer]) c.removeChildren().forEach((x) => x.destroy());
     this.clouds = [];
@@ -591,7 +667,16 @@ export class GameView {
     const n = Math.max(4, Math.round((w * h) / 70));
     const imgs = this.assets.cloudImgs || [];
     let tex;
-    if (imgs.length) {
+    const pixelClouds = this.tileStyle === 'pixel';
+    if (pixelClouds) {
+      const crng = makeRng((this.state.map.seed || 1) * 13 + 5);
+      tex = [0, 1, 2, 3, 4, 5].map(() => {
+        const v = makePixelCloud(crng);
+        const ct = PIXI.Texture.from(v.cloud), st = PIXI.Texture.from(v.shadow);
+        ct.source.style.scaleMode = st.source.style.scaleMode = 'nearest';
+        return { cloud: ct, shadow: st, w: v.w, h: v.h };
+      });
+    } else if (imgs.length) {
       tex = imgs.map((im) => ({ cloud: PIXI.Texture.from(im), w: im.width, h: im.height }));
     } else {                                              // dự phòng: mây vẽ bằng code
       tex = [0, 1, 2, 3].map((i) => { const v = drawCloud(500 + i * 17, RES); return { cloud: PIXI.Texture.from(v.cloud), w: v.w * RES, h: v.h * RES }; });
@@ -607,8 +692,9 @@ export class GameView {
     for (let i = 0; i < n; i++) {
       const v = tex[rng.int(tex.length)], width = 150 + rng() * 120;     // bề ngang mây trong thế giới (ô rộng 96)
       const cloud = new PIXI.Sprite(v.cloud); cloud.anchor.set(0.5); cloud.scale.set(width / v.w);
-      const shadow = new PIXI.Sprite(ovalTex); shadow.anchor.set(0.5);
-      shadow.width = width * 0.68; shadow.height = width * 0.68 * 0.5;   // nhỏ hơn 15% so với trước (0.8)
+      const shadow = new PIXI.Sprite(pixelClouds ? v.shadow : ovalTex); shadow.anchor.set(0.5);
+      if (pixelClouds) shadow.scale.set((width / v.w) * 0.8, (width / v.w) * 0.4);   // bóng phẳng, ép dẹt theo phối cảnh
+      else { shadow.width = width * 0.68; shadow.height = width * 0.68 * 0.5; }      // nhỏ hơn 15% so với trước (0.8)
       this.cloudShadow.addChild(shadow); this.cloudLayer.addChild(cloud);
       this.clouds.push({ cloud, shadow, phase: rng() * this.windLen, speed: 0.22 + rng() * 0.18, lane: rng() * (h + 6) - 3, drift: 0.22 + rng() * 0.1 });
     }
@@ -649,6 +735,7 @@ export class GameView {
     }
     for (const tw of done) { this.tweens.splice(this.tweens.indexOf(tw), 1); tw.resolve(); }
     if (this.cloudsOn) this.updateClouds();
+    if (this.hasWater()) this.updateWater();
     this.app.render();
     if (this.tweens.length) this.requestRender();
   }

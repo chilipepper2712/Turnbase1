@@ -87,4 +87,5 @@ def main():
     print(len(os.listdir(OUT)), "file,", total, "byte")
 
 
-main()
+if __name__ == "__main__":
+    main()

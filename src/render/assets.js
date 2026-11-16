@@ -8,7 +8,7 @@ import { FACTIONS } from '../config.js';
 import { makeCanvas, drawTree, drawHill, drawMountain, drawMine, drawFallbackUnit, drawFallbackBuilding, INK } from './doodle.js';
 
 // Sprite địa hình pixel art (assets/terrain/<nhóm>_<n>.png, tools/prep_decor.py): số biến thể mỗi nhóm
-export const TERRAIN_DECO = { pine: 8, tuft: 6, bush: 4, tiny: 3, boulder: 5, mound: 3, reed: 4, shrub: 3, hill: 1 };
+export const TERRAIN_DECO = { pine: 8, tuft: 6, bush: 4, tiny: 3, boulder: 5, mound: 3, reed: 4, shrub: 3, hill: 1, house: 8, tower: 5, mine: 1, castle: 3, camp: 3 };
 const PIXEL_UP = 4; // texture dựng gấp 4 lần pixel gốc (nearest), sprite scale = (px thế giới trên 1 pixel gốc) / PIXEL_UP
 
 export const RES = 2; // texture dựng ở độ phân giải gấp đôi, sprite scale 1/RES
@@ -273,7 +273,7 @@ export class Assets {
     ctx.drawImage(img, 0, 0, w, h);
     const t = PIXI.Texture.from(c);
     t.source.style.scaleMode = 'nearest';
-    const res = { texture: t, anchor: [0.5, h / (h + padB)], up: U };
+    const res = { texture: t, anchor: [0.5, h / (h + padB)], up: U, w: img.width, h: img.height };
     this.cache.set(k, res);
     return res;
   }
