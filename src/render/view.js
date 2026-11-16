@@ -3,8 +3,9 @@
 import { CONFIG, FACTIONS } from '../config.js';
 import { hash2, makeRng } from '../rng.js';
 import { terrainId, levelOf } from '../rules.js';
-import { RES } from './assets.js';
+import { RES, TERRAIN_DECO } from './assets.js';
 import { drawGroundTile, makeCanvas, drawCloud, INK } from './doodle.js';
+import { paintPixelGround } from './pixelground.js';
 
 export const TW = 96, TH = 48;
 const CHUNK = 8;
@@ -38,6 +39,7 @@ export class GameView {
     this.snd = () => {};            // Game gắn hàm phát âm thanh vào đây
     this.overlay = {};
     this.speed = 1;
+    this.tileStyle = 'doodle';      // 'pixel' = nền phẳng + vật thể pixel art; 'doodle' = nền giấy vẽ tay
   }
 
   async init(state) {
@@ -140,10 +142,13 @@ export class GameView {
     }
     const canvas = makeCanvas((maxX - minX) * RES, (maxY - minY) * RES);
     const ctx = canvas.getContext('2d');
+    const tid = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? null : terrainId(s, x, y));
+    const pixel = this.tileStyle === 'pixel';
+    if (pixel) paintPixelGround(ctx, { tid, i0, j0, i1, j1, minX, minY, TW, TH, RES, cw: canvas.width, ch: canvas.height });
     ctx.scale(RES, RES);
     ctx.translate(-minX, -minY);
-    const tid = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? null : terrainId(s, x, y));
     for (let y = j0; y < j1; y++) for (let x = i0; x < i1; x++) {
+      if (pixel) break;
       const c = tileToWorld(x, y);
       const t = tid(x, y);
       // thứ tự cạnh: 0=-y 1=+x 2=+y 3=-x
@@ -151,7 +156,7 @@ export class GameView {
       drawGroundTile(ctx, c.x, c.y, t, { TW, TH, neighbors, seed: Math.floor(hash2(s.map.seed || 1, x, y) * 1e9) });
     }
     // lưới mờ
-    ctx.strokeStyle = 'rgba(120,118,105,0.28)'; ctx.lineWidth = 1;
+    ctx.strokeStyle = pixel ? 'rgba(40,70,30,0.16)' : 'rgba(120,118,105,0.28)'; ctx.lineWidth = 1;
     for (let y = j0; y < j1; y++) for (let x = i0; x < i1; x++) {
       const c = tileToWorld(x, y);
       ctx.beginPath();
@@ -216,6 +221,8 @@ export class GameView {
     const rng = makeRng(seed);
     const uv = (u, v) => [c.x + (u * TW) / 2 - (v * TW) / 2, c.y + (u * TH) / 2 + (v * TH) / 2];
     const A = this.assets;
+    const bt = this.tileStyle === 'pixel' ? '#d9c8a2' : PAPER;   // công trình: tô cát ấm trên nền pixel, giấy trắng trên nền vẽ tay
+    if (this.tileStyle === 'pixel' && this.placePixelDeco(t, x, y, c, rng, uv)) return;
     if (t === 'forest') {
       const n = 2 + rng.int(2);
       for (let i = 0; i < n; i++) {
@@ -238,19 +245,19 @@ export class GameView {
       if (A.has('rocks')) this.place(this.mk(A.building(['rocks', 'rocksB'][rng.int(2)], PAPER, 0.97), 0.9), c.x, c.y + 11, c.y + 2, { x, y });
       else this.place(this.mk(A.deco('mountain', rng.int(3)), 0.46), c.x, c.y + 11, c.y + 2, { x, y });
     } else if (t === 'mine') {
-      if (A.has('mine')) this.place(this.mk(A.building('mine', PAPER, 0.97), 1), c.x, c.y + 12, c.y + 2, { x, y });
+      if (A.has('mine')) this.place(this.mk(A.building('mine', bt, 0.97), 1), c.x, c.y + 12, c.y + 2, { x, y });
       else this.place(this.mk(A.deco('mine', 0), 0.72), c.x, c.y + 12, c.y + 2, { x, y });
     } else if (t === 'village') {
       if (A.has('houses')) {
         const kname = ['houses', 'houseChimney', 'houseViking', 'houseTall', 'houses', 'mill'][rng.int(6)];
-        this.place(this.mk(A.building(kname, PAPER, 0.97), 1), c.x, c.y + 12, c.y + 2, { x, y });
+        this.place(this.mk(A.building(kname, bt, 0.97), 1), c.x, c.y + 12, c.y + 2, { x, y });
       } else {
         const name = ['village_a', 'village_b', 'cottages'][rng.int(3)];
         this.place(this.mk(A.building(name)), c.x, c.y + 14, c.y + 2, { x, y });
       }
     } else if (t === 'fort') {
       if (A.has('towerWatch')) {
-        this.place(this.mk(A.building(['towerWatch', 'tower', 'watchtower'][rng.int(3)], PAPER, 0.97), 1), c.x, c.y + 12, c.y + 2, { x, y });
+        this.place(this.mk(A.building(['towerWatch', 'tower', 'watchtower'][rng.int(3)], bt, 0.97), 1), c.x, c.y + 12, c.y + 2, { x, y });
       } else {
         this.place(this.mk(A.building(rng() < 0.5 ? 'tower_a' : 'tower_b')), c.x, c.y + 16, c.y + 2, { x, y });
       }
@@ -279,6 +286,68 @@ export class GameView {
       g.scale.set(0.7);
       this.place(g, px, py + 4);
     }
+  }
+
+  // Vật thể địa hình pixel art (cây thông, bụi cỏ, đá...). Trả true nếu ô này do nhánh pixel lo (công trình thì để code cũ).
+  // wpa = đơn vị thế giới cho mỗi pixel gốc: 1 cho cây/đá, ~0.67 cho cỏ nhỏ cho đỡ rối.
+  placePixelDeco(t, x, y, c, rng, uv) {
+    const A = this.assets;
+    const mk = (group, wpa, jit, z, tile, scaleMul = 1) => {
+      const res = A.pixelDeco(group, rng.int(TERRAIN_DECO[group]));
+      if (!res) return;
+      const sp = new PIXI.Sprite(res.texture);
+      sp.anchor.set(res.anchor[0], res.anchor[1]);
+      sp.scale.set((wpa * scaleMul) / res.up);
+      const [px, py] = jit ? uv((rng() - 0.5) * jit, (rng() - 0.5) * jit) : [c.x, c.y];
+      this.place(sp, px, py + 6, z, tile);
+    };
+    switch (t) {
+      case 'plain':
+        if (rng() < 0.4) mk('tuft', 0.667, 0.8);
+        if (rng() < 0.08) mk('bush', 0.667, 0.8);
+        if (rng() < 0.05) mk('pine', 1, 0.4);
+        return true;
+      case 'field':
+        if (rng() < 0.15) mk('tuft', 0.667, 0.8);
+        return true;
+      case 'forest': {
+        const n = 1 + (rng() < 0.67 ? 1 : 0);
+        for (let i = 0; i < n; i++) mk('pine', 1, 0.6);
+        if (rng() < 0.25) mk('tuft', 0.667, 0.8);
+        return true;
+      }
+      case 'hill':
+        mk('boulder', 1, 0.3, c.y + 2, { x, y });
+        if (rng() < 0.4) mk('tuft', 0.667, 0.8);
+        if (rng() < 0.3) mk('bush', 0.667, 0.8);
+        return true;
+      case 'mountain':
+        mk('mound', 1, 0.3, c.y + 2, { x, y });
+        if (rng() < 0.6) mk('boulder', 0.667, 0.8);
+        return true;
+      case 'peak':
+        mk('mound', 1, 0.2, undefined, { x, y }, 1.5);
+        return true;
+      case 'swamp':
+        mk('reed', 0.667, 0.8);
+        mk('reed', 0.667, 0.8);
+        if (rng() < 0.4) mk('shrub', 0.667, 0.8);
+        return true;
+      case 'river': case 'bridge':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  setTileStyle(style) {
+    const st = style === 'pixel' && this.assets.hasPixelDeco() ? 'pixel' : 'doodle';
+    if (st === this.tileStyle) return;
+    this.tileStyle = st;
+    if (!this.app) return;
+    this.buildMap();
+    this.reconcile();
+    this.requestRender();
   }
 
   setHold(state) {

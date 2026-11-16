@@ -695,6 +695,20 @@ export class Game {
     const paint = () => { soundBtn.innerHTML = icon(this.settings.muted ? 'sound-off' : 'sound'); };
     soundBtn.addEventListener('click', () => { this.audio?.setMuted(!this.settings.muted); if (!this.audio) this.settings.muted = !this.settings.muted; this.save(); paint(); });
     paint();
+    // Nút bật/tắt nền pixel art (nền phẳng + cây thông, bụi cỏ, đá có bóng) <-> nền giấy vẽ tay
+    const tilesBtn = $('btn-tiles');
+    const paintTiles = () => {
+      const on = this.view.tileStyle === 'pixel';
+      tilesBtn.innerHTML = icon('tiles');
+      tilesBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      tilesBtn.title = t(on ? 'ui.tiles.on' : 'ui.tiles.off'); tilesBtn.setAttribute('aria-label', tilesBtn.title);
+    };
+    tilesBtn.addEventListener('click', () => {
+      this.settings.pixelTiles = this.view.tileStyle !== 'pixel';
+      this.view.setTileStyle(this.settings.pixelTiles ? 'pixel' : 'doodle');
+      this.save(); paintTiles(); this.refreshAll();
+    });
+    paintTiles();
     $('btn-menu').addEventListener('click', () => this.openMenu());
     $('btn-mission').innerHTML = icon('flag');
     $('btn-mission').setAttribute('aria-label', t('ui.missionBtn')); $('btn-mission').title = t('ui.missionBtn');
@@ -746,6 +760,7 @@ export class Game {
           <h3>${esc(t('ui.group.display'))}</h3>
           ${field('m-speed', t('ui.speed'), `<select id="m-speed">${Object.keys(SPEEDS).map((d) => opt(d, t('ui.speed.' + d), this.settings.speed)).join('')}</select>`)}
           ${field('m-clouds', t('ui.clouds'), onoff('m-clouds', this.settings.clouds !== false))}
+          ${field('m-tiles', t('ui.tiles'), onoff('m-tiles', this.view.tileStyle === 'pixel'))}
           ${field('m-idle', t('ui.idle'), onoff('m-idle', this.settings.idle === true))}
           ${field('m-lang', t('ui.language'), `<select id="m-lang">${LANGS.map((c) => opt(c, langName(c), getLang())).join('')}</select>`)}
         </div>
@@ -769,6 +784,9 @@ export class Game {
       this.view.setIdle(this.settings.idle);
       this.settings.clouds = $('m-clouds').value === '1';
       this.view.setClouds(this.settings.clouds);
+      this.settings.pixelTiles = $('m-tiles').value === '1';
+      this.view.setTileStyle(this.settings.pixelTiles ? 'pixel' : 'doodle');
+      document.getElementById('btn-tiles')?.setAttribute('aria-pressed', this.view.tileStyle === 'pixel' ? 'true' : 'false');
       const lang = $('m-lang').value;
       if (lang !== getLang()) await setLang(lang);
       this.settings.lang = lang;

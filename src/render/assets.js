@@ -7,6 +7,10 @@
 import { FACTIONS } from '../config.js';
 import { makeCanvas, drawTree, drawHill, drawMountain, drawMine, drawFallbackUnit, drawFallbackBuilding, INK } from './doodle.js';
 
+// Sprite địa hình pixel art (assets/terrain/<nhóm>_<n>.png, tools/prep_decor.py): số biến thể mỗi nhóm
+export const TERRAIN_DECO = { pine: 8, tuft: 6, bush: 4, tiny: 3, boulder: 5, mound: 3, reed: 4, shrub: 3 };
+const PIXEL_UP = 4; // texture dựng gấp 4 lần pixel gốc (nearest), sprite scale = (px thế giới trên 1 pixel gốc) / PIXEL_UP
+
 export const RES = 2; // texture dựng ở độ phân giải gấp đôi, sprite scale 1/RES
 
 // Chiều cao thân mong muốn (đơn vị thế giới). Kỵ binh giữ nguyên cả ngựa lẫn cờ vì to hơn sẽ che hết ô.
@@ -125,6 +129,7 @@ export class Assets {
       pre.push(this._img(`assets/buildings/${n}.png`), this._img(`assets/buildings/${n}_fill.png`));
     }
     for (let i = 0; i < 6; i++) pre.push(this._img(`assets/clouds/cloud${i}.png`));
+    for (const [g, n] of Object.entries(TERRAIN_DECO)) for (let i = 0; i < n; i++) pre.push(this._img(`assets/terrain/${g}_${i}.png`));
     await Promise.all(pre);
     this.cloudImgs = [];
     for (let i = 0; i < 6; i++) { const im = this.imgs.get(`assets/clouds/cloud${i}.png`); if (im) this.cloudImgs.push(im); }
@@ -239,6 +244,36 @@ export class Assets {
     const seed = 1000 + variant * 77;
     const canvas = { tree: drawTree, hill: drawHill, mountain: drawMountain, mine: drawMine }[kind](seed, RES);
     const res = { texture: this._tex(canvas), anchor: [0.5, 0.93] };
+    this.cache.set(k, res);
+    return res;
+  }
+
+  // Vật thể địa hình pixel art: có đủ file chưa
+  hasPixelDeco() { return Object.keys(TERRAIN_DECO).every((g) => !!this.imgs.get(`assets/terrain/${g}_0.png`)); }
+
+  // Sprite pixel art nguyên bản, phóng nearest, kèm bóng đổ phẳng ngay dưới chân (vật thể khỏi "chênh vênh" trên nền).
+  // Trả { texture, anchor, up }: đặt sprite.scale = (px thế giới / pixel gốc) / up.
+  pixelDeco(group, variant, shadow = true) {
+    const k = `p:${group}:${variant}:${shadow}`;
+    if (this.cache.has(k)) return this.cache.get(k);
+    const img = this.imgs.get(`assets/terrain/${group}_${variant}.png`);
+    if (!img) return null;
+    const U = PIXEL_UP, w = img.width * U, h = img.height * U;
+    const sw = w * 0.78, sh = Math.max(U * 2, sw * 0.26);
+    const padB = shadow ? Math.ceil(sh * 0.4) : 0;
+    const c = makeCanvas(w, h + padB);
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    if (shadow) {
+      ctx.fillStyle = 'rgba(20,45,25,0.36)';
+      ctx.beginPath();
+      ctx.ellipse(w / 2 + w * 0.06, h - sh * 0.15, sw / 2, sh / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.drawImage(img, 0, 0, w, h);
+    const t = PIXI.Texture.from(c);
+    t.source.style.scaleMode = 'nearest';
+    const res = { texture: t, anchor: [0.5, h / (h + padB)], up: U };
     this.cache.set(k, res);
     return res;
   }

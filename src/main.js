@@ -32,6 +32,8 @@ async function main() {
   await assets.init();
   const seed = q.get('seed') ? +q.get('seed') : Math.floor(Math.random() * 1e6);
   const view = new GameView(document.getElementById('stage'), assets, t);
+  if (q.get('tiles')) settings.pixelTiles = q.get('tiles') !== '0';
+  view.tileStyle = settings.pixelTiles !== false && assets.hasPixelDeco() ? 'pixel' : 'doodle';   // mặc định bật nền pixel art
   await view.init(createState(generateMap(seed)));
   document.getElementById('loading').classList.add('done');
 
