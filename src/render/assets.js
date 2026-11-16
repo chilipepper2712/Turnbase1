@@ -10,7 +10,7 @@ import { makeCanvas, drawTree, drawHill, drawMountain, drawMine, drawFallbackUni
 export const RES = 2; // texture dựng ở độ phân giải gấp đôi, sprite scale 1/RES
 
 // Chiều cao thân mong muốn (đơn vị thế giới). Kỵ binh giữ nguyên cả ngựa lẫn cờ vì to hơn sẽ che hết ô.
-const UNIT_HEIGHT = { militia: 62, infantry: 62, archer: 62, cavalry: 70, goblin: 50 };
+const UNIT_HEIGHT = { militia: 62, infantry: 62, archer: 62, cavalry: 70, goblin: 50, necromancer: 68 };
 // Animation đi bộ: dải frame ngang assets/units/<phe>_<quân>_walk.png (tools/prep_walk.py). frames = số frame,
 // scale = chỉnh cỡ so với sprite đứng yên (1 = cùng chiều cao), fps = nhịp bước.
 export const WALK = {
@@ -119,6 +119,8 @@ export class Assets {
         pre.push(this._img(`assets/units/${f}_${role}.png`), this._img(`assets/units/${f}_${role}_fill.png`));
       }
     }
+    // âm binh: sprite theo phe gốc (giữ đồng phục lúc còn sống)
+    for (const o of ['human', 'orc']) for (const r of Object.keys(UNIT_HEIGHT)) pre.push(this._img(`assets/units/undead_${o}_${r}.png`));
     for (const n of Object.keys(BUILDING_WIDTH)) {
       pre.push(this._img(`assets/buildings/${n}.png`), this._img(`assets/buildings/${n}_fill.png`));
     }
@@ -169,17 +171,17 @@ export class Assets {
   }
 
   // Trả { texture, anchor:[x,y] } – gốc ở chân đơn vị
-  unit(role, faction) {
-    const k = `u:${role}:${faction}`;
+  unit(role, faction, origin) {
+    const k = `u:${role}:${faction}:${origin || ''}`;
     if (this.cache.has(k)) return this.cache.get(k);
     let res;
-    const own = this.imgs.get(`assets/units/${faction}_${role}.png`);
+    const own = (origin && this.imgs.get(`assets/units/${faction}_${origin}_${role}.png`)) || this.imgs.get(`assets/units/${faction}_${role}.png`);
     const ownFill = this.imgs.get(`assets/units/${faction}_${role}_fill.png`);
     const base = this.imgs.get(`assets/units/${role}.png`);
     const baseFill = this.imgs.get(`assets/units/${role}_fill.png`);
     // Chiều cao thân (đầu tới chân) là thứ phải đồng đều giữa các quân; giáo/kiếm nhô cao hơn đầu không được tính.
     // BODY_FRAC = phần thân chiếm trong chiều cao toàn ảnh, nên ảnh có vũ khí dài được phóng to bù lại.
-    const H = this.unitHeight(role, faction);
+    const H = this.unitHeight(role, origin || faction);
     const color = FACTIONS[faction].fill;
     if (own) {
       const W = Math.round(own.width * (H / own.height));

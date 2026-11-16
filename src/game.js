@@ -17,6 +17,8 @@ import { snapshot, restoreState, summarize, parseSaveText, SLOTS } from './saves
 const SPEEDS = { normal: 1, fast: 2.4, instant: 14 };
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+// Tên đơn vị: âm binh ghi kèm phe gốc ("Xác bộ binh (gốc Orc)")
+const unitName = (u) => (u.faction === 'undead' && u.origin ? t('unit.undead.named', { unit: t(`unit.undead.${u.role}`), origin: t('origin.' + u.origin) }) : t(`unit.${u.faction}.${u.role}`));
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 export class Game {
@@ -30,7 +32,7 @@ export class Game {
     this.hoverUnit = null;
     this.hoverTile = null;
     this.confirmEnd = false;
-    this.players = { human: { type: 'player' }, orc: { type: 'ai' } }; // sau này: hotseat/AI cả hai phe
+    this.players = { human: { type: 'player' }, orc: { type: 'ai' }, undead: { type: 'ai' } }; // sau này: hotseat/AI cả hai phe
     view.hooks = {
       onTap: (tile) => this.onTap(tile),
       onHover: (tile) => this.onHover(tile),
@@ -59,7 +61,7 @@ export class Game {
     this.busy = false;
     this.sel = null; this.pending = null; this.origin = null;
     this.view.speed = this.speed;
-    const st = createMissionState(map, this.settings.mission || 'skirmish', 'human');
+    const st = createMissionState(map, this.settings.mission || 'skirmish', 'human', this.settings.enemy || 'orc');
     this.view.reset(st);
     this.refreshAll();
     if (!hold) { this.briefMission(); this.beginTurn(); }
@@ -78,7 +80,7 @@ export class Game {
     const ul = (items, ic) => `<ul>${items.map((x) => `<li>${ic ? icon(ic) : '<i class="dot"></i>'}<span>${esc(x)}</span></li>`).join('')}</ul>`;
     const chips = [];
     if (m.turns) chips.push(t('mission.chip.turns', { n: m.turns }));
-    for (const [side, key] of [['human', 'mission.chip.ours'], ['orc', 'mission.chip.theirs']]) {
+    for (const [side, key] of [['human', 'mission.chip.ours'], [this.state.sides[1], 'mission.chip.theirs']]) {
       const at = (m.waves || []).filter((w) => w.faction === side).map((w) => w.at);
       if (at.length) chips.push(t(key, { list: at.join(', ') }));
     }
@@ -595,7 +597,7 @@ export class Game {
       const def = Math.round(defensePct(s, u, tile.x, tile.y));
       const cost = moveCostFor(tid, u.faction, u.role);
       const fb = Math.round(fortifyBonus(s, u, tile.x, tile.y));
-      you = `<div class="you"><div><b>${esc(t('fx.forYou', { unit: t(`unit.${u.faction}.${u.role}`) }))}</b> ${icon('shield')} ${def}% ${icon('foot')} ${this.costText(cost)}</div>`
+      you = `<div class="you"><div><b>${esc(t('fx.forYou', { unit: unitName(u) }))}</b> ${icon('shield')} ${def}% ${icon('foot')} ${this.costText(cost)}</div>`
         + `<div>${icon('tent')} ${esc(t('fx.fort', { n: fb }))}</div></div>`;
     }
     return `<h3>${esc(t('terrain.' + tid))}</h3><ul class="fx">${L}</ul>${you}${note === nk ? '' : `<div class="note">${esc(note)}</div>`}`;
@@ -614,7 +616,7 @@ export class Game {
     else if (u.faction === s.current && u.moved) status = t('ui.status.moved');
     const pips = Array.from({ length: CONFIG.maxStrength }, (_, i) => `<b class="${i < u.strength ? 'on ' + u.faction : ''}"></b>`).join('');
     if (u.static) {
-      return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(t(`unit.${u.faction}.${u.role}`))}</h3>
+      return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(unitName(u))}</h3>
       <div class="pips" title="${esc(t('ui.strength'))}">${pips}</div>
       <div class="line"><span title="${esc(t('ui.strength'))}">${icon('heart')} <b>${u.strength}/${CONFIG.maxStrength}</b></span><span title="${esc(t('ui.defense'))}">${icon('shield')} <b>${def}%</b></span></div>
       <div class="desc">${esc(t('unit.desc.objective'))}</div>`;
@@ -631,17 +633,17 @@ export class Game {
     const tdef = terrainFacts(tid).def[u.faction];
     const fort = u.fort === 2 ? `<div class="fortline">${icon('tent')}${esc(t('ui.fort.on', { n: Math.round(fortifyBonus(s, u)) }))}</div>` : '';
     const ic = (k) => icon({ strength: 'heart', morale: 'flag', xp: 'chevron', def: 'shield', atk: 'sword', move: 'foot', range: 'bow' }[k]);
-    return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(t(`unit.${u.faction}.${u.role}`))}${u.vip ? `<span class="tag vip">${esc(t('ui.vip'))}</span>` : ''}<span class="stars">${rankIcon(lvl, 'gold')}</span></h3>
+    return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(unitName(u))}${u.vip ? `<span class="tag vip">${esc(t('ui.vip'))}</span>` : ''}<span class="stars">${rankIcon(lvl, 'gold')}</span></h3>
       <div class="pips" title="${esc(t('ui.strength'))}">${pips}</div>
       <div class="line"><span title="${esc(t('ui.strength'))}">${ic('strength')} <b>${u.strength}/${CONFIG.maxStrength}</b></span><span title="${esc(t('ui.xp'))}">${ic('xp')} <b>${xpTxt}</b></span></div>
-      <div class="morale"><span class="m-l">${icon('flag')} ${esc(t('ui.morale'))} <em style="color:${morCol}">${esc(t('ui.mstate.' + ms))}</em></span><b style="color:${morCol}">${mor}</b></div>
+      ${FACTIONS[u.faction].noMorale ? `<div class="morale"><span class="m-l">${icon('flag')} ${esc(t('ui.morale'))} <em>${esc(t('ui.mstate.none'))}</em></span></div>` : `<div class="morale"><span class="m-l">${icon('flag')} ${esc(t('ui.morale'))} <em style="color:${morCol}">${esc(t('ui.mstate.' + ms))}</em></span><b style="color:${morCol}">${mor}</b></div>
       <div class="bar" title="${esc(t('ui.morale.hint', { n: f.routAt }))}"><i style="width:${mor}%;background:${morCol}"></i><u class="tick" style="left:${f.routAt}%"></u><u class="tick soft" style="left:${f.routAt + MORALE.waverMargin}%"></u><u class="tick soft" style="left:${MORALE.eagerAt}%"></u></div>
-      ${mfx ? `<div class="mfx ${ms}">${esc(mfx)}</div>` : ''}
+      `}${mfx ? `<div class="mfx ${ms}">${esc(mfx)}</div>` : ''}
       <div class="stats"><span title="${esc(t('ui.defense'))}">${ic('def')} <b>${def}%</b></span><span title="${esc(t('ui.atk'))}">${ic('atk')} <b>${atk}</b></span><span title="${esc(t('ui.move'))}">${ic('move')} <b>${st.move}</b></span><span title="${esc(t('ui.range'))}">${ic('range')} <b>${mn === mx ? mx : mn + '–' + mx}</b></span></div>
       <div class="terr">${esc(t('terrain.' + tid))}${tdef ? ` · ${ic('def')}${this.sg(tdef)}%` : ''}</div>
       ${fort}
       <span class="tag">${esc(status)}</span>
-      <details><summary>${esc(lvl ? t('ui.rank.' + lvl) : t('ui.info'))}</summary><div class="desc">${esc(t('unit.desc.' + u.role))}</div></details>`;
+      <details><summary>${esc(lvl ? t('ui.rank.' + lvl) : t('ui.info'))}</summary><div class="desc">${esc(t('unit.desc.' + u.role))}${u.faction === 'undead' && u.role !== 'necromancer' ? ' ' + esc(t('unit.desc.undead')) : ''}</div></details>`;
   }
 
   showPreview(opt, withButtons) {
@@ -659,7 +661,7 @@ export class Game {
     if (d.charge > 1) notes.push(t('ui.preview.charge', { n: Math.round((d.charge - 1) * 100) }));
     notes.push(t('ui.preview.defense', { n: Math.round(d.defPct) }));
     if (opt.node.x !== atk.x || opt.node.y !== atk.y) notes.push(t('ui.preview.from'));
-    el.innerHTML = `<h4>${esc(t(`unit.${atk.faction}.${atk.role}`))} ${icon('arrow')} ${esc(t(`unit.${tgt.faction}.${tgt.role}`))}</h4>`
+    el.innerHTML = `<h4>${esc(unitName(atk))} ${icon('arrow')} ${esc(unitName(tgt))}</h4>`
       + lines.map((l) => `<div>${l}</div>`).join('')
       + `<div class="note">${notes.map(esc).join(' · ')}</div>`
       + (withButtons ? `<div class="btns"><button data-act="confirm" class="primary">${esc(t('ui.attack'))}</button><button data-act="cancel" class="x" aria-label="${esc(t('ui.cancel'))}" title="${esc(t('ui.cancel'))}">${icon('x')}</button></div>` : '');
@@ -716,6 +718,7 @@ export class Game {
         <div>
           <h3>${esc(t('ui.group.game'))}</h3>
           ${field('m-diff', t('ui.difficulty'), `<select id="m-diff">${['easy', 'tactical'].map((d) => opt(d, t('diff.' + d), this.settings.difficulty)).join('')}</select>`)}
+          ${field('m-enemy', t('ui.enemy'), `<select id="m-enemy">${['orc', 'undead'].map((k) => opt(k, t('faction.name.' + k), this.settings.enemy || 'orc')).join('')}</select>`)}
           ${field('m-mission', t('ui.mission'), `<select id="m-mission">${MISSION_TYPES.map((k) => opt(k, t('mission.' + k), this.settings.mission || 'skirmish')).join('')}</select>`)}
           ${field('m-size', t('ui.mapSize'), `<select id="m-size">${Object.entries(MAP_SIZES).map(([k, v]) => opt(k, `${t('ui.size.' + k)} (${v.w}×${v.h})`, this.settings.mapSize || 'small')).join('')}</select>`)}
           ${field('m-seed', t('ui.seed'), `<input id="m-seed" type="number" min="0" value="${this.seed}">`)}
@@ -745,6 +748,7 @@ export class Game {
       this.audio?.applyVolumes();
       this.settings.idle = $('m-idle').value === '1';
       this.settings.mapSize = $('m-size').value;
+      this.settings.enemy = $('m-enemy').value;
       this.settings.mission = $('m-mission').value;
       this.view.setIdle(this.settings.idle);
       this.settings.clouds = $('m-clouds').value === '1';

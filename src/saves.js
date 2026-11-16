@@ -20,7 +20,7 @@ export function snapshot(state, meta = {}) {
     map: clone({ w, h, tiles, seed, strongholds, spawns }),
     state: clone({
       turn: state.turn, current: state.current, nextId: state.nextId, capture: state.capture,
-      mission: state.mission, units: state.units, escaped: state.escaped || [],
+      mission: state.mission, units: state.units, escaped: state.escaped || [], sides: state.sides,
     }),
   };
 }
@@ -39,12 +39,12 @@ export function validate(snap) {
   if (snap.v !== SAVE_VERSION) bad('phiên bản ' + snap.v + ' không hỗ trợ');
   const m = snap.map, s = snap.state;
   if (!m || !isNum(m.w) || !isNum(m.h) || !Array.isArray(m.tiles) || m.tiles.length !== m.w * m.h) bad('bản đồ');
-  if (!m.strongholds?.human || !m.strongholds?.orc) bad('thành');
-  if (!s || !isNum(s.turn) || !['human', 'orc'].includes(s.current) || !isNum(s.nextId)) bad('trạng thái');
+  if (!m.strongholds?.human || Object.keys(m.strongholds).length !== 2) bad('thành');
+  if (!s || !isNum(s.turn) || !['human', 'orc', 'undead'].includes(s.current) || !isNum(s.nextId)) bad('trạng thái');
   if (!s.mission || typeof s.mission.type !== 'string') bad('nhiệm vụ');
   if (!Array.isArray(s.units)) bad('quân');
   for (const u of s.units) {
-    if (!u || !isNum(u.id) || !['human', 'orc'].includes(u.faction) || typeof u.role !== 'string') bad('một squad');
+    if (!u || !isNum(u.id) || !['human', 'orc', 'undead'].includes(u.faction) || typeof u.role !== 'string') bad('một squad');
     if (!isNum(u.x) || !isNum(u.y) || u.x < 0 || u.y < 0 || u.x >= m.w || u.y >= m.h || !isNum(u.strength)) bad('vị trí squad');
   }
   return snap;
@@ -60,6 +60,7 @@ export function restoreState(snap) {
   st.capture = { human: 0, orc: 0, ...s.capture };
   st.mission = s.mission;
   st.escaped = s.escaped || [];
+  if (Array.isArray(s.sides) && s.sides.length === 2) st.sides = s.sides;
   st.winner = null; st.winReason = null;
   return st;
 }

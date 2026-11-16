@@ -657,3 +657,77 @@ test('goblin là quân phụ: Orc hết quân chính thì thua dù goblin còn; 
   c.current = 'human'; endTurn(c); endTurn(c); endTurn(c); endTurn(c);
   assert.equal(c.capture.orc, 0, 'goblin đứng trên thành cũng không tính chiếm');
 });
+
+// ---------- Âm binh ----------
+import { foeOf, statsOf, moraleState as mstate } from '../src/rules.js';
+import { UNDEAD, STATS } from '../src/config.js';
+
+const undeadGame = (type = 'skirmish') => createMissionState(generateMap(7, 16, 20), type, 'human', 'undead');
+
+test('âm binh: trận người đấu âm binh có đúng hai phe, một necromancer, có cả gốc người và gốc Orc, không có goblin', () => {
+  const s = undeadGame();
+  assert.deepEqual(s.sides, ['human', 'undead']);
+  assert.equal(foeOf(s, 'human'), 'undead');
+  assert.ok(!s.units.some((u) => u.faction === 'orc'), 'không còn Orc, không còn goblin');
+  const und = s.units.filter((u) => u.faction === 'undead');
+  assert.equal(und.filter((u) => u.role === 'necromancer').length, 1);
+  assert.ok(und.some((u) => u.origin === 'human') && und.some((u) => u.origin === 'orc'));
+  const human = s.units.filter((u) => u.faction === 'human');
+  assert.equal(und.length, human.length + UNDEAD.extra + 1, 'đông hơn: thêm squad + necromancer');
+});
+
+test('âm binh: chỉ số lấy từ phe gốc, sát thương giảm 18%, chậm hơn 1 ô', () => {
+  const s = undeadGame();
+  for (const o of ['human', 'orc']) {
+    const u = s.units.find((x) => x.faction === 'undead' && x.origin === o && x.role === 'infantry')
+      || addUnit(s, 'undead', 'infantry', 0, 0);
+    u.origin = o;
+    const st = statsOf(u), live = STATS[o].infantry;
+    assert.ok(Math.abs(st.atk - live.atk * UNDEAD.atkMul) < 1e-9);
+    assert.equal(st.move, live.move - UNDEAD.moveLoss);
+    assert.equal(st.def, live.def);
+  }
+});
+
+test('âm binh: không có sĩ khí, không bỏ chạy dù bị đánh tơi tả', () => {
+  const s = flat(); s.sides = ['human', 'undead'];
+  const z = addUnit(s, 'undead', 'infantry', 5, 5); z.origin = 'human';
+  addUnit(s, 'undead', 'necromancer', 0, 0);
+  const a = addUnit(s, 'human', 'cavalry', 5, 6);
+  z.strength = 3; z.morale = 0;
+  attackUnit(s, a, z);
+  assert.notEqual(z.status, 'routed');
+  assert.equal(mstate(z), 'steady');
+});
+
+test('âm binh: necromancer chết thì cả đạo quân đổ sụp, bên kia thắng', () => {
+  const s = undeadGame();
+  const n = s.units.find((u) => u.role === 'necromancer');
+  const spot = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => ({ x: n.x + dx, y: n.y + dy }))
+    .find((p) => p.x >= 0 && p.y >= 0 && p.x < s.map.w && p.y < s.map.h && !s.units.some((u) => u.x === p.x && u.y === p.y));
+  const a = s.units.find((u) => u.faction === 'human' && u.role === 'cavalry');
+  a.x = spot.x; a.y = spot.y; n.strength = 1;
+  const ev = attackUnit(s, a, n);
+  assert.ok(ev.some((e) => e.type === 'collapse'));
+  assert.ok(!s.units.some((u) => u.faction === 'undead'));
+  assert.equal(s.winner, 'human');
+  assert.equal(s.winReason, 'necromancer');
+});
+
+test('âm binh: mọi nhiệm vụ chạy được với âm binh, AI đánh tới cùng, lưu/tải giữ phe gốc', () => {
+  for (const type of ['skirmish', 'hold', 'destroy', 'escort']) {
+    const s = undeadGame(type);
+    assert.deepEqual(s.sides, ['human', 'undead'], type);
+    let g = 0;
+    while (!s.winner && s.turn <= 40 && g++ < 3000) {
+      let a, g2 = 0;
+      while (!s.winner && (a = planNextAction(s, 'tactical')) && g2++ < 200) executeAction(s, a);
+      endTurn(s);
+    }
+    assert.ok(s.winner, type);
+  }
+  const s = undeadGame();
+  const r = restoreState(JSON.parse(JSON.stringify(snapshot(s))));
+  assert.deepEqual(r.sides, ['human', 'undead']);
+  assert.deepEqual(r.units.map((u) => u.origin), s.units.map((u) => u.origin));
+});

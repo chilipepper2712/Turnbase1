@@ -256,7 +256,7 @@ export class GameView {
     } else if (t === 'stronghold') {
       const own = this.state.map.strongholds;
       const isHuman = own.human.x === x && own.human.y === y;
-      const f = isHuman ? 'human' : 'orc';
+      const f = isHuman ? 'human' : this.state.sides[1];
       const kenney = A.has('castle') && A.has('castleTall');
       const sp = kenney
         ? this.mk(A.building(isHuman ? 'castle' : 'castleTall', mixPaper(FACTIONS[f].fill, 0.55), 0.97), 1.0)
@@ -282,12 +282,12 @@ export class GameView {
 
   setHold(state) {
     if (!this.holdLabel) return;
-    for (const f of ['human', 'orc']) {
+    for (const f of state.sides) {
       const lab = this.holdLabel[f];
       if (!lab) continue;
       // thành của f bị phe kia chiếm: tiến độ nằm ở capture[phe kia]
-      const att = f === 'human' ? 'orc' : 'human';
-      const p = state.capture[att];
+      const att = f === state.sides[0] ? state.sides[1] : state.sides[0];
+      const p = state.capture[att] || 0;
       lab.text = p > 0 ? `${p}/${CONFIG.captureTurns}` : '';
       lab.style.fill = FACTIONS[att].fill;
     }
@@ -297,7 +297,7 @@ export class GameView {
   makeUnit(u) {
     const A = this.assets;
     // trại mục tiêu (nhiệm vụ phá trại) là đơn vị tĩnh: vẽ bằng sprite lều tô màu phe
-    const res = u.static ? A.building('tent', mixPaper(FACTIONS[u.faction].fill, 0.55), 0.97) : A.unit(u.role, u.faction);
+    const res = u.static ? A.building('tent', mixPaper(FACTIONS[u.faction].fill, 0.55), 0.97) : A.unit(u.role, u.faction, u.origin);
     const root = new PIXI.Container();
     // bóng xám nhẹ dưới chân (phe được phân biệt bằng hình quân và huy hiệu số)
     const shadow = new PIXI.Graphics();
@@ -959,6 +959,14 @@ export class GameView {
           await this.tween(350, (k) => { us.forEach((x) => { x.root.alpha = k; }); });
           break;
         }
+        case 'collapse': {                           // âm binh đổ sụp khi necromancer chết
+          const us = this.sprites.get(ev.unit);
+          if (us) {
+            this.tween(500, (k) => { us.root.alpha = 1 - k; us.body.scale.y = 1 - k * 0.6; }).then(() => { us.root.destroy({ children: true }); });
+            this.sprites.delete(ev.unit);
+          }
+          break;
+        }
         case 'vanish': {
           const us = this.sprites.get(ev.unit);
           if (us) { await this.tween(200, (k) => { us.root.alpha = 1 - k; }); us.root.destroy({ children: true }); this.sprites.delete(ev.unit); }
@@ -976,7 +984,7 @@ export class GameView {
           break;
         }
         case 'capture': {
-          const hold = s.map.strongholds[ev.faction === 'human' ? 'orc' : 'human'];
+          const hold = s.map.strongholds[ev.faction === s.sides[0] ? s.sides[1] : s.sides[0]];
           const c = tileToWorld(hold.x, hold.y);
           this.setHold(s);
           await this.float(`${ev.progress}/${CONFIG.captureTurns}`, c.x, c.y - 60, 0xffd54a, 30);

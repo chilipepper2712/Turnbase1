@@ -5,7 +5,7 @@
 //     destroy -> actor là bên tấn công (phải phá công trình của phe kia)
 //     escort  -> actor là bên hộ tống tướng
 import { MISSIONS, LEVEL } from './config.js';
-import { createState, addUnit, other, unitAt, spawnSquads } from './rules.js';
+import { createState, addUnit, unitAt, spawnSquads, foeOf } from './rules.js';
 import { costField } from './mapgen.js';
 
 export const MISSION_TYPES = Object.keys(MISSIONS);
@@ -24,11 +24,21 @@ function pickTile(map, state, field, lo, hi, prefer) {
   return best && { x: best.x, y: best.y };
 }
 
-export function createMissionState(map, type = 'skirmish', actor = 'human') {
+// Đổi chỗ "orc" của bản đồ (mapgen luôn sinh hai phe người / Orc) sang phe địch thật của trận
+export function setEnemy(map, enemy) {
+  if (enemy === 'orc' || !map.spawns.orc) return map;
+  map.strongholds = { human: map.strongholds.human, [enemy]: map.strongholds.orc };
+  map.spawns = { human: map.spawns.human, [enemy]: map.spawns.orc };
+  map.goblins = [];                                   // goblin chỉ đi theo Orc
+  return map;
+}
+
+export function createMissionState(map, type = 'skirmish', actor = 'human', enemy = 'orc') {
+  setEnemy(map, enemy);
   const s = createState(map);
   const cfg = { ...(MISSIONS[type] || {}) };
   if (cfg.turns) cfg.turns = Math.round(cfg.turns * Math.pow(map.h / 20, 0.6));   // bản đồ dài hơn thì cần nhiều lượt hơn
-  const foe = other(actor);
+  const foe = foeOf(s, actor);
   if (type === 'hold') {
     const k = cfg.turns / MISSIONS.hold.turns;
     s.mission = { type, defender: actor, attacker: foe, turns: cfg.turns,
@@ -37,7 +47,7 @@ export function createMissionState(map, type = 'skirmish', actor = 'human') {
   } else if (type === 'destroy') {
     // mỗi bên có một trại: đơn vị tĩnh có máu, đặt đúng chỗ thành cũ
     const targets = {};
-    for (const f of ['human', 'orc']) {
+    for (const f of s.sides) {
       const h = map.strongholds[f];
       const t = addUnit(s, f, 'objective', h.x, h.y);
       t.static = true; t.acted = true; t.moved = true;
@@ -51,9 +61,9 @@ export function createMissionState(map, type = 'skirmish', actor = 'human') {
     const to = map.strongholds[foe];
     const total = from[to.y * map.w + to.x];
     const goal = pickTile(map, s, from, total * 0.7, total * 0.9, total * 0.8);
-    if (!vip || !goal) return createMissionState(map, 'skirmish', actor);
+    if (!vip || !goal) return createMissionState(map, 'skirmish', actor, enemy);
     // không có thành: ô thành thành đất trống, quân đã xuất hiện sẵn giữa map
-    for (const f of ['human', 'orc']) { const h = map.strongholds[f]; map.tiles[h.y * map.w + h.x] = 'plain'; }
+    for (const f of s.sides) { const h = map.strongholds[f]; map.tiles[h.y * map.w + h.x] = 'plain'; }
     vip.vip = true;
     vip.xp = LEVEL.xp[0];                       // tướng đã là cựu binh
     s.mission = { type, escort: actor, hunter: foe, vipId: vip.id, goal };

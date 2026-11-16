@@ -4,8 +4,8 @@
 import { CONFIG, UNIT_VALUE, FACTIONS } from './config.js';
 import {
   key, dist, reachable, targetsFrom, previewAttack, calcDamage, defensePct, statsOf,
-  enemiesOf, alliesOf, moveCost, inBounds, DIRS, unitAt, other, terrainAt,
-  canFortify, fortifyBonus, terrainDefense, canCapture, moraleState, terrainId,
+  enemiesOf, alliesOf, moveCost, inBounds, DIRS, unitAt, terrainAt,
+  canFortify, fortifyBonus, terrainDefense, canCapture, moraleState, terrainId, foeOf,
 } from './rules.js';
 
 // ----- trường khoảng cách tới mục tiêu (Dijkstra nhiều nguồn) -----
@@ -27,7 +27,7 @@ function goalField(s, u) {
     }
   } else {
     for (const e of seenEnemies(s, f)) seed(e.x, e.y, 0);
-    if (canCapture(s, f)) { const eh = s.map.strongholds[other(f)]; seed(eh.x, eh.y, 3); }
+    if (canCapture(s, f)) { const eh = s.map.strongholds[foeOf(s, f)]; seed(eh.x, eh.y, 3); }
   }
   while (open.length) {
     open.sort((a, b) => a.c - b.c);
@@ -86,18 +86,24 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
   let killed = false;
   // sĩ khí đổi hành vi của AI: hăng hái thì xông lên, dao động thì dè chừng (người chơi chỉ bị đổi chỉ số)
   const ms = moraleState(u);
-  const advMul = ms === 'eager' ? 1.1 : ms === 'wavering' ? 0.8 : 1;
-  const thrMul = ms === 'eager' ? 0.9 : ms === 'wavering' ? 1.2 : 1;
+  let advMul = ms === 'eager' ? 1.1 : ms === 'wavering' ? 0.8 : 1;
+  let thrMul = ms === 'eager' ? 0.9 : ms === 'wavering' ? 1.2 : 1;
+  // âm binh: xác không biết sợ, cứ lao lên; necromancer thì đứng sau, giữ mạng là trên hết
+  const commander = u.vip || u.role === 'necromancer';
+  if (u.faction === 'undead' && !commander) { advMul = 1.3; thrMul = 0.6; }
+  if (u.role === 'necromancer') { advMul = 0.3; }
   if (target) {
     const pv = previewAttack(s, u, target, x, y, node.cost);
     score += (pv.dmg / CONFIG.maxStrength) * UNIT_VALUE[target.role] * 10 * w.dmg;
-    if (pv.kills) { score += valueOf(target) * 10 * w.kill * (target.vip ? 2 : 1); killed = true; }
-    if (target.vip) score += pv.dmg * 1.5;
+    const prize = target.vip || target.role === 'necromancer';      // hạ được là thắng (hoặc gần như thắng)
+    if (pv.kills) { score += valueOf(target) * 10 * w.kill * (prize ? 2 : 1); killed = true; }
+    if (prize) score += pv.dmg * 1.5;
+    if (pv.kills && target.role === 'necromancer') score += 40;
     if (target.static) score += pv.dmg * 3;               // thành mục tiêu: đánh vào là đang thắng
     score -= (pv.counter / CONFIG.maxStrength) * UNIT_VALUE[u.role] * 10 * w.counter;
   }
   if (w.terrain) score += (defensePct(s, u, x, y) / 100) * 10 * w.terrain * (target ? 0.6 : 1);
-  if (w.threat) score -= (threatAt(s, u, x, y, killed ? target.id : null) / CONFIG.maxStrength) * UNIT_VALUE[u.role] * 10 * w.threat * (u.vip ? 2.2 : 1) * thrMul;
+  if (w.threat) score -= (threatAt(s, u, x, y, killed ? target.id : null) / CONFIG.maxStrength) * UNIT_VALUE[u.role] * 10 * w.threat * (commander ? 2.2 : 1) * thrMul;
   if (w.form && FACTIONS[u.faction].formation) score += adjacentAllies(s, u, x, y) * w.form * 3;
   // tiến về phía mục tiêu
   const here = field[u.y * s.map.w + u.x], there = field[y * s.map.w + x];
@@ -188,7 +194,7 @@ function unitOptions(s, u, level, ctx) {
 export function planNextAction(s, level = 'tactical') {
   const f = s.current;
   const ownHold = s.map.strongholds[f];
-  const enemyHold = s.map.strongholds[other(f)];
+  const enemyHold = s.map.strongholds[foeOf(s, f)];
   const danger = s.mission.type !== 'escort' && seenEnemies(s, f).some((e) => Math.abs(e.x - ownHold.x) + Math.abs(e.y - ownHold.y) <= 7);
   const fields = {};
   const m = s.mission;
@@ -197,7 +203,7 @@ export function planNextAction(s, level = 'tactical') {
   const ctx = {
     ownHold, enemyHold, danger, defensive, guardPos,
     fieldFor: (u) => {
-      const k = u.vip ? 'v' : u.role === 'cavalry' ? 'c' : 'f';
+      const k = u.vip ? 'v' : u.role === 'cavalry' ? 'c' : 'f';   // (necromancer đi bộ, dùng chung trường 'f')
       return (fields[k] ||= goalField(s, u));
     },
   };

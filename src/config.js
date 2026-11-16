@@ -95,6 +95,27 @@ export const FACTIONS = {
     fill: '#d8402f',
     fillDark: '#a52c20',
   },
+  // Âm binh: xác chiến binh người và Orc do một necromancer điều khiển. Không có sĩ khí, không bỏ chạy.
+  undead: {
+    id: 'undead',
+    natAffinity: 0.5,
+    strAffinity: 0.5,
+    natMoveDiscount: 0,
+    formation: 0,
+    routAt: -1,
+    noMorale: true,
+    fill: '#7b5aa6',
+    fillDark: '#553c78',
+  },
+};
+
+// Âm binh: chỉ số = chỉ số lúc còn sống của phe gốc (người / Orc), sát thương giảm, chậm hơn 1 ô.
+// Mỗi đạo âm binh có đúng một necromancer chỉ huy; necromancer chết thì cả đạo quân tan rã.
+export const UNDEAD = {
+  atkMul: 0.82,             // giảm 18% sát thương so với lúc sống
+  moveLoss: 1,
+  origins: ['human', 'orc'],  // squad thứ i lấy gốc origins[i % 2]
+  extra: 2,                 // đạo âm binh đông hơn: thêm chừng này squad (xác thì không thiếu)
 };
 export const FORMATION_MAX = 3;
 
@@ -115,20 +136,26 @@ export const STATS = {
     objective: { atk: 0,  def: 25, move: 0, range: [1, 1] },
     goblin:   { atk: 3.6, def: 4,  move: 5, range: [1, 1] },   // toán goblin trong rừng: yếu, nhanh, ẩn mình
   },
+  // âm binh thường lấy chỉ số từ phe gốc (xem UNDEAD); ở đây chỉ có những vai riêng của âm binh
+  undead: {
+    necromancer: { atk: 3.5, def: 10, move: 4, range: [2, 3] },   // phép thuật tầm xa yếu, thân mỏng
+    objective: { atk: 0, def: 25, move: 0, range: [1, 1] },
+  },
 };
 
 // Hệ số khắc chế: MATCHUP[vai trò tấn công][vai trò phòng thủ]
 export const MATCHUP = {
-  militia:  { militia: 1.0, infantry: 0.8, archer: 1.1, cavalry: 1.5, objective: 1.0, goblin: 1.1 }, // giáo chống kỵ
-  infantry: { militia: 1.2, infantry: 1.0, archer: 1.2, cavalry: 0.9, objective: 1.0, goblin: 1.1 },
-  archer:   { militia: 1.2, infantry: 1.0, archer: 1.0, cavalry: 0.8, objective: 0.6, goblin: 1.0 },
-  cavalry:  { militia: 1.3, infantry: 0.9, archer: 1.4, cavalry: 1.0, objective: 0.6, goblin: 1.0 },
-  objective: { militia: 1, infantry: 1, archer: 1, cavalry: 1, objective: 1, goblin: 1 },
-  goblin:   { militia: 1.1, infantry: 0.9, archer: 1.3, cavalry: 0.9, objective: 0.5, goblin: 1.0 },  // đánh lén cung thủ tốt
+  militia:  { militia: 1.0, infantry: 0.8, archer: 1.1, cavalry: 1.5, objective: 1.0, goblin: 1.1, necromancer: 1.2 }, // giáo chống kỵ
+  infantry: { militia: 1.2, infantry: 1.0, archer: 1.2, cavalry: 0.9, objective: 1.0, goblin: 1.1, necromancer: 1.2 },
+  archer:   { militia: 1.2, infantry: 1.0, archer: 1.0, cavalry: 0.8, objective: 0.6, goblin: 1.0, necromancer: 1.2 },
+  cavalry:  { militia: 1.3, infantry: 0.9, archer: 1.4, cavalry: 1.0, objective: 0.6, goblin: 1.0, necromancer: 1.4 },
+  objective: { militia: 1, infantry: 1, archer: 1, cavalry: 1, objective: 1, goblin: 1, necromancer: 1 },
+  goblin:   { militia: 1.1, infantry: 0.9, archer: 1.3, cavalry: 0.9, objective: 0.5, goblin: 1.0, necromancer: 1.2 },  // đánh lén cung thủ tốt
+  necromancer: { militia: 1.1, infantry: 1.0, archer: 1.0, cavalry: 1.0, objective: 0.5, goblin: 1.0, necromancer: 1.0 },
 };
 
 // Giá trị tương đối của một squad (dùng cho AI)
-export const UNIT_VALUE = { militia: 1, infantry: 2, archer: 2, cavalry: 2.5, objective: 3, goblin: 1 };
+export const UNIT_VALUE = { militia: 1, infantry: 2, archer: 2, cavalry: 2.5, objective: 3, goblin: 1, necromancer: 3 };
 
 // Toán goblin (thuộc phe Orc): đặt lúc sinh bản đồ trong các cụm rừng lớn, ẩn mình cho tới khi tấn công.
 //   Quân người đi vào ô kề chỗ goblin ẩn thì bị chặn lại và bị phục kích (đòn bất ngờ: không bị đánh trả).

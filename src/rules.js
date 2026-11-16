@@ -1,32 +1,55 @@
 // Luật chơi thuần logic (không đụng DOM/Pixi). Mọi hàm đổi state đều trả về mảng sự kiện
 // để lớp hiển thị diễn lại bằng animation.
 import {
-  CONFIG, TERRAIN, FACTIONS, FORMATION_MAX, STATS, MATCHUP, ROSTER, FORTIFY, LEVEL, MORALE, GOBLIN,
+  CONFIG, TERRAIN, FACTIONS, FORMATION_MAX, STATS, MATCHUP, ROSTER, FORTIFY, LEVEL, MORALE, GOBLIN, UNDEAD,
 } from './config.js';
 
 export const key = (x, y) => x + ',' + y;
 export const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 export const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-export const other = (f) => (f === 'human' ? 'orc' : 'human');
+export const other = (f) => (f === 'human' ? 'orc' : 'human');   // chỉ dùng khi không có state (trận mặc định người - Orc)
+// Mỗi trận có đúng hai phe: s.sides = ['human', 'orc' | 'undead']
+export const foeOf = (s, f) => (s.sides[0] === f ? s.sides[1] : s.sides[0]);
 
 // ---------- Khởi tạo ----------
 export function createState(map) {
+  const sides = ['human', Object.keys(map.spawns).find((f) => f !== 'human') || 'orc'];
   const state = {
-    map, units: [], current: 'human', turn: 1, nextId: 1,
+    map, sides, units: [], current: 'human', turn: 1, nextId: 1,
     capture: { human: 0, orc: 0 }, winner: null, winReason: null,
     mission: { type: 'skirmish' },
   };
-  for (const f of ['human', 'orc']) {
-    map.spawns[f].forEach((p, i) => addUnit(state, f, ROSTER[i % ROSTER.length], p.x, p.y));
+  for (const f of sides) {
+    map.spawns[f].forEach((p, i) => {
+      const u = addUnit(state, f, ROSTER[i % ROSTER.length], p.x, p.y);
+      if (f === 'undead') u.origin = UNDEAD.origins[i % UNDEAD.origins.length];
+    });
+    if (f === 'undead') { placeNecromancer(state, f); spawnSquads(state, f, UNDEAD.extra); }
   }
   // toán goblin ẩn trong rừng (phe Orc)
-  for (const g of map.goblins || []) {
+  for (const g of sides.includes('orc') ? map.goblins || [] : []) {
     if (state.units.some((u) => u.x === g.x && u.y === g.y)) continue;
     const u = addUnit(state, 'orc', 'goblin', g.x, g.y, GOBLIN.strength);
     u.hidden = true;
   }
   for (const u of state.units) { u.moved = false; u.acted = false; }
   return state;
+}
+
+// Necromancer đứng sau đạo quân: ô trống kề thành nhà, xa địch nhất (thành để trống cho nhiệm vụ cần ô thành)
+function placeNecromancer(s, f) {
+  const hold = s.map.strongholds[f], foe = s.map.strongholds[foeOf(s, f)];
+  const cands = [];
+  for (let r = 1; r <= 4 && !cands.length; r++) {
+    for (let y = hold.y - r; y <= hold.y + r; y++) for (let x = hold.x - r; x <= hold.x + r; x++) {
+      if (Math.abs(x - hold.x) + Math.abs(y - hold.y) !== r || !inBounds(s, x, y) || unitAt(s, x, y)) continue;
+      const t = TERRAIN[terrainId(s, x, y)];
+      if (!isFinite(t.cost) || terrainId(s, x, y) === 'stronghold') continue;
+      cands.push({ x, y, e: Math.abs(x - foe.x) + Math.abs(y - foe.y) });
+    }
+  }
+  cands.sort((a, b) => b.e - a.e || a.y - b.y || a.x - b.x);
+  if (cands[0]) addUnit(s, f, 'necromancer', cands[0].x, cands[0].y);
 }
 
 export function addUnit(state, faction, role, x, y, strength = CONFIG.maxStrength) {
@@ -42,7 +65,7 @@ export function addUnit(state, faction, role, x, y, strength = CONFIG.maxStrengt
 
 // Thêm n squad cho phe f vào các ô trống đi được gần thành nhà nhất (dùng cho đợt tiếp viện và quân thêm lúc đầu)
 export function spawnSquads(s, f, n) {
-  const hold = s.map.strongholds[f], foe = s.map.strongholds[other(f)];
+  const hold = s.map.strongholds[f], foe = s.map.strongholds[foeOf(s, f)];
   const cands = [];
   for (let y = 0; y < s.map.h; y++) for (let x = 0; x < s.map.w; x++) {
     const t = terrainId(s, x, y);
@@ -54,7 +77,9 @@ export function spawnSquads(s, f, n) {
   cands.sort((a, b) => a.d - b.d || a.e - b.e || a.x - b.x || a.y - b.y);
   const out = [];
   for (let i = 0; i < n && i < cands.length; i++) {
-    out.push(addUnit(s, f, ROSTER[i % ROSTER.length], cands[i].x, cands[i].y));
+    const u = addUnit(s, f, ROSTER[i % ROSTER.length], cands[i].x, cands[i].y);
+    if (f === 'undead') u.origin = UNDEAD.origins[(s.nextId + i) % UNDEAD.origins.length];
+    out.push(u);
   }
   return out;
 }
@@ -73,7 +98,19 @@ export const terrainId = (s, x, y) => s.map.tiles[y * s.map.w + x];
 export const terrainAt = (s, x, y) => TERRAIN[terrainId(s, x, y)];
 export const inBounds = (s, x, y) => x >= 0 && y >= 0 && x < s.map.w && y < s.map.h;
 export const unitAt = (s, x, y) => s.units.find((u) => u.x === x && u.y === y) || null;
-export const statsOf = (u) => STATS[u.faction][u.role];
+const UNDEAD_STATS = {};
+// Chỉ số: âm binh thường lấy từ phe gốc lúc còn sống, sát thương giảm và chậm hơn
+export const statsOf = (u) => {
+  if (u.faction === 'undead' && STATS.undead[u.role] === undefined) {
+    const k = (u.origin || 'human') + ':' + u.role;
+    if (!UNDEAD_STATS[k]) {
+      const b = STATS[u.origin || 'human'][u.role];
+      UNDEAD_STATS[k] = { ...b, atk: b.atk * UNDEAD.atkMul, move: Math.max(1, b.move - UNDEAD.moveLoss) };
+    }
+    return UNDEAD_STATS[k];
+  }
+  return STATS[u.faction][u.role];
+};
 export const isRegular = (u) => u.role !== 'militia';
 // Quân phụ: không tính vào việc quét sạch, không chiếm thành (trại tĩnh, toán goblin)
 export const isAux = (u) => !!u.static || u.role === 'goblin';
@@ -131,7 +168,7 @@ export function terrainFacts(tid) {
 
 // Mức sĩ khí: 'eager' | 'steady' | 'wavering' | 'routed'
 export function moraleState(u) {
-  if (u.static) return 'steady';
+  if (u.static || FACTIONS[u.faction].noMorale) return 'steady';     // âm binh: không có sĩ khí
   if (u.status === 'routed') return 'routed';
   const R = FACTIONS[u.faction].routAt;
   if (u.morale > MORALE.eagerAt) return 'eager';
@@ -318,7 +355,7 @@ export function previewAttack(s, atk, def, fx = atk.x, fy = atk.y, movedDist = a
 }
 
 function checkRout(u, events) {
-  if (u.static) return;
+  if (u.static || FACTIONS[u.faction].noMorale) return;              // âm binh không bao giờ bỏ chạy
   const f = FACTIONS[u.faction];
   if (u.status === 'ok' && u.morale <= f.routAt) {
     u.status = 'routed';
@@ -339,6 +376,15 @@ function removeIfDead(s, u, events) {
   if (u.strength > 0) return false;
   s.units = s.units.filter((x) => x.id !== u.id);
   events.push({ type: 'die', unit: u.id, x: u.x, y: u.y, faction: u.faction, role: u.role });
+  // necromancer chết: cả đạo âm binh mất phép điều khiển, đổ sụp thành xác vô hồn
+  if (u.role === 'necromancer') {
+    for (const x of s.units.filter((q) => q.faction === u.faction && !q.static)) {
+      events.push({ type: 'collapse', unit: x.id, x: x.x, y: x.y });
+    }
+    s.units = s.units.filter((q) => q.faction !== u.faction || q.static);
+    win(s, foeOf(s, u.faction), 'necromancer');
+    return true;
+  }
   for (const a of adjacentUnits(s, u.x, u.y)) {
     if (a.faction === u.faction) {
       a.morale = Math.max(0, a.morale - CONFIG.moraleAllyDeath);
@@ -356,7 +402,6 @@ function gainXp(u, amount, events) {
   if (after > before) events.push({ type: 'levelup', unit: u.id, level: after });
 }
 
-const FACTION_IDS = ['human', 'orc'];
 const win = (s, f, reason) => { if (!s.winner) { s.winner = f; s.winReason = reason; } };
 
 // Bên f có được chiếm thành địch không (tuỳ nhiệm vụ)
@@ -369,11 +414,11 @@ export function canCapture(s, f) {
 export function checkVictory(s) {
   if (s.winner) return;
   const m = s.mission;
-  for (const f of FACTION_IDS) {
-    if (!s.units.some((u) => u.faction === f && !isAux(u))) { win(s, other(f), 'elimination'); return; }
+  for (const f of s.sides) {
+    if (!s.units.some((u) => u.faction === f && !isAux(u))) { win(s, foeOf(s, f), 'elimination'); return; }
   }
   if (m.type === 'destroy') {
-    for (const f of FACTION_IDS) if (!s.units.some((u) => u.id === m.targets[f])) { win(s, other(f), 'destroyed'); return; }
+    for (const f of s.sides) if (!s.units.some((u) => u.id === m.targets[f])) { win(s, foeOf(s, f), 'destroyed'); return; }
   }
   if (m.type === 'escort') {
     const vip = s.units.find((u) => u.id === m.vipId);
@@ -597,7 +642,7 @@ function homeTile(s, u) {
 
 // Mép sau lưng: hàng trên hoặc dưới, phía xa thành địch
 export function rearEdgeY(s, f) {
-  const own = s.map.strongholds[f], foe = s.map.strongholds[other(f)];
+  const own = s.map.strongholds[f], foe = s.map.strongholds[foeOf(s, f)];
   return own.y >= foe.y ? s.map.h - 1 : 0;
 }
 
@@ -681,7 +726,7 @@ export function endTurn(s) {
     g.hidden = true;
     events.push({ type: 'hide', unit: g.id });
   }
-  const next = other(s.current);
+  const next = foeOf(s, s.current);
   s.current = next;
   if (next === 'human') s.turn++;
   events.push({ type: 'turn', faction: next, turn: s.turn });
@@ -729,7 +774,7 @@ export function endTurn(s) {
     runFlee(s, u, events);
   }
   // chiếm thành
-  const enemyHold = s.map.strongholds[other(next)];
+  const enemyHold = s.map.strongholds[foeOf(s, next)];
   const holder = unitAt(s, enemyHold.x, enemyHold.y);
   if (!canCapture(s, next)) {
     s.capture[next] = 0;

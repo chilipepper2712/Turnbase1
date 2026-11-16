@@ -180,6 +180,16 @@ Orc **mạnh hơn nhưng không kỷ luật** **[CHỐT]**, thể hiện bằng:
 - **Đo (AI đấu AI, 60 ván cỡ nhỏ):** giao tranh người từ ~43% xuống ~38% (goblin là lợi thế thêm cho Orc); phục kích hiếm trong ván AI đấu AI (AI phe người ít đi vào rừng), sẽ khác khi người chơi tự đi. **[MỞ]** có cần bù cho phe người không.
 - **Sprite:** pixel art sinh bằng Higgsfield theo mẫu bộ sprite cũ (`tools/prep_alpha_sprite.py --pixel 100`).
 
+### Âm binh (phe đối thủ thứ hai) **[CHỐT ý; số liệu MẶC ĐỊNH]**
+
+- **Mỗi trận vẫn hai phe**; ở một số màn âm binh thay Orc làm đối thủ của người. Menu có ô "Đối thủ: Orc / Âm binh" (áp dụng cho map mới). Engine giờ có `s.sides` thay cho cặp người–Orc cứng. **[CHỐT]**
+- **Là xác chiến binh của cả người và Orc, giữ nguyên đồng phục, màu áo, phụ kiện của phe gốc** **[CHỐT]**. Mỗi squad âm binh có `origin` (người / Orc), xen kẽ trong đội hình. Chỉ số = chỉ số lúc còn sống của đúng loại quân phe gốc, **sát thương −18%, di chuyển −1**, thủ giữ nguyên. Vẫn **bù quân** (gộp) được.
+- **Không có sĩ khí, không bao giờ bỏ chạy**, lao lên đến khi bị diệt. AI âm binh tiến mạnh, ít sợ đe doạ. **[CHỐT]**
+- **Luôn có đúng một necromancer chỉ huy** (tạo hình kiểu Á: áo đen nhiều lớp, mũ chóp phủ chữ bùa, chuỗi tiền đồng, phướn chiêu hồn). Phóng tà thuật 2–3 ô, sát thương 3,5, thủ 10, đi 4. Đứng sau đạo quân (ô kề thành nhà, xa địch nhất); AI giữ nó tránh nguy hiểm như tướng hộ tống. **Necromancer chết thì cả đạo âm binh đổ sụp thành xác vô hồn và bên kia thắng ngay** (lý do thắng riêng). AI đối phương ưu tiên săn necromancer. **[CHỐT]**
+- **Bù cho phe yếu:** đạo âm binh **đông hơn 2 squad** (xác thì không thiếu). Đo AI đấu AI 40–60 ván cỡ nhỏ, giao tranh: không thêm thì người thắng 80%; +1: 60%; **+2: người ~35%**, ngang mức khi đấu Orc (~38%).
+- **[MỞ]** **Cố thủ trước âm binh quá dễ** (người giữ được ~92%, so với ~67% trước Orc) vì âm binh chậm, không kịp phá trong 12 lượt. Cần thêm lượt hoặc thêm quân cho âm binh trong nhiệm vụ này.
+- **[MỞ]** Necromancer chưa có phép gì riêng ngoài đòn tầm xa (gợi ý: dựng xác từ squad vừa chết thành quân mới).
+
 ## 8. Chiến đấu
 
 **Deterministic, không random.** Luôn xem trước kết quả (sát thương gây ra, sát thương nhận lại, có tiêu diệt không) trước khi xác nhận. **[CHỐT]**
@@ -427,5 +437,6 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 | Cố thủ | Cả hai bên đều chiếm được thành đối phương để thắng; hạn 12 lượt; người cũng có 1 đợt tiếp viện | Mày chốt |
 | Lưu / tải ván | Lưu bản đồ đầy đủ trong bản lưu; chỗ lưu chính là db của tài khoản, dự phòng localStorage, và xuất/nhập file; 1 ô tự động đầu lượt + 3 ô thủ công | Dev quyết, mày duyệt khi chơi |
 | Goblin | Toán goblin phe Orc ẩn trong rừng, phục kích quân người đi vào sát (đòn bất ngờ, không bị đánh trả), tiếp quân cho Orc gần đó, đặt theo seed lúc sinh map | Mày đề xuất và chốt; chi tiết số liệu do dev đặt |
+| Âm binh | Phe đối thủ thứ hai thay Orc ở một số màn; xác người và Orc giữ đồng phục gốc; −18% sát thương, −1 di chuyển, không sĩ khí, không bỏ chạy; một necromancer chỉ huy, chết là cả đạo tan rã; đông hơn 2 squad để cân | Mày chốt ý; số liệu và phần bù do dev đo |
 | Thứ tự roadmap | Mục tiêu đa dạng, rồi lưu/tải, rồi hệ trạng thái sĩ khí | Mày đồng ý |
 | Biến đổi địa hình | Dân quân đốt rừng, đặt bẫy, xây cầu | Mày đề xuất |
