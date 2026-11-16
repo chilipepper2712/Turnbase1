@@ -175,7 +175,7 @@ Ghi chú chạy lại: `undead_human_cavalry` đã thay bằng bản nón trận
 
 ## Sheet bổ sung (đơn vị còn lại)
 
-- `marine_boat_human`: thủy binh giương cung trong xuồng (theo sprite `human_marineboat`), thay cho panel cận cảnh bị sai trong `marine_human`.
+- `marine_archer_human_a` / `_b`: thủy binh hoá cung thủ, **không vẽ thuyền**, chân đất để đứng vững trên thuyền, giữ nguyên khăn, áo, quần, cuộn dây như bản trên bờ, thêm cung và ống tên dài cứng, rìu giắt hông (theo sprite `human_marine`). Thay cho panel cận cảnh bị sai trong `marine_human` và bản thuyền đã bỏ.
 - `camp_human`, `camp_orc`: trại mục tiêu của nhiệm vụ phá trại. Chưa có sprite pixel nên vẽ từ mô tả chữ; chi tiết như cờ rồng ở trại người là model tự thêm, cần đổi nếu muốn khớp biểu tượng trong game (mặt trời cam-đỏ trên nền xanh).
 
-Toàn bộ sheet nằm trong `docs/art/sheets/` (23 file), lọc từ đây.
+Toàn bộ sheet nằm trong `docs/art/sheets/` (24 file), lọc từ đây.
