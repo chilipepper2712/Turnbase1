@@ -4,8 +4,12 @@ Dùng với Higgsfield `generate_image`, model `gpt_image_2_6`, **tỉ lệ 16:9
 Mỗi prompt = **khối BỐ CỤC** + **khối NHÂN VẬT** của đơn vị + **khối PHONG CÁCH** + **khối LOẠI TRỪ**, ghép thành một đoạn theo đúng thứ tự đó
 (model đọc phần đầu nặng hơn, nên bố cục và nhận dạng phải đứng trước).
 
+**BẮT BUỘC khi chạy:** đính kèm **sprite trong game** của đơn vị đó (`assets/units/...png`, phóng to nearest-neighbor trên nền trắng) làm ảnh tham chiếu,
+và mở đầu khối nhân vật bằng câu `redrawn faithfully from the reference pixel sprite, keep exactly its costume, colors and silhouette, add nothing foreign`.
+Lần chạy đầu chỉ dùng chữ mô tả, model tự thêm mũ lông, ria, cung sừng nên cung thủ thành lính du mục; đính kèm sprite là sửa được.
+Các khối nhân vật dưới đây **chỉ mô tả đúng những gì có trên sprite**, không thêm chi tiết.
+
 Gợi ý khi chạy:
-- Đính kèm **sprite trong game** của đơn vị đó (`assets/units/...png`) làm ảnh tham chiếu để giữ đúng đồng phục và màu.
 - Có thể đính kèm thêm **một** ảnh tham chiếu phong cách của mày, nhưng prompt dưới đây đã mô tả đủ phong cách bằng lời, không gọi tên nhân vật hay game nào.
 - Có sheet ưng ý rồi thì dùng chính sheet đó làm tham chiếu cho mọi khung hình cutscene của nhân vật, đó là cách giữ nhân vật nhất quán.
 
@@ -51,63 +55,63 @@ Cho **sinh vật / quân cưỡi** (kỵ binh, kỵ lợn rừng, xác ngựa): 
 
 ## Khối nhân vật cho từng đơn vị
 
-### Phe người (màu nhấn: đỏ thẫm)
+### Phe người
 
-**Dân quân**
+**Dân quân** (`human_militia.png`)
 ```
-a hardened peasant militiaman in his forties, weathered tanned skin, deep-set tired eyes, short stubble, black cloth cap, grey quilted padded vest over a long brown wool robe, rope belt, cloth wrapped shins and straw sandals, holding a long simple wooden spear with an iron leaf blade, stocky farmer's build with thick forearms, accent color: a faded red cloth tied around the spear,
-```
-
-**Bộ binh**
-```
-a veteran heavy infantryman in his thirties, square jaw, scar across the cheekbone, stern narrow eyes, steel helmet with a tall red horsehair plume and gilded brow guard, grey steel lamellar armor with red lacquered trim, layered shoulder plates, patterned gold sash at the waist, dark red under-robe, black boots, straight double-edged sword held low, broad-shouldered powerful build, accent color: crimson plume and trim,
+a medieval East Asian militia spearman, clean-shaven, black cloth cap, grey padded armored vest with tan trim and a black belt over dark long sleeves, long brown cotton robe, black boots, holding a long wooden spear with an iron blade diagonally across the body, accent color: tan trim,
 ```
 
-**Cung thủ**
+**Bộ binh** (`human_infantry.png`)
 ```
-a lean seasoned archer in his thirties, sharp watchful eyes, thin mustache, brown fur-lined hat, grey-green padded vest over a long brown robe, leather bracer on the bow arm, quiver of red-fletched arrows at the hip, drawing a recurve horn bow, wiry athletic build with long arms, accent color: red arrow fletching,
-```
-
-**Kỵ binh**
-```
-a proud cavalry banner-rider in his thirties, confident grin, straw conical hat tied under the chin, red quilted riding tunic with brass studs, carrying a tall blue war banner with a red emblem, curved saber at the belt, riding a muscular chestnut warhorse with simple leather tack and red tassels, accent color: red tunic and tassels,
+a medieval East Asian heavy infantryman, small mustache, steel helmet with a red plume and a gilded brow ornament, grey lamellar armor with brown trim and layered shoulder guards, dark red under-robe, yellow-and-black patterned sash at the waist, black boots, straight double-edged sword held across the body, accent color: red plume and dark red robe,
 ```
 
-**Thủy binh (trên bộ và trên thuyền: hai sheet, hoặc gộp)**
+**Cung thủ** (`human_archer.png`)
 ```
-a rugged river marine boatman in his late twenties, sun-darkened skin, cheerful but tough face, white cloth headband, sleeveless light hemp shirt, rolled-up dark trousers, coil of rope over the shoulder, woodcutter's axe in hand; in the close-up panel he stands in a narrow wooden river boat drawing a recurve bow, accent color: red headband tails,
-```
-
-### Phe Orc (màu nhấn: đỏ máu và xanh lục)
-
-**Orc phỉ (dân quân)**
-```
-a scrappy orc raider, green-olive skin, short lower tusks, heavy brow, battered iron skullcap helmet, single grey iron shoulder pauldron, leather wraps on arms and legs, round wooden shield with nail studs, long crude spear, lean wiry build, accent color: red war paint stripe across the eyes,
+a medieval East Asian foot archer, clean-shaven, short black hair, plain brown cloth cylindrical cap (not fur, no brim), grey padded armored vest with dark moss-green trim and a black belt over a long brown cotton robe with long sleeves, plain black boots, simple long wooden self bow with a dark red-brown stave, yellow-ochre leather quiver of arrows at the hip, accent color: yellow-ochre quiver,
 ```
 
-**Orc chiến binh**
+**Kỵ binh** (`human_cavalry.png`)
 ```
-a massive orc brute warrior, deep green skin, huge lower tusks, small fierce eyes under a heavy brow, spiked iron shoulder pauldron, thick leather chest strap, grey hide loincloth, iron chain around the waist, giant notched cleaver sword, enormous hunched muscular build with gigantic forearms, accent color: red-painted handprint on the chest,
-```
-
-**Orc cung thủ**
-```
-a gaunt orc hunter-archer, green skin, long pointed ears, narrow cunning eyes, grey hooded cloak, leather straps across the chest, quiver of black-feathered arrows on the back, short heavy bow, lean sinewy build, accent color: red bone beads on the hood,
+a medieval East Asian banner cavalryman, small round pale straw helmet-hat, red-orange quilted riding tunic with a red cape, holding a tall blue war banner with a red-orange emblem and a white tail ribbon, riding a chestnut-brown horse with simple dark tack, accent color: blue banner against red tunic,
 ```
 
-**Kỵ lợn rừng**
+**Thủy binh** (`human_marine.png`, `human_marineboat.png`)
 ```
-an orc boar-rider, green skin, horned iron helmet, round shield painted with a red skull emblem, barbed spear, riding a huge dark bristled war boar with long curved tusks and iron-studded leather harness, accent color: red skull emblem,
+a medieval East Asian river boatman soldier, clean-shaven, hair in a top bun with a white cloth headband with loose tails, light beige wrap-front shirt with rolled sleeves, grey cloth sash, dark rolled-up trousers, black shoes, coil of rope over the shoulder, woodcutter's axe in hand; in the close-up panel he stands in a narrow wooden rowboat drawing a long wooden bow, accent color: white headband,
 ```
 
-**Goblin**
+### Phe Orc
+
+**Orc phỉ** (`orc_militia.png`)
 ```
-a small sly forest goblin skirmisher, bright green skin, oversized pointed ears, sharp yellow eyes, crooked grin, ragged hood and cloak made of leaves, moss and bark for forest camouflage, crouching ambush pose, curved dagger in one hand and a small hand axe in the other, wiry tiny build, accent color: bright leaf green against dark bark brown,
+a green-skinned orc raider with small tusks, plain iron skullcap helmet, single grey iron shoulder pauldron, brown leather tunic with straps, cloth-wrapped legs and arms, round wooden shield with an iron boss, long spear with a broad iron blade, lean build, accent color: iron grey,
+```
+
+**Orc chiến binh** (`orc_infantry.png`)
+```
+a huge hulking green-skinned orc brute with big lower tusks, spiked grey iron shoulder pauldron on one shoulder, diagonal leather chest strap, grey cloth loincloth with a belt, bare muscular arms and legs with cloth wraps, giant notched cleaver sword, accent color: steel grey cleaver,
+```
+
+**Orc cung thủ** (`orc_archer.png`)
+```
+a lean green-skinned orc archer with a long ear and small tusks, grey cloth hood and wrapped grey tunic, leather straps across the chest, orange-brown leather quiver on the back, short wooden bow, cloth-wrapped legs, accent color: orange-brown quiver,
+```
+
+**Kỵ lợn rừng** (`orc_cavalry.png`)
+```
+an orc rider with a horned dark iron helmet, round shield painted red with a white fanged emblem, long spear with a broad blade, riding a big dark-brown bristled war boar with pink snout and curved white tusks, accent color: red shield,
+```
+
+**Goblin** (`orc_goblin.png`)
+```
+a small crouching forest goblin with bright green skin and big pointed ears, hood and cloak covered in leaves and moss, brown leather belt and pouch, holding a curved dagger and a small hand axe, wiry build, accent color: leaf green,
 ```
 
 ### Âm binh (màu nhấn: lửa ma xanh lục nhạt trong hốc mắt)
 
-Âm binh **giữ nguyên đồng phục phe gốc**. Lấy khối nhân vật của đơn vị sống tương ứng ở trên, rồi **thêm ngay sau nó** đoạn này:
+Âm binh **giữ nguyên đồng phục phe gốc**. Đính kèm sprite âm binh (`undead_human_*.png` / `undead_orc_*.png`) hoặc sprite lúc còn sống, lấy khối nhân vật của đơn vị sống tương ứng ở trên, rồi **thêm ngay sau nó** đoạn này:
 ```
 now risen as an undead warrior: the same uniform, colors and accessories kept but torn, faded, dusty and rusted, flesh replaced by bare bone and dried grey-green skin where visible, empty eye sockets glowing with a faint pale green ghost flame, slow heavy menacing stance, accent color: pale green ghost light,
 ```
@@ -121,8 +125,10 @@ an eerie East Asian dark-taoist necromancer commander, tall gaunt figure in a lo
 
 ---
 
-## Ví dụ ghép hoàn chỉnh: Bộ binh phe người
+## Ví dụ đã chạy và đạt: Cung thủ người (kèm sprite `human_archer.png`)
+
+Kết quả: `docs/art/sheets/archer_human.png`, bản âm binh: `docs/art/sheets/archer_undead.png`.
 
 ```
-Character model sheet, one large heroic full-body view on the left, a row of three smaller full-body views on the right showing front, side profile and back, three head-and-shoulders expression studies (neutral, battle cry, grim) and one close-up of the face and weapon detail, identical original character in every view, single character only, off-white paper background with a soft ground shadow under the feet, professional character sheet presentation, a veteran heavy infantryman in his thirties, square jaw, scar across the cheekbone, stern narrow eyes, steel helmet with a tall red horsehair plume and gilded brow guard, grey steel lamellar armor with red lacquered trim, layered shoulder plates, patterned gold sash at the waist, dark red under-robe, black boots, straight double-edged sword held low, broad-shouldered powerful build, accent color: crimson plume and trim, stylized painterly 2D concept art, flat color blocks with visible dry gouache brush texture, shape-driven rendering with almost no outlines, heroic exaggerated proportions, hard-edged cel shadows in two to three values with warm bounce color in the shadows, limited desaturated palette with one strong accent color, torn frayed cloth edges with small flying fragments, big simple cloth folds, mature angular face with natural skin marks, strong readable silhouette, even neutral studio lighting from the upper left, high-end game cinematic character art, 4K, sharp, original character, does not resemble any existing character or real person, no text, no labels, no watermark, no logos, no frame borders, no background scenery, no extra characters, no duplicate figures in the hero view, no cute proportions, no babyface, no distorted hands, no extra fingers
+Character model sheet of the archer shown in the reference pixel sprite, redrawn faithfully in a new painterly style: keep EXACTLY his costume, colors and silhouette from the reference and add nothing foreign. One large heroic full-body view on the left, a row of three smaller full-body views on the right showing front, side profile and back, three head-and-shoulders expression studies (neutral, battle cry, grim) and one close-up of the face and weapon detail, identical original character in every view, single character only, off-white paper background with a soft ground shadow under the feet, professional character sheet presentation. Character: a medieval East Asian foot archer in his thirties, clean-shaven face, short black hair, a plain brown cloth cylindrical cap (not fur, no brim, no ear flaps), a grey padded armored vest with dark moss-green trim edges and a black belt, worn over a long brown cotton robe with long sleeves, plain black boots, a simple long wooden self bow with a dark red-brown stave, a yellow-ochre leather quiver of arrows at the hip, athletic build. Stylized painterly 2D concept art, flat color blocks with visible dry gouache brush texture, shape-driven rendering with almost no outlines, hard-edged cel shadows in two to three values with warm bounce color, limited palette of brown, grey and moss green with a yellow-ochre accent, big simple cloth folds, mature angular face, strong readable silhouette, even neutral studio lighting, high-end game cinematic character art, sharp. Original character, not Mongolian, not nomadic, no fur hat, no mustache, no recurve horn bow, no text, no labels, no watermark, no logos, no frame borders, no background scenery, no extra characters, no babyface, no distorted hands, no extra fingers
 ```
