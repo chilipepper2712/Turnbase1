@@ -127,6 +127,8 @@ export const STATS = {
     archer:   { atk: 5,   def: 5,  move: 4, range: [2, 3] },
     cavalry:  { atk: 7,   def: 10, move: 7, range: [1, 1] },
     objective: { atk: 0,  def: 25, move: 0, range: [1, 1] },   // trại trong nhiệm vụ phá trại: đứng yên, không đánh trả
+    marine:   { atk: 4,   def: 0,  move: 4, range: [1, 1] },   // thủy binh trên bộ: như dân quân, đi xa hơn 1 ô
+    marineboat: { atk: 5, def: 5,  move: 4, range: [2, 3] },   // thủy binh trên thuyền: như cung thủ, chỉ đi trên sông hồ
   },
   orc: {
     militia:  { atk: 4.2, def: 3,  move: 4, range: [1, 1] },
@@ -155,7 +157,15 @@ export const MATCHUP = {
 };
 
 // Giá trị tương đối của một squad (dùng cho AI)
-export const UNIT_VALUE = { militia: 1, infantry: 2, archer: 2, cavalry: 2.5, objective: 3, goblin: 1, necromancer: 3 };
+export const UNIT_VALUE = { militia: 1, infantry: 2, archer: 2, cavalry: 2.5, objective: 3, goblin: 1, necromancer: 3, marine: 1.5 };
+
+// Thủy binh (phe người): chặt cây (1 lượt) rồi hạ thủy (1 lượt) thành cung thủ trên sông hồ.
+//   Lên bờ thì bỏ thuyền lại ở ô nước sát bờ; đi vào ô có thuyền của phe mình thì xuống thuyền lại.
+//   Thuyền không qua gầm cầu; địch không dùng, không phá được thuyền. Bản đồ ít nước thì không có thủy binh.
+export const MARINE = {
+  minWater: 6,              // bản đồ cần ít nhất chừng này ô nước mới cho thủy binh ra trận
+  rosterSlot: 5,            // vị trí trong ROSTER đổi thành thủy binh (dân quân thứ hai): ít như kỵ binh
+};
 
 // Toán goblin (thuộc phe Orc): đặt lúc sinh bản đồ trong các cụm rừng lớn, ẩn mình cho tới khi tấn công.
 //   Quân người đi vào ô kề chỗ goblin ẩn thì bị chặn lại và bị phục kích (đòn bất ngờ: không bị đánh trả).

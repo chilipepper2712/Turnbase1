@@ -266,5 +266,14 @@
   "unit.desc.undead": "Âm binh: không có sĩ khí, không bao giờ bỏ chạy; sát thương kém 18% và chậm hơn 1 ô so với lúc còn sống. Necromancer chết thì tan rã.",
   "ui.mstate.none": "Không có",
   "ui.win.necromancer": "Necromancer đã ngã xuống, đạo âm binh đổ sụp thành xác vô hồn.",
-  "ui.lose.necromancer": "Necromancer của ta đã ngã xuống, cả đạo quân tan rã."
+  "ui.lose.necromancer": "Necromancer của ta đã ngã xuống, cả đạo quân tan rã.",
+  "unit.human.marine": "Thủy binh",
+  "unit.human.marineboat": "Thủy binh (trên thuyền)",
+  "unit.desc.marine": "Đi xa hơn dân quân 1 ô. Đứng cạnh rừng thì chặt cây (1 lượt), có gỗ thì đứng cạnh sông hồ để hạ thủy (1 lượt) thành cung thủ trên thuyền.",
+  "unit.desc.marineboat": "Cung thủ trên thuyền: bắn 2–3 ô, chỉ đi trên sông hồ, không qua gầm cầu. Đi vào ô đất sát bờ để lên bờ, thuyền nằm lại; đi vào ô thuyền để xuống lại.",
+  "ui.chop": "Chặt cây",
+  "ui.launch": "Hạ thủy",
+  "ui.timber": "Có gỗ",
+  "ui.chopped": "Chặt cây",
+  "ui.launched": "Hạ thủy!"
 }

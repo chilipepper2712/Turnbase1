@@ -20,7 +20,7 @@ export function snapshot(state, meta = {}) {
     map: clone({ w, h, tiles, seed, strongholds, spawns }),
     state: clone({
       turn: state.turn, current: state.current, nextId: state.nextId, capture: state.capture,
-      mission: state.mission, units: state.units, escaped: state.escaped || [], sides: state.sides,
+      mission: state.mission, units: state.units, escaped: state.escaped || [], sides: state.sides, boats: state.boats || [],
     }),
   };
 }
@@ -60,6 +60,7 @@ export function restoreState(snap) {
   st.capture = { human: 0, orc: 0, ...s.capture };
   st.mission = s.mission;
   st.escaped = s.escaped || [];
+  st.boats = Array.isArray(s.boats) ? s.boats : [];
   if (Array.isArray(s.sides) && s.sides.length === 2) st.sides = s.sides;
   st.winner = null; st.winReason = null;
   return st;

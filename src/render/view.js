@@ -102,6 +102,7 @@ export class GameView {
     this.sprites.clear();
     this.features = [];
     this.holdLabel = null;
+    this.boatSprites = new Map();
     for (let j = 0; j < h; j += CHUNK) {
       for (let i = 0; i < w; i += CHUNK) this.bakeChunk(i, j);
     }
@@ -297,7 +298,7 @@ export class GameView {
   makeUnit(u) {
     const A = this.assets;
     // trại mục tiêu (nhiệm vụ phá trại) là đơn vị tĩnh: vẽ bằng sprite lều tô màu phe
-    const res = u.static ? A.building('tent', mixPaper(FACTIONS[u.faction].fill, 0.55), 0.97) : A.unit(u.role, u.faction, u.origin);
+    const res = u.static ? A.building('tent', mixPaper(FACTIONS[u.faction].fill, 0.55), 0.97) : A.unit(u.role === 'marine' && u.afloat ? 'marineboat' : u.role, u.faction, u.origin);
     const root = new PIXI.Container();
     // bóng xám nhẹ dưới chân (phe được phân biệt bằng hình quân và huy hiệu số)
     const shadow = new PIXI.Graphics();
@@ -333,7 +334,7 @@ export class GameView {
     root.zIndex = c.y + 8 + 0.1;
     root.visible = !(u.hidden && u.faction !== this.viewer);
     this.objects.addChild(root);
-    const us = { id: u.id, root, body, sprite, badge, txt, flag, fortG, stars, fort: -1, shown: u.strength, facing: u.static || u.faction === 'human' ? 1 : -1, bx: 0, by: 0 };
+    const us = { id: u.id, afloat: !!u.afloat, root, body, sprite, badge, txt, flag, fortG, stars, fort: -1, shown: u.strength, facing: u.static || u.faction === 'human' ? 1 : -1, bx: 0, by: 0 };
     us.sprite.scale.x = Math.abs(us.sprite.scale.x) * (us.facing < 0 ? -1 : 1);
     this.sprites.set(u.id, us);
     return us;
@@ -389,13 +390,35 @@ export class GameView {
     us.sprite.scale.x = Math.abs(us.sprite.scale.x) * us.facing;
   }
 
+  // Thuyền của thủy binh nằm lại ở bờ (không phải đơn vị): vẽ theo s.boats
+  drawBoats() {
+    const boats = this.state.boats || [];
+    this.boatSprites ||= new Map();
+    const want = new Set(boats.map((b) => b.x + ',' + b.y));
+    for (const [k, sp] of this.boatSprites) if (!want.has(k)) { sp.destroy(); this.boatSprites.delete(k); }
+    for (const b of boats) {
+      const k = b.x + ',' + b.y;
+      if (this.boatSprites.has(k)) continue;
+      const res = this.assets.unit('boat', b.faction);
+      const sp = new PIXI.Sprite(res.texture);
+      sp.anchor.set(0.5, 0.8); sp.scale.set(1 / RES);
+      const c = tileToWorld(b.x, b.y);
+      sp.position.set(c.x, c.y + 6); sp.zIndex = c.y + 5;
+      this.objects.addChild(sp);
+      this.boatSprites.set(k, sp);
+    }
+  }
+
   // đồng bộ cứng sprite với state
   reconcile() {
     const s = this.state;
     const live = new Set(s.units.map((u) => u.id));
     for (const [id, us] of this.sprites) {
-      if (!live.has(id)) { us.root.destroy({ children: true }); this.sprites.delete(id); }
+      const u = s.units.find((q) => q.id === id);
+      // đã chết, hoặc thủy binh vừa lên bờ / xuống thuyền (đổi hình): vẽ lại
+      if (!live.has(id) || (u && !!us.afloat !== !!u.afloat)) { us.root.destroy({ children: true }); this.sprites.delete(id); }
     }
+    this.drawBoats();
     for (const u of s.units) {
       let us = this.sprites.get(u.id);
       if (!us) us = this.makeUnit(u);
@@ -957,6 +980,20 @@ export class GameView {
           us.forEach((x) => { x.root.alpha = 0; });
           if (us.length) await this.ensureVisible(s.units.find((u) => u.id === ev.units[0]).x, s.units.find((u) => u.id === ev.units[0]).y);
           await this.tween(350, (k) => { us.forEach((x) => { x.root.alpha = k; }); });
+          break;
+        }
+        case 'embark': case 'disembark': {
+          this.reconcile();
+          if (ev.launch) { const c = tileToWorld(ev.x, ev.y); await this.float(this.t('ui.launched'), c.x, c.y - 50, 0x3a78d8, 20); }
+          break;
+        }
+        case 'chop': {
+          const c = tileToWorld(ev.x, ev.y);
+          await this.float(this.t('ui.chopped'), c.x, c.y - 40, 0x6b4a2a, 20);
+          break;
+        }
+        case 'terrain': {                             // địa hình đổi (chặt cây): dựng lại nền bản đồ
+          this.buildMap(); this.reconcile(); this.drawOverlay();
           break;
         }
         case 'collapse': {                           // âm binh đổ sụp khi necromancer chết

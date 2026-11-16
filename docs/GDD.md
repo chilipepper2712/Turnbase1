@@ -190,6 +190,17 @@ Orc **mạnh hơn nhưng không kỷ luật** **[CHỐT]**, thể hiện bằng:
 - **[MỞ]** **Cố thủ trước âm binh quá dễ** (người giữ được ~92%, so với ~67% trước Orc) vì âm binh chậm, không kịp phá trong 12 lượt. Cần thêm lượt hoặc thêm quân cho âm binh trong nhiệm vụ này.
 - **[MỞ]** Necromancer chưa có phép gì riêng ngoài đòn tầm xa (gợi ý: dựng xác từ squad vừa chết thành quân mới).
 
+### Thủy binh (phe người) **[CHỐT ý; số liệu MẶC ĐỊNH]**
+
+- **Ra trận ít như kỵ binh:** thay dân quân thứ hai trong đội hình, **chỉ khi bản đồ có sông hồ** (≥ 6 ô nước); bản đồ khô thì vẫn là dân quân. **[CHỐT]**
+- **Trên bộ:** như dân quân nhưng **đi xa hơn 1 ô** (4). Đánh và chịu đòn như dân quân.
+- **Chặt cây (1 lượt):** đứng trên hoặc cạnh ô rừng; **ô rừng đó thành đất trống** (lần đầu game có sửa địa hình, nền cho "dân quân đốt rừng" sau này). Squad có "gỗ".
+- **Hạ thủy (1 lượt):** có gỗ, đứng cạnh ô nước trống; squad xuống thuyền ngay ở ô nước đó (ưu tiên ô gần địch).
+- **Trên thuyền:** thành **cung thủ trên sông hồ** (bắn 2–3 ô, sát thương 5, thủ 5), đi trên nước 4 ô như bộ binh trên cạn, **không qua gầm cầu**. Đánh và chịu đòn như cung thủ (kỵ binh khắc).
+- **Lên bờ / xuống thuyền bằng nước đi thường:** đi từ nước vào ô đất sát bờ là lên bờ, **thuyền nằm lại ở ô nước cuối cùng**, chỉ số quay về như trên bộ. Đi vào ô có thuyền của phe mình là xuống thuyền lại. Lên/xuống là bước cuối của lượt di chuyển. **Hoàn tác** trả lại cả thuyền.
+- **Thuyền** chỉ phe người dùng; địch không dùng, không phá được (mặc định để đơn giản). Không gộp, không hạ trại, không tách khi đang trên thuyền.
+- **[MỞ]** **AI chưa biết dùng thuyền** (AI phe người dùng thủy binh như dân quân đi nhanh). Hiện chỉ người chơi dùng.
+
 ## 8. Chiến đấu
 
 **Deterministic, không random.** Luôn xem trước kết quả (sát thương gây ra, sát thương nhận lại, có tiêu diệt không) trước khi xác nhận. **[CHỐT]**
@@ -438,5 +449,6 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 | Lưu / tải ván | Lưu bản đồ đầy đủ trong bản lưu; chỗ lưu chính là db của tài khoản, dự phòng localStorage, và xuất/nhập file; 1 ô tự động đầu lượt + 3 ô thủ công | Dev quyết, mày duyệt khi chơi |
 | Goblin | Toán goblin phe Orc ẩn trong rừng, phục kích quân người đi vào sát (đòn bất ngờ, không bị đánh trả), tiếp quân cho Orc gần đó, đặt theo seed lúc sinh map | Mày đề xuất và chốt; chi tiết số liệu do dev đặt |
 | Âm binh | Phe đối thủ thứ hai thay Orc ở một số màn; xác người và Orc giữ đồng phục gốc; −18% sát thương, −1 di chuyển, không sĩ khí, không bỏ chạy; một necromancer chỉ huy, chết là cả đạo tan rã; đông hơn 2 squad để cân | Mày chốt ý; số liệu và phần bù do dev đo |
+| Thủy binh | Phe người, chỉ có trên bản đồ có sông hồ; chặt cây (rừng thành đất trống) 1 lượt, hạ thủy 1 lượt thành cung thủ trên sông; lên bờ bỏ thuyền lại, đi vào thuyền để xuống lại; không qua gầm cầu | Mày đề xuất; mặc định chi tiết do dev đặt, mày duyệt |
 | Thứ tự roadmap | Mục tiêu đa dạng, rồi lưu/tải, rồi hệ trạng thái sĩ khí | Mày đồng ý |
 | Biến đổi địa hình | Dân quân đốt rừng, đặt bẫy, xây cầu | Mày đề xuất |

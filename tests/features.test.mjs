@@ -731,3 +731,79 @@ test('âm binh: mọi nhiệm vụ chạy được với âm binh, AI đánh t�
   assert.deepEqual(r.sides, ['human', 'undead']);
   assert.deepEqual(r.units.map((u) => u.origin), s.units.map((u) => u.origin));
 });
+
+// ---------- Thủy binh ----------
+import { canChop, chopTree, canLaunch, launchBoat, boatAt, isTransition } from '../src/rules.js';
+import { MARINE } from '../src/config.js';
+
+// sông dọc cột x=6 (có cầu ở y=3), rừng ở (3,5)
+function riverMap() {
+  const over = { '3,5': 'forest' };
+  for (let y = 0; y < 12; y++) over[`6,${y}`] = y === 3 ? 'bridge' : 'river';
+  const s = flat(over);
+  addUnit(s, 'orc', 'infantry', 11, 0);
+  return s;
+}
+
+test('thủy binh: có trong đội hình khi bản đồ có sông hồ (thay một dân quân), không có thì thôi', () => {
+  let found = false;
+  for (const seed of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
+    const m = generateMap(seed, 16, 20);
+    const water = m.tiles.filter((t) => t === 'river').length;
+    const s = createState(m);
+    const marines = s.units.filter((u) => u.role === 'marine');
+    if (water >= MARINE.minWater) { assert.equal(marines.length, 1, 'seed ' + seed); found = true; } else assert.equal(marines.length, 0);
+    assert.ok(marines.every((u) => u.faction === 'human'));
+  }
+  assert.ok(found, 'ít nhất một bản đồ có sông');
+});
+
+test('thủy binh: chặt cây (rừng thành đất trống) rồi hạ thủy thành cung thủ trên sông', () => {
+  const s = riverMap();
+  const m = addUnit(s, 'human', 'marine', 4, 5);
+  assert.equal(statsOf(m).move, STATS.human.militia.move + 1, 'đi xa hơn dân quân 1 ô');
+  assert.ok(canChop(s, m), 'cạnh rừng thì chặt được');
+  assert.ok(!canLaunch(s, m), 'chưa có gỗ thì chưa hạ thủy');
+  chopTree(s, m);
+  assert.equal(s.map.tiles[5 * 12 + 3], 'plain', 'ô rừng bị chặt trụi');
+  assert.ok(m.timber && m.acted);
+  m.moved = false; m.acted = false;
+  assert.ok(!canLaunch(s, m), 'chưa ở sát nước');
+  m.x = 5; m.y = 5;
+  assert.ok(canLaunch(s, m));
+  launchBoat(s, m);
+  assert.ok(m.afloat && m.x === 6, 'xuống nước ở ô sông kề bên');
+  assert.deepEqual(statsOf(m).range, STATS.human.marineboat.range, 'tầm bắn như cung thủ');
+});
+
+test('thủy binh trên thuyền: chỉ đi trên sông, không qua gầm cầu; lên bờ bỏ thuyền lại, đi vào thuyền thì xuống lại', () => {
+  const s = riverMap();
+  const m = addUnit(s, 'human', 'marine', 6, 8); m.afloat = true;
+  const r = reachable(s, m);
+  assert.ok(r.tiles.has(key(6, 5)) && r.tiles.has(key(6, 11)), 'đi dọc sông');
+  assert.ok(!r.tiles.has(key(6, 2)), 'cầu ở y=3 chặn thuyền');
+  assert.ok(r.tiles.has(key(5, 8)), 'lên bờ ngay sát được');
+  assert.ok(!r.tiles.has(key(4, 8)), 'lên bờ là bước cuối, không đi tiếp trên cạn');
+  moveUnit(s, m, 5, 7);
+  assert.ok(!m.afloat, 'đã lên bờ');
+  assert.ok(boatAt(s, 6, 7), 'thuyền nằm lại ô nước cuối cùng');
+  assert.equal(statsOf(m).range[1], 1, 'trên bộ thành bộ binh nhẹ lại');
+  m.moved = false; m.acted = false;
+  m.x = 4; m.y = 7;
+  assert.ok(isTransition(s, m, 6, 7));
+  moveUnit(s, m, 6, 7);
+  assert.ok(m.afloat && !boatAt(s, 6, 7), 'xuống thuyền lại, thuyền đi theo quân');
+});
+
+test('thủy binh: khắc chế theo dạng (trên thuyền như cung thủ, trên bộ như dân quân); lưu/tải giữ thuyền', () => {
+  const s = riverMap();
+  const m = addUnit(s, 'human', 'marine', 6, 8); m.afloat = true;
+  const o = addUnit(s, 'orc', 'cavalry', 8, 8);
+  const d1 = calcDamage(s, o, m, 7, 8, 0).match;
+  assert.equal(d1, 1.4, 'kỵ binh khắc cung thủ');
+  m.afloat = false; m.x = 5;
+  assert.equal(calcDamage(s, o, m, 7, 8, 0).match, 1.3, 'kỵ binh đánh dân quân');
+  s.boats.push({ x: 6, y: 2, faction: 'human' });
+  const r = restoreState(JSON.parse(JSON.stringify(snapshot(s))));
+  assert.deepEqual(r.boats, s.boats);
+});

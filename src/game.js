@@ -5,6 +5,7 @@ import {
   createState, reachable, targetsFrom, previewAttack, moveUnit, attackUnit, waitUnit, mergeUnits,
   splitUnit, splitTiles, canSplit, endTurn, unitAt, key, pathTo, defensePct, statsOf, terrainId,
   alliesOf, rangeAt, inEnemyZoc, terrainFacts, tilesInRange, threatTiles, moveCostFor, canFortify, fortifyUnit, fortifyBonus, levelOf, nextLevelXp, fleePlan, moraleState,
+  canChop, chopTree, canLaunch, launchBoat,
 } from './rules.js';
 import { planNextAction } from './ai.js';
 import { executeAction } from './actions.js';
@@ -18,7 +19,7 @@ const SPEEDS = { normal: 1, fast: 2.4, instant: 14 };
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // Tên đơn vị: âm binh ghi kèm phe gốc ("Xác bộ binh (gốc Orc)")
-const unitName = (u) => (u.faction === 'undead' && u.origin ? t('unit.undead.named', { unit: t(`unit.undead.${u.role}`), origin: t('origin.' + u.origin) }) : t(`unit.${u.faction}.${u.role}`));
+const unitName = (u) => (u.role === 'marine' && u.afloat ? t('unit.human.marineboat') : u.faction === 'undead' && u.origin ? t('unit.undead.named', { unit: t(`unit.undead.${u.role}`), origin: t('origin.' + u.origin) }) : t(`unit.${u.faction}.${u.role}`));
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 export class Game {
@@ -425,7 +426,7 @@ export class Game {
 
   async doMove(tile) {
     const s = this.state, u = this.sel;
-    const origin = { x: u.x, y: u.y, fort: u.fort };
+    const origin = { x: u.x, y: u.y, fort: u.fort, afloat: !!u.afloat, boats: JSON.stringify(s.boats || []) };
     this.busy = true;
     this.view.setOverlay({});
     const ev = moveUnit(s, u, tile.x, tile.y);
@@ -477,6 +478,16 @@ export class Game {
     this.afterAction();
   }
 
+  // hành động một bước của luật (chặt cây, hạ thủy...): chạy, phát sự kiện, xong lượt của quân đó
+  async doRule(fn) {
+    const u = this.sel;
+    if (!u || this.busy) return;
+    this.busy = true; this.hidePreview(); this.view.setOverlay({});
+    const ev = fn(this.state, u);
+    if (ev) await this.view.playEvents(ev); else this.snd('ui_deny');
+    this.afterAction();
+  }
+
   async doWait() {
     const u = this.sel;
     if (!u || this.busy) return;
@@ -490,6 +501,7 @@ export class Game {
     const u = this.sel, o = this.origin;
     if (!u || !o || o.id !== u.id || u.acted || this.busy || this.state.winner) return;
     u.x = o.x; u.y = o.y; u.moved = false; u.movedDist = 0; u.fort = o.fort || 0;   // trả lại cả trại đã dựng
+    u.afloat = o.afloat || undefined; this.state.boats = JSON.parse(o.boats || '[]');   // và cả thuyền (lên bờ / xuống thuyền)
     this.view.reconcile();
     this.select(u);
   }
@@ -548,6 +560,8 @@ export class Game {
     else {
       h += btn('wait', t('ui.wait'), this.mode === 'moved' ? 'primary' : '');
       if (canFortify(s, u)) h += btn('fortify', t('ui.fortify'), '', 'tent');
+      if (canChop(s, u)) h += btn('chop', t('ui.chop'));
+      if (canLaunch(s, u)) h += btn('launch', t('ui.launch'), 'primary');
       if (canSplit(s, u)) h += btn('split', t('ui.split'));
       if (this.mode === 'moved' && this.origin && this.origin.id === u.id) h += btn('undo', t('ui.undo'), '', 'undo');
       h += btn('cancel', '', 'x', 'x', t('ui.cancel'));
@@ -633,7 +647,7 @@ export class Game {
     const tdef = terrainFacts(tid).def[u.faction];
     const fort = u.fort === 2 ? `<div class="fortline">${icon('tent')}${esc(t('ui.fort.on', { n: Math.round(fortifyBonus(s, u)) }))}</div>` : '';
     const ic = (k) => icon({ strength: 'heart', morale: 'flag', xp: 'chevron', def: 'shield', atk: 'sword', move: 'foot', range: 'bow' }[k]);
-    return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(unitName(u))}${u.vip ? `<span class="tag vip">${esc(t('ui.vip'))}</span>` : ''}<span class="stars">${rankIcon(lvl, 'gold')}</span></h3>
+    return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(unitName(u))}${u.vip ? `<span class="tag vip">${esc(t('ui.vip'))}</span>` : ''}${u.timber ? `<span class="tag vip">${esc(t('ui.timber'))}</span>` : ''}<span class="stars">${rankIcon(lvl, 'gold')}</span></h3>
       <div class="pips" title="${esc(t('ui.strength'))}">${pips}</div>
       <div class="line"><span title="${esc(t('ui.strength'))}">${ic('strength')} <b>${u.strength}/${CONFIG.maxStrength}</b></span><span title="${esc(t('ui.xp'))}">${ic('xp')} <b>${xpTxt}</b></span></div>
       ${FACTIONS[u.faction].noMorale ? `<div class="morale"><span class="m-l">${icon('flag')} ${esc(t('ui.morale'))} <em>${esc(t('ui.mstate.none'))}</em></span></div>` : `<div class="morale"><span class="m-l">${icon('flag')} ${esc(t('ui.morale'))} <em style="color:${morCol}">${esc(t('ui.mstate.' + ms))}</em></span><b style="color:${morCol}">${mor}</b></div>
@@ -643,7 +657,7 @@ export class Game {
       <div class="terr">${esc(t('terrain.' + tid))}${tdef ? ` · ${ic('def')}${this.sg(tdef)}%` : ''}</div>
       ${fort}
       <span class="tag">${esc(status)}</span>
-      <details><summary>${esc(lvl ? t('ui.rank.' + lvl) : t('ui.info'))}</summary><div class="desc">${esc(t('unit.desc.' + u.role))}${u.faction === 'undead' && u.role !== 'necromancer' ? ' ' + esc(t('unit.desc.undead')) : ''}</div></details>`;
+      <details><summary>${esc(lvl ? t('ui.rank.' + lvl) : t('ui.info'))}</summary><div class="desc">${esc(t('unit.desc.' + (u.role === 'marine' && u.afloat ? 'marineboat' : u.role)))}${u.faction === 'undead' && u.role !== 'necromancer' ? ' ' + esc(t('unit.desc.undead')) : ''}</div></details>`;
   }
 
   showPreview(opt, withButtons) {
@@ -701,6 +715,8 @@ export class Game {
     if (a === 'wait') this.doWait();
     else if (a === 'split') this.startSplit();
     else if (a === 'fortify') this.doFortify();
+    else if (a === 'chop') this.doRule(chopTree);
+    else if (a === 'launch') this.doRule(launchBoat);
     else if (a === 'undo') this.doUndo();
     else if (a === 'movehere') this.confirmMove();
     else if (a === 'cancel') this.cancel();

@@ -1,7 +1,7 @@
 // Luật chơi thuần logic (không đụng DOM/Pixi). Mọi hàm đổi state đều trả về mảng sự kiện
 // để lớp hiển thị diễn lại bằng animation.
 import {
-  CONFIG, TERRAIN, FACTIONS, FORMATION_MAX, STATS, MATCHUP, ROSTER, FORTIFY, LEVEL, MORALE, GOBLIN, UNDEAD,
+  CONFIG, TERRAIN, FACTIONS, FORMATION_MAX, STATS, MATCHUP, ROSTER, FORTIFY, LEVEL, MORALE, GOBLIN, UNDEAD, MARINE,
 } from './config.js';
 
 export const key = (x, y) => x + ',' + y;
@@ -15,13 +15,16 @@ export const foeOf = (s, f) => (s.sides[0] === f ? s.sides[1] : s.sides[0]);
 export function createState(map) {
   const sides = ['human', Object.keys(map.spawns).find((f) => f !== 'human') || 'orc'];
   const state = {
-    map, sides, units: [], current: 'human', turn: 1, nextId: 1,
+    map, sides, units: [], boats: [], current: 'human', turn: 1, nextId: 1,
     capture: { human: 0, orc: 0 }, winner: null, winReason: null,
     mission: { type: 'skirmish' },
   };
+  const water = map.tiles.filter((t) => t === 'river').length >= MARINE.minWater;
   for (const f of sides) {
     map.spawns[f].forEach((p, i) => {
-      const u = addUnit(state, f, ROSTER[i % ROSTER.length], p.x, p.y);
+      let role = ROSTER[i % ROSTER.length];
+      if (f === 'human' && water && i % ROSTER.length === MARINE.rosterSlot) role = 'marine';   // có sông hồ: thủy binh thay một dân quân
+      const u = addUnit(state, f, role, p.x, p.y);
       if (f === 'undead') u.origin = UNDEAD.origins[i % UNDEAD.origins.length];
     });
     if (f === 'undead') { placeNecromancer(state, f); spawnSquads(state, f, UNDEAD.extra); }
@@ -89,6 +92,7 @@ export function cloneState(s) {
     ...s,
     units: s.units.map((u) => ({ ...u })),
     capture: { ...s.capture },
+    boats: (s.boats || []).map((b) => ({ ...b })),
     mission: { ...s.mission, waves: s.mission.waves && s.mission.waves.map((w) => ({ ...w })) },
   };
 }
@@ -101,6 +105,7 @@ export const unitAt = (s, x, y) => s.units.find((u) => u.x === x && u.y === y) |
 const UNDEAD_STATS = {};
 // Chỉ số: âm binh thường lấy từ phe gốc lúc còn sống, sát thương giảm và chậm hơn
 export const statsOf = (u) => {
+  if (u.role === 'marine' && u.afloat) return STATS.human.marineboat;
   if (u.faction === 'undead' && STATS.undead[u.role] === undefined) {
     const k = (u.origin || 'human') + ':' + u.role;
     if (!UNDEAD_STATS[k]) {
@@ -112,6 +117,10 @@ export const statsOf = (u) => {
   return STATS[u.faction][u.role];
 };
 export const isRegular = (u) => u.role !== 'militia';
+// Vai trò dùng cho bảng khắc chế: thủy binh trên thuyền đánh và chịu đòn như cung thủ, trên bộ như dân quân
+export const matchRole = (u) => (u.role === 'marine' ? (u.afloat ? 'archer' : 'militia') : u.role);
+export const boatAt = (s, x, y) => (s.boats || []).find((b) => b.x === x && b.y === y) || null;
+const isWater = (s, x, y) => terrainId(s, x, y) === 'river';
 // Quân phụ: không tính vào việc quét sạch, không chiếm thành (trại tĩnh, toán goblin)
 export const isAux = (u) => !!u.static || u.role === 'goblin';
 // Quân ẩn chỉ phe mình thấy
@@ -146,7 +155,22 @@ export function moveCostFor(tid, faction, role) {
 
 // Chi phí vào một ô cho một unit
 export function moveCost(s, u, x, y) {
+  if (u.role === 'marine') {
+    if (u.afloat) {
+      if (isWater(s, x, y)) return boatAt(s, x, y) ? Infinity : 1;          // đi trên sông hồ như bộ binh trên cạn; cầu chặn
+      return isFinite(moveCostFor(terrainId(s, x, y), u.faction, 'militia')) ? 1 : Infinity;   // lên bờ (chỉ là bước cuối)
+    }
+    const b = boatAt(s, x, y);
+    if (b && b.faction === u.faction) return 1;                            // bước vào thuyền của phe mình (bước cuối)
+    return moveCostFor(terrainId(s, x, y), u.faction, 'militia');
+  }
   return moveCostFor(terrainId(s, x, y), u.faction, u.role);
+}
+
+// Ô chuyển trạng thái của thủy binh (lên bờ / xuống thuyền): đi tới được nhưng không đi tiếp từ đó trong cùng lượt
+export function isTransition(s, u, x, y) {
+  if (u.role !== 'marine') return false;
+  return u.afloat ? !isWater(s, x, y) : !!boatAt(s, x, y);
 }
 
 // Mô tả hiệu ứng địa hình cho UI (mọi con số lấy từ config, không hard-code)
@@ -218,6 +242,7 @@ export function canMerge(src, tgt) {
   if (src.id === tgt.id || src.faction !== tgt.faction) return false;
   if (src.status === 'routed' || tgt.status === 'routed') return false;
   if (src.vip || src.static || tgt.static) return false;     // tướng hộ tống không bị gộp mất
+  if (src.afloat || tgt.afloat) return false;                // đang trên thuyền thì không gộp
   if (tgt.strength >= CONFIG.maxStrength) return false;
   if (src.role === tgt.role) return true;
   return src.role === 'militia' && (tgt.role === 'infantry' || tgt.role === 'archer');
@@ -241,6 +266,7 @@ export function reachable(s, u) {
     const atStart = cur.x === u.x && cur.y === u.y;
     // ZOC: vào ô kề địch thì dừng
     if (!atStart && inEnemyZoc(s, f, cur.x, cur.y)) continue;
+    if (!atStart && isTransition(s, u, cur.x, cur.y)) continue;      // lên bờ / xuống thuyền là bước cuối
     for (const [dx, dy] of DIRS) {
       const nx = cur.x + dx, ny = cur.y + dy;
       if (!inBounds(s, nx, ny)) continue;
@@ -319,7 +345,7 @@ export function calcDamage(s, atk, def, fx = atk.x, fy = atk.y, movedDist = atk.
   const st = statsOf(atk);
   const str = strengthOverride ?? atk.strength;
   const ratio = str / CONFIG.maxStrength;
-  const match = MATCHUP[atk.role][def.role];
+  const match = MATCHUP[matchRole(atk)][matchRole(def)];
   const melee = st.range[1] === 1;
   const flank = melee ? flankCount(s, atk, def, fx, fy) : 0;
   const charge = atk.role === 'cavalry' && movedDist >= CONFIG.chargeDist ? 1 + CONFIG.chargeBonus : 1;
@@ -506,6 +532,60 @@ function ambush(s, ambushers, victim, events) {
   }
 }
 
+// ---------- Thủy binh ----------
+// Sau khi đi: thủy binh đứng trên ô thuyền thì xuống thuyền; đang trên thuyền mà đứng trên đất thì lên bờ, thuyền nằm lại ô nước cuối cùng
+function boardOrLand(s, u, path, events) {
+  if (u.role !== 'marine') return;
+  if (!u.afloat) {
+    const b = boatAt(s, u.x, u.y);
+    if (b && b.faction === u.faction) {
+      s.boats = s.boats.filter((q) => q !== b);
+      u.afloat = true;
+      events.push({ type: 'embark', unit: u.id, x: u.x, y: u.y });
+    }
+    return;
+  }
+  if (!isWater(s, u.x, u.y)) {
+    let i = path.findIndex((p) => p.x === u.x && p.y === u.y);
+    if (i < 1) i = path.length - 1;
+    const prev = path[i - 1];
+    if (prev && isWater(s, prev.x, prev.y)) s.boats.push({ x: prev.x, y: prev.y, faction: u.faction });
+    u.afloat = false;
+    events.push({ type: 'disembark', unit: u.id, x: u.x, y: u.y, boat: prev ? { x: prev.x, y: prev.y } : null });
+  }
+}
+
+const freeWaterNear = (s, u) => DIRS.map(([dx, dy]) => ({ x: u.x + dx, y: u.y + dy }))
+  .filter((p) => inBounds(s, p.x, p.y) && isWater(s, p.x, p.y) && !unitAt(s, p.x, p.y) && !boatAt(s, p.x, p.y));
+const forestNear = (s, u) => [{ x: u.x, y: u.y }, ...DIRS.map(([dx, dy]) => ({ x: u.x + dx, y: u.y + dy }))]
+  .find((p) => inBounds(s, p.x, p.y) && terrainId(s, p.x, p.y) === 'forest') || null;
+const readyToAct = (u) => !u.moved && !u.acted && u.status === 'ok';
+
+// Chặt cây làm thuyền (1 lượt): đứng trên hoặc cạnh ô rừng; ô rừng đó thành đất trống
+export function canChop(s, u) {
+  return u.role === 'marine' && !u.afloat && !u.timber && readyToAct(u) && !!forestNear(s, u);
+}
+export function chopTree(s, u) {
+  if (!canChop(s, u)) return null;
+  const p = forestNear(s, u);
+  s.map.tiles[p.y * s.map.w + p.x] = 'plain';
+  u.timber = true; u.moved = true; u.acted = true; u.fort = 0;
+  return [{ type: 'chop', unit: u.id, x: p.x, y: p.y }, { type: 'terrain', x: p.x, y: p.y, to: 'plain' }];
+}
+
+// Đóng thuyền, hạ thủy (1 lượt): có gỗ, đứng sát ô nước trống; xuống thuyền luôn ở ô nước đó
+export function canLaunch(s, u) {
+  return u.role === 'marine' && !u.afloat && !!u.timber && readyToAct(u) && freeWaterNear(s, u).length > 0;
+}
+export function launchBoat(s, u) {
+  if (!canLaunch(s, u)) return null;
+  const foe = s.map.strongholds[foeOf(s, u.faction)];
+  const p = freeWaterNear(s, u).sort((a, b) => dist(a, foe) - dist(b, foe) || a.y - b.y || a.x - b.x)[0];
+  const from = { x: u.x, y: u.y };
+  u.x = p.x; u.y = p.y; u.afloat = true; u.timber = false; u.moved = true; u.acted = true; u.fort = 0;
+  return [{ type: 'move', unit: u.id, path: [from, { x: p.x, y: p.y }] }, { type: 'embark', unit: u.id, x: p.x, y: p.y, launch: true }];
+}
+
 // ---------- Hành động ----------
 export function waitUnit(s, u) { u.acted = true; u.moved = true; return [{ type: 'wait', unit: u.id }]; }
 
@@ -514,7 +594,9 @@ export function moveUnit(s, u, x, y) {
   const node = reach.tiles.get(key(x, y));
   if (!node || u.moved) return null;
   const events = [];
-  const res = walkPath(s, u, pathTo(node), events);
+  const path = pathTo(node);
+  const res = walkPath(s, u, path, events);
+  boardOrLand(s, u, path, events);
   u.moved = true; u.movedDist = res.cost; u.fort = 0;
   if (res.ambushers.length) ambush(s, res.ambushers, u, events);
   checkVictory(s);
@@ -561,7 +643,7 @@ export function mergeUnits(s, u, tgt) {
 // Hạ trại: thay cho cả lượt hành động (không di chuyển, không tấn công). Có hiệu lực ngay lập tức,
 // giữ nguyên cho tới khi quân di chuyển, tấn công, gộp/tách hoặc bỏ chạy.
 export function canFortify(s, u) {
-  return !u.moved && !u.acted && u.status === 'ok' && u.fort === 0;
+  return !u.afloat && !u.moved && !u.acted && u.status === 'ok' && u.fort === 0;
 }
 
 export function fortifyUnit(s, u) {
@@ -571,7 +653,7 @@ export function fortifyUnit(s, u) {
 }
 
 export function canSplit(s, u) {
-  return !u.moved && !u.acted && u.strength >= 2 && u.status === 'ok';
+  return !u.afloat && !u.moved && !u.acted && u.strength >= 2 && u.status === 'ok';
 }
 
 export function splitTiles(s, u) {
@@ -708,7 +790,9 @@ function runFlee(s, u, events) {
     if (sc < bestScore - 1e-9) { bestScore = sc; best = n; }
   }
   if (best && (best.x !== u.x || best.y !== u.y)) {
-    const res = walkPath(s, u, pathTo(best), events, true);
+    const fp = pathTo(best);
+    const res = walkPath(s, u, fp, events, true);
+    boardOrLand(s, u, fp, events);
     if (res.ambushers.length) { ambush(s, res.ambushers, u, events); return; }
   }
   if (plan.kind === 'exit' && u.y === plan.edgeY) escapeUnit(s, u, events);

@@ -266,5 +266,14 @@
   "unit.desc.undead": "Undead: no morale, never flees; deals 18% less damage and moves 1 tile less than when alive. Collapses if the necromancer dies.",
   "ui.mstate.none": "None",
   "ui.win.necromancer": "The necromancer has fallen; the undead host collapses into lifeless corpses.",
-  "ui.lose.necromancer": "Our necromancer has fallen; the whole host falls apart."
+  "ui.lose.necromancer": "Our necromancer has fallen; the whole host falls apart.",
+  "unit.human.marine": "River marine",
+  "unit.human.marineboat": "River marine (boat)",
+  "unit.desc.marine": "Moves 1 tile farther than militia. Next to a forest it can cut timber (1 turn); with timber, next to water it can launch (1 turn) and becomes an archer in a boat.",
+  "unit.desc.marineboat": "Archer in a boat: shoots 2–3 tiles, moves only on rivers and lakes, cannot pass under bridges. Move onto a shore tile to land (the boat stays); move onto the boat to board again.",
+  "ui.chop": "Cut timber",
+  "ui.launch": "Launch",
+  "ui.timber": "Timber",
+  "ui.chopped": "Timber cut",
+  "ui.launched": "Launched!"
 }
