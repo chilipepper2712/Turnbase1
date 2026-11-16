@@ -15,6 +15,15 @@ export const PIXEL_GROUND = {
 const SHORE_WATER = [48, 92, 124], SHORE_LAND = [206, 192, 146], WAVE = [150, 192, 216];
 const isWater = (t) => t === 'river' || t === 'bridge';
 
+// nhiễu giá trị mượt (nội suy hai chiều) để vũng bùn thành mảng liền, không thành ô vuông rời rạc
+const vnoise = (x, y, c) => {
+  const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+  const a = H(xi, yi, c), b = H(xi + 1, yi, c), c2 = H(xi, yi + 1, c), d = H(xi + 1, yi + 1, c);
+  return a + (b - a) * sx + (c2 - a) * sy + (a - b - c2 + d) * sx * sy;
+};
+const SWAMP_BASE = [96, 112, 70], SWAMP_MUD = [80, 95, 59], SWAMP_LIGHT = [108, 126, 80], SWAMP_FLECK = [128, 150, 100];
+
 // Vẽ nền cả chunk vào ctx (chưa scale). tid(x,y) trả id địa hình hoặc null ngoài bản đồ.
 export function paintPixelGround(ctx, o) {
   const { tid, i0, j0, i1, j1, minX, minY, TW, TH, RES, cw, ch } = o;
@@ -39,6 +48,7 @@ export function paintPixelGround(ctx, o) {
       const nt = ax >= ay ? tid(cx + (fx > 0 ? 1 : -1), cy) : tid(cx, cy + (fy > 0 ? 1 : -1));
       let terr = t;
       let col = null;
+      let swamp = false;
 
       if (nt && nt !== t) {
         if (isWater(t) !== isWater(nt)) {
@@ -59,10 +69,7 @@ export function paintPixelGround(ctx, o) {
           const s = ((fy + 0.5) * 7) % 1;
           if (s < 0.28) col = [col[0] - 26, col[1] - 20, col[2] - 12];
         } else if (terr === 'swamp') {
-          // vũng bùn tối thành mảng khối
-          const n = H(Math.floor(gx / 2) + 7, Math.floor(gy / 2) + 3, 3);
-          if (n < 0.26) col = [66, 80, 52];
-          else if (n > 0.93) col = [118, 140, 96];
+          swamp = true;     // vẽ từng điểm 1px bên dưới
         } else if (isWater(terr)) {
           if (H(Math.floor(gx / 2), gy, 4) < 0.05) col = WAVE;
         }
@@ -76,6 +83,28 @@ export function paintPixelGround(ctx, o) {
             if (across > 0.235) col = [88, 56, 36];
           }
         }
+      }
+      if (swamp) {
+        // đầm lầy: tính màu cho từng điểm 1 đơn vị thế giới (mịn gấp đôi nền thường), mảng bùn liền khối + vài đốm tảo
+        const sub = RES;
+        for (let sy = 0; sy < BLK; sy++) for (let sx = 0; sx < BLK; sx++) {
+          const sxw = gx * BLK + sx, syw = gy * BLK + sy;
+          const n = 0.65 * vnoise(sxw / 6, syw / 6, 5) + 0.35 * vnoise(sxw / 2.4, syw / 2.4, 6);
+          let c3 = n < 0.42 ? SWAMP_MUD : n > 0.66 ? SWAMP_LIGHT : SWAMP_BASE;
+          if (H(sxw, syw, 7) < 0.012 && n >= 0.42) c3 = SWAMP_FLECK;
+          const ppx = Math.round((sxw - minX) * RES), ppy = Math.round((syw - minY) * RES);
+          for (let yy = 0; yy < sub; yy++) {
+            const row = ppy + yy;
+            if (row < 0 || row >= ch) continue;
+            for (let xx = 0; xx < sub; xx++) {
+              const colx = ppx + xx;
+              if (colx < 0 || colx >= cw) continue;
+              const k = (row * cw + colx) * 4;
+              d[k] = c3[0]; d[k + 1] = c3[1]; d[k + 2] = c3[2]; d[k + 3] = 255;
+            }
+          }
+        }
+        continue;
       }
       // ghi khối cell x cell
       const px = Math.round((gx * BLK - minX) * RES), py = Math.round((gy * BLK - minY) * RES);

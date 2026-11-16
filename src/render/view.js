@@ -275,7 +275,7 @@ export class GameView {
       if (pxCastle) {
         sp = new PIXI.Sprite(pxCastle.texture);
         sp.anchor.set(pxCastle.anchor[0], pxCastle.anchor[1]);
-        sp.scale.set(92 / pxCastle.w / pxCastle.up);
+        sp.scale.set(74 / pxCastle.w / pxCastle.up);
       } else sp = kenney
         ? this.mk(A.building(isHuman ? 'castle' : 'castleTall', mixPaper(FACTIONS[f].fill, 0.55), 0.97), 1.0)
         : this.mk(A.building(isHuman ? 'castle_town' : 'stronghold', FACTIONS[f].fill), 1.0);
@@ -355,13 +355,13 @@ export class GameView {
         return true;
       case 'village': {
         const first = [0, 1, 2, 3, 4, 5, 7][rng.int(7)];
-        bld('house', first, 54, 0, 0, { x, y });
-        if (rng() < 0.6) bld('house', [0, 1, 2, 3, 5, 7][rng.int(6)], 42, 0.3, 0.28);
-        if (rng() < 0.4) bld('house', 6, 26, -0.3, 0.3);
+        bld('house', first, 49, 0, 0, { x, y });
+        if (rng() < 0.6) bld('house', [0, 1, 2, 3, 5, 7][rng.int(6)], 38, 0.3, 0.28);
+        if (rng() < 0.4) bld('house', 6, 23, -0.3, 0.3);
         return true;
       }
       case 'fort':
-        bld('tower', rng.int(5), 44, 0, 0, { x, y });
+        bld('tower', rng.int(5), 37, 0, 0, { x, y });
         return true;
       case 'mine':
         bld('mine', 0, 58, 0, 0, { x, y });
@@ -403,7 +403,7 @@ export class GameView {
     const root = new PIXI.Container();
     // bóng xám nhẹ dưới chân (phe được phân biệt bằng hình quân và huy hiệu số)
     const shadow = new PIXI.Graphics();
-    shadow.ellipse(0, 0, 22, 7).fill({ color: 0x000000, alpha: 0.14 });
+    shadow.ellipse(0, 0, 22, 7).fill({ color: 0x000000, alpha: 0.17 });
     const body = new PIXI.Container();
     const sprite = new PIXI.Sprite(res.texture);
     sprite.anchor.set(res.anchor[0], res.anchor[1]);

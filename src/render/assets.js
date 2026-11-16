@@ -9,6 +9,8 @@ import { makeCanvas, drawTree, drawHill, drawMountain, drawMine, drawFallbackUni
 
 // Sprite địa hình pixel art (assets/terrain/<nhóm>_<n>.png, tools/prep_decor.py): số biến thể mỗi nhóm
 export const TERRAIN_DECO = { pine: 8, tuft: 6, bush: 4, tiny: 3, boulder: 5, mound: 3, reed: 4, shrub: 3, hill: 1, house: 8, tower: 5, mine: 1, castle: 3, camp: 3 };
+// Nhóm công trình: bóng chân là vệt phẳng rộng hoà vào nền (hoặc file <nhóm>_<n>_shadow.png vẽ tay nếu có)
+const BUILDING_GROUPS = new Set(['house', 'tower', 'mine', 'castle', 'camp']);
 const PIXEL_UP = 4; // texture dựng gấp 4 lần pixel gốc (nearest), sprite scale = (px thế giới trên 1 pixel gốc) / PIXEL_UP
 
 export const RES = 2; // texture dựng ở độ phân giải gấp đôi, sprite scale 1/RES
@@ -129,7 +131,12 @@ export class Assets {
       pre.push(this._img(`assets/buildings/${n}.png`), this._img(`assets/buildings/${n}_fill.png`));
     }
     for (let i = 0; i < 6; i++) pre.push(this._img(`assets/clouds/cloud${i}.png`));
-    for (const [g, n] of Object.entries(TERRAIN_DECO)) for (let i = 0; i < n; i++) pre.push(this._img(`assets/terrain/${g}_${i}.png`));
+    for (const [g, n] of Object.entries(TERRAIN_DECO)) {
+      for (let i = 0; i < n; i++) {
+        pre.push(this._img(`assets/terrain/${g}_${i}.png`));
+        if (BUILDING_GROUPS.has(g)) pre.push(this._img(`assets/terrain/${g}_${i}_shadow.png`));   // bóng vẽ tay (tuỳ chọn)
+      }
+    }
     await Promise.all(pre);
     this.cloudImgs = [];
     for (let i = 0; i < 6; i++) { const im = this.imgs.get(`assets/clouds/cloud${i}.png`); if (im) this.cloudImgs.push(im); }
@@ -259,22 +266,78 @@ export class Assets {
     const img = this.imgs.get(`assets/terrain/${group}_${variant}.png`);
     if (!img) return null;
     const U = PIXEL_UP, w = img.width * U, h = img.height * U;
-    const sw = w * 0.78, sh = Math.max(U * 2, sw * 0.26);
-    const padB = shadow ? Math.ceil(sh * 0.4) : 0;
-    const c = makeCanvas(w, h + padB);
+    const building = BUILDING_GROUPS.has(group);
+    const hand = building ? this.imgs.get(`assets/terrain/${group}_${variant}_shadow.png`) : null;
+    let sw = w * 0.78, sh = Math.max(U * 2, sw * 0.26);
+    let padB = shadow ? Math.ceil(sh * 0.4) : 0;
+    let cw = w;
+    if (building && shadow && !hand) { sw = w * 1.04; sh = sw * 0.34; padB = Math.ceil(sh * 0.38); cw = Math.ceil(w * 1.06); }
+    if (hand && shadow) {                                   // bóng vẽ tay: căn giữa-đáy với sprite, thò xuống dưới 2 pixel
+      cw = Math.max(w, hand.width * U); padB = Math.max(0, hand.height * U - U * 4) + U * 2;
+    }
+    const c = makeCanvas(cw, h + padB);
     const ctx = c.getContext('2d');
     ctx.imageSmoothingEnabled = false;
+    const ox = Math.round((cw - w) / 2);
     if (shadow) {
-      ctx.fillStyle = 'rgba(20,45,25,0.36)';
-      ctx.beginPath();
-      ctx.ellipse(w / 2 + w * 0.06, h - sh * 0.15, sw / 2, sh / 2, 0, 0, Math.PI * 2);
-      ctx.fill();
+      if (hand) {
+        ctx.drawImage(hand, Math.round((cw - hand.width * U) / 2), h + U * 2 - hand.height * U, hand.width * U, hand.height * U);
+      } else if (building) {
+        // vệt bóng dưới chân: elip phẳng theo lưới pixel, mép dither hai lớp cho hoà vào đất
+        const cxp = ox + w / 2 + w * 0.03, cyp = h - sh * 0.28;
+        const rx = sw / 2 / U, ry = sh / 2 / U;
+        for (let gy = -Math.ceil(ry); gy <= Math.ceil(ry); gy++) for (let gx = -Math.ceil(rx); gx <= Math.ceil(rx); gx++) {
+          const r = Math.hypot(gx / rx, gy / ry);
+          if (r > 1) continue;
+          const chk = (gx + gy) & 1;
+          let a = 0.30;
+          if (r > 0.86) a = chk ? 0.30 : 0;                 // vành ngoài: cách một điểm
+          else if (r > 0.70) a = chk ? 0.30 : 0.15;
+          if (!a) continue;
+          ctx.fillStyle = `rgba(20,45,25,${a})`;
+          ctx.fillRect(Math.round(cxp + gx * U), Math.round(cyp + gy * U), U, U);
+        }
+      } else {
+        ctx.fillStyle = 'rgba(20,45,25,0.36)';
+        ctx.beginPath();
+        ctx.ellipse(w / 2 + w * 0.06, h - sh * 0.15, sw / 2, sh / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
-    ctx.drawImage(img, 0, 0, w, h);
+    ctx.drawImage(img, ox, 0, w, h);
     const t = PIXI.Texture.from(c);
     t.source.style.scaleMode = 'nearest';
-    const res = { texture: t, anchor: [0.5, h / (h + padB)], up: U, w: img.width, h: img.height };
+    const res = { texture: t, anchor: [(ox + w / 2) / cw, h / (h + padB)], up: U, w: img.width, h: img.height };
     this.cache.set(k, res);
     return res;
+  }
+
+  // Ảnh chân dung (data URL) cho khung thông tin: nửa trên của sprite quân, hoặc cả trại với công trình tĩnh
+  portrait(u) {
+    const key = `pt:${u.static ? 'camp' + u.faction : u.role + ':' + u.faction + ':' + (u.origin || '') + ':' + (u.afloat ? 1 : 0)}`;
+    if (this.cache.has(key)) return this.cache.get(key);
+    let src = null, crop = null;
+    if (u.static) {
+      src = this.imgs.get(`assets/terrain/camp_${u.faction === 'human' ? 0 : u.faction === 'undead' ? 2 : 1}.png`);
+    } else {
+      const r = this.unit(u.role === 'marine' && u.afloat ? 'marineboat' : u.role, u.faction, u.origin);
+      src = r.canvas;
+      const full = u.role === 'cavalry' || u.role === 'marine' && u.afloat;
+      if (src && !full) {
+        const side = Math.min(src.width, src.height * 0.6);
+        crop = [(src.width - side) / 2, 0, side, side];
+      }
+    }
+    let url = '';
+    if (src) {
+      const S = 96, c = makeCanvas(S, S), ctx = c.getContext('2d');
+      ctx.imageSmoothingEnabled = !!u.static ? false : true; ctx.imageSmoothingQuality = 'high';
+      const [sx, sy, sw, sh] = crop || [0, 0, src.width, src.height];
+      const k = Math.min((S - 8) / sw, (S - 8) / sh);
+      ctx.drawImage(src, sx, sy, sw, sh, (S - sw * k) / 2, (S - sh * k) / 2, sw * k, sh * k);
+      try { url = c.toDataURL('image/png'); } catch { url = ''; }
+    }
+    this.cache.set(key, url);
+    return url;
   }
 }

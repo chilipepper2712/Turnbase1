@@ -617,6 +617,11 @@ export class Game {
     return `<h3>${esc(t('terrain.' + tid))}</h3><ul class="fx">${L}</ul>${you}${note === nk ? '' : `<div class="note">${esc(note)}</div>`}`;
   }
 
+  portrait(u) {
+    const url = this.view.assets.portrait(u);
+    return url ? `<img class="portrait" alt="" src="${url}">` : '';
+  }
+
   unitCard(u) {
     const s = this.state, st = statsOf(u), f = FACTIONS[u.faction];
     const tid = terrainId(s, u.x, u.y);
@@ -630,8 +635,8 @@ export class Game {
     else if (u.faction === s.current && u.moved) status = t('ui.status.moved');
     const pips = Array.from({ length: CONFIG.maxStrength }, (_, i) => `<b class="${i < u.strength ? 'on ' + u.faction : ''}"></b>`).join('');
     if (u.static) {
-      return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(unitName(u))}</h3>
-      <div class="pips" title="${esc(t('ui.strength'))}">${pips}</div>
+      return `<div class="phead">${this.portrait(u)}<div class="pname"><h3><span class="chip" style="background:${f.fill}"></span>${esc(unitName(u))}</h3>
+      <div class="pips" title="${esc(t('ui.strength'))}">${pips}</div></div></div>
       <div class="line"><span title="${esc(t('ui.strength'))}">${icon('heart')} <b>${u.strength}/${CONFIG.maxStrength}</b></span><span title="${esc(t('ui.defense'))}">${icon('shield')} <b>${def}%</b></span></div>
       <div class="desc">${esc(t('unit.desc.objective'))}</div>`;
     }
@@ -647,8 +652,8 @@ export class Game {
     const tdef = terrainFacts(tid).def[u.faction];
     const fort = u.fort === 2 ? `<div class="fortline">${icon('tent')}${esc(t('ui.fort.on', { n: Math.round(fortifyBonus(s, u)) }))}</div>` : '';
     const ic = (k) => icon({ strength: 'heart', morale: 'flag', xp: 'chevron', def: 'shield', atk: 'sword', move: 'foot', range: 'bow' }[k]);
-    return `<h3><span class="chip" style="background:${f.fill}"></span>${esc(unitName(u))}${u.vip ? `<span class="tag vip">${esc(t('ui.vip'))}</span>` : ''}${u.timber ? `<span class="tag vip">${esc(t('ui.timber'))}</span>` : ''}<span class="stars">${rankIcon(lvl, 'gold')}</span></h3>
-      <div class="pips" title="${esc(t('ui.strength'))}">${pips}</div>
+    return `<div class="phead">${this.portrait(u)}<div class="pname"><h3><span class="chip" style="background:${f.fill}"></span>${esc(unitName(u))}${u.vip ? `<span class="tag vip">${esc(t('ui.vip'))}</span>` : ''}${u.timber ? `<span class="tag vip">${esc(t('ui.timber'))}</span>` : ''}<span class="stars">${rankIcon(lvl, 'gold')}</span></h3>
+      <div class="pips" title="${esc(t('ui.strength'))}">${pips}</div></div></div>
       <div class="line"><span title="${esc(t('ui.strength'))}">${ic('strength')} <b>${u.strength}/${CONFIG.maxStrength}</b></span><span title="${esc(t('ui.xp'))}">${ic('xp')} <b>${xpTxt}</b></span></div>
       ${FACTIONS[u.faction].noMorale ? `<div class="morale"><span class="m-l">${icon('flag')} ${esc(t('ui.morale'))} <em>${esc(t('ui.mstate.none'))}</em></span></div>` : `<div class="morale"><span class="m-l">${icon('flag')} ${esc(t('ui.morale'))} <em style="color:${morCol}">${esc(t('ui.mstate.' + ms))}</em></span><b style="color:${morCol}">${mor}</b></div>
       <div class="bar" title="${esc(t('ui.morale.hint', { n: f.routAt }))}"><i style="width:${mor}%;background:${morCol}"></i><u class="tick" style="left:${f.routAt}%"></u><u class="tick soft" style="left:${f.routAt + MORALE.waverMargin}%"></u><u class="tick soft" style="left:${MORALE.eagerAt}%"></u></div>
