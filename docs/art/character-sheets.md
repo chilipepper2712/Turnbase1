@@ -81,9 +81,11 @@ a medieval East Asian militia spearman, clean-shaven, black cloth cap, grey padd
 a Vietnamese medieval heavy infantryman, small mustache, steel helmet with a red plume and a gilded brow ornament, grey layered steel lamellar armor (small vertical plates laced in staggered rows) with brown trim and layered shoulder guards, dark red under-robe, yellow-and-black patterned sash at the waist, black boots, wielding a long two-handed straight sword (truong kiem) held across the body, with a short dirk in a brown studded scabbard at the left hip, accent color: red plume and dark red robe,
 ```
 
+**Lưu ý giải phẫu và tỉ lệ (kiểm khi duyệt ảnh, mọi sheet):** tai đối xứng bằng nhau, đủ hai tay hai chân, năm ngón mỗi bàn tay, vũ khí đúng tỉ lệ cơ thể. Lỗi đã gặp: tai một dài một ngắn (do prompt tả "một tai dài" theo sprite nhìn nghiêng, phải viết `two pointed ears of exactly equal size`), cung quá nhỏ như đồ chơi, ống tên quá ngắn.
+
 **Cung thủ** (`human_archer.png`)
 ```
-a medieval East Asian foot archer, clean-shaven, short black hair, plain brown cloth cylindrical cap (not fur, no brim), grey padded armored vest with dark moss-green trim and a black belt over a long brown cotton robe with long sleeves, plain black boots, simple long wooden self bow with a dark red-brown stave, yellow-ochre leather quiver of arrows at the hip, accent color: yellow-ochre quiver,
+a medieval East Asian foot archer, clean-shaven, short black hair, plain brown cloth cylindrical cap (not fur, no brim), grey padded armored vest with dark moss-green trim and a black belt over a long brown cotton robe with long sleeves, plain black boots, simple long wooden self bow with a dark red-brown stave, a LONG yellow-ochre leather quiver of realistic size (about 60-70 cm, tall tapered cylinder with many arrows whose fletching clearly sticks out above its opening, strap across the torso), accent color: yellow-ochre quiver,
 ```
 
 **Kỵ binh** (`human_cavalry.png`)
@@ -116,7 +118,7 @@ a huge hulking green-skinned orc brute with big lower tusks, spiked grey iron sh
 
 **Orc cung thủ** (`orc_archer.png`)
 ```
-a green-skinned orc archer with a long ear and small tusks, grey cloth hood and wrapped grey tunic, leather straps across the chest, orange-brown leather quiver on the back, short wooden bow, cloth-wrapped legs, accent color: orange-brown quiver,
+a green-skinned orc archer with a long ear and small tusks, grey cloth hood and wrapped grey tunic, leather straps across the chest, orange-brown leather quiver on the back, a wooden bow about two thirds of his body height with an even curve and a straight string, clearly in scale (not a toy bow), cloth-wrapped legs, accent color: orange-brown quiver,
 ```
 
 **Kỵ lợn rừng** (`orc_cavalry.png`)
@@ -147,7 +149,7 @@ an eerie East Asian dark-taoist necromancer commander, tall gaunt figure in a lo
 
 ## Ví dụ đã chạy và đạt: Cung thủ người (kèm sprite `human_archer.png`)
 
-Kết quả: `docs/art/sheets/archer_human.png` (đã có giáp lá + đoản kiếm), bản âm binh: `docs/art/sheets/archer_undead.png` (chạy trước khi thêm giáp lá + đoản kiếm, cần chạy lại), cung thủ Orc gầy nhanh nhẹn (bản cuối, mũ trùm kéo lên như sprite): `docs/art/sheets/archer_orc.png`, bộ binh người: `docs/art/sheets/infantry_human.png`, kỵ binh người: `docs/art/sheets/cavalry_human.png`.
+Kết quả: `docs/art/sheets/archer_human.png` (đã có giáp lá + đoản kiếm), bản âm binh: `docs/art/sheets/archer_undead.png` (chạy trước khi thêm giáp lá + đoản kiếm, cần chạy lại), cung thủ Orc gầy nhanh nhẹn, hai tai đối xứng, cung đúng tỉ lệ: `docs/art/sheets/archer_orc.png` (tư thế đứng, dùng làm sheet chính) và `docs/art/sheets/archer_orc_action.png` (tư thế kéo cung), cung thủ người ống tên dài đúng cỡ đeo hông: `docs/art/sheets/archer_human.png`, bộ binh người: `docs/art/sheets/infantry_human.png`, kỵ binh người: `docs/art/sheets/cavalry_human.png`.
 Prompt bản cuối của cung thủ người thêm khối "Trang bị chung của phe người" vào ngay sau phần mô tả áo.
 
 ```
