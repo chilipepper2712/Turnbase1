@@ -292,8 +292,8 @@ export class GameView {
   // wpa = đơn vị thế giới cho mỗi pixel gốc: 1 cho cây/đá, ~0.67 cho cỏ nhỏ cho đỡ rối.
   placePixelDeco(t, x, y, c, rng, uv) {
     const A = this.assets;
-    const mk = (group, wpa, jit, z, tile, scaleMul = 1) => {
-      const res = A.pixelDeco(group, rng.int(TERRAIN_DECO[group]));
+    const mk = (group, wpa, jit, z, tile, scaleMul = 1, pick) => {
+      const res = A.pixelDeco(group, pick ?? rng.int(TERRAIN_DECO[group]));
       if (!res) return;
       const sp = new PIXI.Sprite(res.texture);
       sp.anchor.set(res.anchor[0], res.anchor[1]);
@@ -305,7 +305,6 @@ export class GameView {
       case 'plain':
         if (rng() < 0.4) mk('tuft', 0.667, 0.8);
         if (rng() < 0.08) mk('bush', 0.667, 0.8);
-        if (rng() < 0.05) mk('pine', 1, 0.4);
         return true;
       case 'field':
         if (rng() < 0.15) mk('tuft', 0.667, 0.8);
@@ -317,9 +316,10 @@ export class GameView {
         return true;
       }
       case 'hill':
-        mk('boulder', 1, 0.3, c.y + 2, { x, y });
-        if (rng() < 0.4) mk('tuft', 0.667, 0.8);
-        if (rng() < 0.3) mk('bush', 0.667, 0.8);
+        // đồi = u đất phủ cỏ nhô lên (không phải tảng đá): một vòm hoặc gò dài, đôi khi thêm một u nhỏ bên cạnh
+        mk('hill', 1.5, 0.2, c.y + 2, { x, y }, 1, [0, 2, 5, 4, 7][rng.int(5)]);
+        if (rng() < 0.45) mk('hill', 1.1, 0.9, undefined, undefined, 1, [1, 3, 6][rng.int(3)]);
+        if (rng() < 0.3) mk('tuft', 0.667, 0.8);
         return true;
       case 'mountain':
         mk('mound', 1, 0.3, c.y + 2, { x, y });

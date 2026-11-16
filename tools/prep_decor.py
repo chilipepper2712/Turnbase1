@@ -83,6 +83,8 @@ def main():
     save("mound", rg[1][1:])
     save("reed", rg[2])
     save("shrub", rg[3][2:])
+    hg = rows(comps(f"{SRC}/hills_sheet.png", 1500))
+    save("hill", [im for r in hg for im in r])   # u đất phủ cỏ: 0,2,5 vòm lớn; 4,7 gò dài; 1,3,6 u nhỏ
     total = sum(os.path.getsize(os.path.join(OUT, f)) for f in os.listdir(OUT))
     print(len(os.listdir(OUT)), "file,", total, "byte")
 
