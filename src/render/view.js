@@ -111,6 +111,7 @@ export class GameView {
       for (let i = 0; i < w; i += CHUNK) this.bakeChunk(i, j);
     }
     this.drawBorder();
+    this.buildDotBg();
     this.buildWater();
     this.buildClouds();
     // trang trí đối tượng
@@ -620,6 +621,26 @@ export class GameView {
 
   // Mây: vị trí là hàm của thời gian (không giữ trạng thái), nên vẽ lúc nào cũng khớp. Trôi theo một hướng gió,
   // mờ dần khi ra khỏi / vào mép bản đồ rồi quay lại từ phía đầu gió.
+  // Nền chấm bi phía sau bản đồ (thay màu trơn): lưới chấm cố định theo thế giới, trôi và co giãn cùng bản đồ
+  buildDotBg() {
+    if (this.dotBg) { this.dotBg.destroy(); this.dotBg = null; }
+    const b = this.mapBounds;
+    if (!b) return;
+    if (!this._dotTex) {
+      const S = 28 * RES, c = makeCanvas(S, S), ctx = c.getContext('2d');
+      ctx.fillStyle = 'rgba(74,72,64,0.5)';
+      ctx.fillRect(S / 2 - RES, S / 2 - RES, RES * 2, RES * 2);       // chấm 2x2 đơn vị thế giới, cách nhau 28
+      this._dotTex = PIXI.Texture.from(c);
+      this._dotTex.source.style.scaleMode = 'nearest';
+    }
+    const pad = 3200;
+    const ts = new PIXI.TilingSprite({ texture: this._dotTex, width: b.maxX - b.minX + pad * 2, height: b.maxY - b.minY + pad * 2 });
+    ts.position.set(b.minX - pad, b.minY - pad);
+    ts.tileScale.set(1 / RES);
+    this.world.addChildAt(ts, 0);
+    this.dotBg = ts;
+  }
+
   // Đốm nước lấp lánh: mỗi ô sông có vài điểm, mỗi điểm lặp chu kỳ riêng: chấm -> dấu cộng -> chấm -> tắt (bước 0.2 giây, theo lưới 2px của nền)
   buildWater() {
     this.waterFx.clear();

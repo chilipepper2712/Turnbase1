@@ -11,6 +11,20 @@ import { makeCanvas, drawTree, drawHill, drawMountain, drawMine, drawFallbackUni
 export const TERRAIN_DECO = { pine: 8, tuft: 6, bush: 4, tiny: 3, boulder: 5, mound: 3, reed: 4, shrub: 3, hill: 1, house: 8, tower: 5, mine: 1, castle: 3, camp: 3 };
 // Nhóm công trình: bóng chân là vệt phẳng rộng hoà vào nền (hoặc file <nhóm>_<n>_shadow.png vẽ tay nếu có)
 const BUILDING_GROUPS = new Set(['house', 'tower', 'mine', 'castle', 'camp']);
+// Chân dung lấy từ character sheet trailer (tools/prep_portraits.py): assets/portraits/<tên>.png
+const PORTRAITS = [
+  'human_militia', 'human_infantry', 'human_archer', 'human_cavalry', 'human_marine', 'human_marineboat',
+  'orc_militia', 'orc_infantry', 'orc_archer', 'orc_cavalry', 'orc_goblin',
+  'undead_human_militia', 'undead_human_infantry', 'undead_human_archer', 'undead_human_cavalry',
+  'undead_orc_militia', 'undead_orc_infantry', 'undead_orc_archer', 'undead_orc_cavalry', 'undead_necromancer',
+  'camp_human', 'camp_orc',
+];
+export function portraitName(u) {
+  if (u.static) return `camp_${u.faction}`;
+  if (u.faction === 'undead') return u.role === 'necromancer' ? 'undead_necromancer' : `undead_${u.origin || 'human'}_${u.role}`;
+  if (u.role === 'marine') return u.afloat ? 'human_marineboat' : 'human_marine';
+  return `${u.faction}_${u.role}`;
+}
 const PIXEL_UP = 4; // texture dựng gấp 4 lần pixel gốc (nearest), sprite scale = (px thế giới trên 1 pixel gốc) / PIXEL_UP
 
 export const RES = 2; // texture dựng ở độ phân giải gấp đôi, sprite scale 1/RES
@@ -131,6 +145,7 @@ export class Assets {
       pre.push(this._img(`assets/buildings/${n}.png`), this._img(`assets/buildings/${n}_fill.png`));
     }
     for (let i = 0; i < 6; i++) pre.push(this._img(`assets/clouds/cloud${i}.png`));
+    for (const n of PORTRAITS) pre.push(this._img(`assets/portraits/${n}.png`));
     for (const [g, n] of Object.entries(TERRAIN_DECO)) {
       for (let i = 0; i < n; i++) {
         pre.push(this._img(`assets/terrain/${g}_${i}.png`));
@@ -314,6 +329,8 @@ export class Assets {
 
   // Ảnh chân dung (data URL) cho khung thông tin: nửa trên của sprite quân, hoặc cả trại với công trình tĩnh
   portrait(u) {
+    const art = this.imgs.get(`assets/portraits/${portraitName(u)}.png`);
+    if (art) return art.src;                          // tranh trailer
     const key = `pt:${u.static ? 'camp' + u.faction : u.role + ':' + u.faction + ':' + (u.origin || '') + ':' + (u.afloat ? 1 : 0)}`;
     if (this.cache.has(key)) return this.cache.get(key);
     let src = null, crop = null;

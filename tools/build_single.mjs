@@ -20,7 +20,7 @@ const langs = {};
 for (const f of fs.readdirSync(path.join(root, 'lang'))) if (f.endsWith('.json')) langs[f.slice(0, -5)] = JSON.parse(rd('lang/' + f));
 
 const assets = {};
-for (const dir of ['units', 'buildings', 'clouds', 'terrain']) {
+for (const dir of ['units', 'buildings', 'clouds', 'terrain', 'portraits']) {
   for (const f of fs.readdirSync(path.join(root, 'assets', dir))) {
     if (!f.endsWith('.png')) continue;
     assets[`assets/${dir}/${f}`] = 'data:image/png;base64,' + fs.readFileSync(path.join(root, 'assets', dir, f)).toString('base64');
