@@ -57,12 +57,19 @@ Cho **sinh vật / quân cưỡi** (kỵ binh, kỵ lợn rừng, xác ngựa): 
 
 ### Phe người
 
-**Trang bị chung của phe người** (ghép ngay sau khối nhân vật của mọi quân người có giáp; mày chốt):
-```
-the grey armor is steel lamellar made of small vertical rectangular plates laced together in staggered horizontal rows with visible lacing between rows, a short straight double-edged sword like a dirk worn at the left hip: tapering steel blade, brass ferrule and brass pommel cap, dark brown hardwood grip that swells in the middle, in a dark brown leather scabbard with a band of round brass studs,
-```
-Với dân quân, cung thủ, bộ binh: thay chữ "grey padded armored vest" / "grey lamellar armor" bằng giáp lá như trên. Kỵ binh và thủy binh không mặc giáp xám nhưng vẫn đeo đoản kiếm.
+**Cảm hứng tạo hình phe người:** trộn nhà Đinh (thế kỷ 10) và nhà Trần (thế kỷ 13–14). Tư liệu rời rạc và không chắc chắn, chỉ lấy cảm hứng, không tái hiện nghiêm ngặt; vẫn bám sprite trong game. Thêm vào mọi khối người: `Vietnamese medieval warrior inspired by the Dinh and Tran dynasties (loosely, not a strict reconstruction)`.
 
+**Trang bị chung của phe người** (ghép sau khối nhân vật; mày chốt):
+- **Giáp lá xám** (bộ binh, kỵ binh, cung thủ, dân quân dùng bản "giáp vải bọc" như sprite; thủy binh không giáp):
+```
+the grey armor is layered steel lamellar made of small vertical rectangular plates laced together in staggered horizontal rows with visible lacing between rows,
+```
+- **Đoản kiếm bên hông** (mọi quân người trừ dân quân và thủy binh có rìu thì tuỳ; kỵ binh bắt buộc):
+```
+a short straight double-edged sword like a dirk worn at the left hip: tapering steel blade, brass ferrule and brass pommel cap, dark brown hardwood grip that swells in the middle, in a dark brown leather scabbard with a band of round brass studs,
+```
+- **Bộ binh**: vũ khí chính là **trường kiếm hoặc trường đao** (một thanh dài thẳng một lưỡi hoặc hai lưỡi, cán dài hai tay), không phải đoản kiếm; đoản kiếm ở hông là vũ khí phụ.
+- **Kỵ binh**: mặc giáp lá xám như bộ binh (sprite chỉ thấy áo đỏ ở ngoài), có **kiếm bên hông**.
 
 **Dân quân** (`human_militia.png`)
 ```
@@ -71,7 +78,7 @@ a medieval East Asian militia spearman, clean-shaven, black cloth cap, grey padd
 
 **Bộ binh** (`human_infantry.png`)
 ```
-a medieval East Asian heavy infantryman, small mustache, steel helmet with a red plume and a gilded brow ornament, grey lamellar armor with brown trim and layered shoulder guards, dark red under-robe, yellow-and-black patterned sash at the waist, black boots, straight double-edged sword held across the body, accent color: red plume and dark red robe,
+a Vietnamese medieval heavy infantryman, small mustache, steel helmet with a red plume and a gilded brow ornament, grey layered steel lamellar armor (small vertical plates laced in staggered rows) with brown trim and layered shoulder guards, dark red under-robe, yellow-and-black patterned sash at the waist, black boots, wielding a long two-handed straight sword (truong kiem) held across the body, with a short dirk in a brown studded scabbard at the left hip, accent color: red plume and dark red robe,
 ```
 
 **Cung thủ** (`human_archer.png`)
@@ -81,7 +88,7 @@ a medieval East Asian foot archer, clean-shaven, short black hair, plain brown c
 
 **Kỵ binh** (`human_cavalry.png`)
 ```
-a medieval East Asian banner cavalryman, small round pale straw helmet-hat, red-orange quilted riding tunic with a red cape, holding a tall blue war banner with a red-orange emblem and a white tail ribbon, riding a chestnut-brown horse with simple dark tack, accent color: blue banner against red tunic,
+a Vietnamese medieval banner cavalryman, small round pale straw helmet-hat, grey layered steel lamellar armor (small vertical plates laced in staggered rows) under a red-orange riding tunic and red cape, holding a tall blue war banner with a red-orange emblem and a white tail ribbon, a sword worn at the left hip in a dark brown studded scabbard, riding a chestnut-brown horse with simple dark tack, accent color: blue banner against red tunic,
 ```
 
 **Thủy binh** (`human_marine.png`, `human_marineboat.png`)
@@ -91,15 +98,15 @@ a medieval East Asian river boatman soldier, clean-shaven, hair in a top bun wit
 
 ### Phe Orc
 
-**Vóc dáng chung của Orc** (ghép vào mọi khối Orc, kể cả âm binh gốc Orc; mày chốt): to lớn, thô kệch hơn người rõ rệt:
-```
-a big crude brutish orc body: hulking and heavy, much larger and bulkier than a human, thick neck, massive hunched shoulders, barrel chest and pot belly, long heavy arms with huge hands and thick fingers, short thick legs, coarse lumpy green skin, heavy jaw and brow, crude rough-hewn proportions, not lean, not slender, not athletic,
-```
-
+**Vóc dáng Orc** (to và thô hơn người nhưng **không béo phì**; mày chốt):
+- Chung (mọi Orc): `an orc body clearly larger and rougher than a human, broad shoulders, thick neck, long strong arms, big hands, coarse lumpy green skin, heavy jaw and brow, crude rough-hewn features,`
+- **Orc chiến binh (bộ binh)**: thêm `hulking and massive, hunched powerful frame, enormous forearms`.
+- **Orc cung thủ và Orc phỉ**: thêm `lean-muscled and wiry, agile and quick, taut sinewy build, light on his feet, ready to spring, no fat, no pot belly, not bulky`.
+- Goblin vẫn nhỏ và gầy (luật này không áp dụng).
 
 **Orc phỉ** (`orc_militia.png`)
 ```
-a green-skinned orc raider with small tusks, plain iron skullcap helmet, single grey iron shoulder pauldron, brown leather tunic with straps, cloth-wrapped legs and arms, round wooden shield with an iron boss, long spear with a broad iron blade, accent color: iron grey,
+a lean-muscled agile green-skinned orc raider with small tusks, plain iron skullcap helmet, single grey iron shoulder pauldron, brown leather tunic with straps, cloth-wrapped legs and arms, round wooden shield with an iron boss, long spear with a broad iron blade, accent color: iron grey,
 ```
 
 **Orc chiến binh** (`orc_infantry.png`)
@@ -140,7 +147,7 @@ an eerie East Asian dark-taoist necromancer commander, tall gaunt figure in a lo
 
 ## Ví dụ đã chạy và đạt: Cung thủ người (kèm sprite `human_archer.png`)
 
-Kết quả: `docs/art/sheets/archer_human.png` (đã có giáp lá + đoản kiếm), bản âm binh: `docs/art/sheets/archer_undead.png` (chạy trước khi thêm giáp lá + đoản kiếm, cần chạy lại), cung thủ Orc vóc to thô: `docs/art/sheets/archer_orc.png`.
+Kết quả: `docs/art/sheets/archer_human.png` (đã có giáp lá + đoản kiếm), bản âm binh: `docs/art/sheets/archer_undead.png` (chạy trước khi thêm giáp lá + đoản kiếm, cần chạy lại), cung thủ Orc gầy nhanh nhẹn (bản cuối, mũ trùm kéo lên như sprite): `docs/art/sheets/archer_orc.png`, bộ binh người: `docs/art/sheets/infantry_human.png`, kỵ binh người: `docs/art/sheets/cavalry_human.png`.
 Prompt bản cuối của cung thủ người thêm khối "Trang bị chung của phe người" vào ngay sau phần mô tả áo.
 
 ```
