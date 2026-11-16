@@ -171,4 +171,4 @@ Character model sheet of the archer shown in the reference pixel sprite, redrawn
 
 Ghi chú còn lại: `marine_human` cận cảnh cầm cọc/chèo thay vì cung; `undead_human_archer` ống tên đeo hông hơi ngắn.
 
-Đã chạy lại theo quy tắc vật cứng + nón trận: `undead_human_cavalry` (thay bản cũ), `undead_human_archer` (thay bản cũ), `undead_human_infantry_v2` (bản phụ; bản gốc `undead_human_infantry` giáp lá rõ hơn nhưng vỏ kiếm hơi ôm hông).
+Ghi chú chạy lại: `undead_human_cavalry` đã thay bằng bản nón trận. Cung thủ và bộ binh âm binh người giữ bản cũ vì bản chạy lại bằng prompt dài bị "cartoon" và mất chi tiết. Bài học: khi sửa một chi tiết, giữ nguyên cấu trúc prompt cũ (tham chiếu là ảnh ghép sprite sống + sprite chết, mô tả ngắn "redrawn faithfully ... adding nothing foreign") và chỉ thay đúng chi tiết cần sửa, đừng viết lại cả prompt.
