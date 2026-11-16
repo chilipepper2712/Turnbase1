@@ -149,9 +149,20 @@ an eerie East Asian dark-taoist necromancer commander, tall gaunt figure in a lo
 
 ## Ví dụ đã chạy và đạt: Cung thủ người (kèm sprite `human_archer.png`)
 
-Kết quả: `docs/art/sheets/archer_human.png` (đã có giáp lá + đoản kiếm), bản âm binh: `docs/art/sheets/archer_undead.png` (chạy trước khi thêm giáp lá + đoản kiếm, cần chạy lại), cung thủ Orc gầy nhanh nhẹn, hai tai đối xứng, cung đúng tỉ lệ: `docs/art/sheets/archer_orc.png` (tư thế đứng, dùng làm sheet chính) và `docs/art/sheets/archer_orc_action.png` (tư thế kéo cung), cung thủ người ống tên dài đúng cỡ đeo hông: `docs/art/sheets/archer_human.png`, bộ binh người: `docs/art/sheets/infantry_human.png`, kỵ binh người: `docs/art/sheets/cavalry_human.png`.
+Kết quả: `docs/art/sheets/archer_human.png` (đã có giáp lá + đoản kiếm), cung thủ Orc gầy nhanh nhẹn, hai tai đối xứng, cung đúng tỉ lệ: `docs/art/sheets/archer_orc.png` (tư thế đứng, dùng làm sheet chính) và `docs/art/sheets/archer_orc_action.png` (tư thế kéo cung), cung thủ người ống tên dài đúng cỡ đeo hông: `docs/art/sheets/archer_human.png`, bộ binh người: `docs/art/sheets/infantry_human.png`, kỵ binh người: `docs/art/sheets/cavalry_human.png`.
 Prompt bản cuối của cung thủ người thêm khối "Trang bị chung của phe người" vào ngay sau phần mô tả áo.
 
 ```
 Character model sheet of the archer shown in the reference pixel sprite, redrawn faithfully in a new painterly style: keep EXACTLY his costume, colors and silhouette from the reference and add nothing foreign. One large heroic full-body view on the left, a row of three smaller full-body views on the right showing front, side profile and back, three head-and-shoulders expression studies (neutral, battle cry, grim) and one close-up of the face and weapon detail, identical original character in every view, single character only, off-white paper background with a soft ground shadow under the feet, professional character sheet presentation. Character: a medieval East Asian foot archer in his thirties, clean-shaven face, short black hair, a plain brown cloth cylindrical cap (not fur, no brim, no ear flaps), a grey padded armored vest with dark moss-green trim edges and a black belt, worn over a long brown cotton robe with long sleeves, plain black boots, a simple long wooden self bow with a dark red-brown stave, a yellow-ochre leather quiver of arrows at the hip, athletic build. Stylized painterly 2D concept art, flat color blocks with visible dry gouache brush texture, shape-driven rendering with almost no outlines, hard-edged cel shadows in two to three values with warm bounce color, limited palette of brown, grey and moss green with a yellow-ochre accent, big simple cloth folds, mature angular face, strong readable silhouette, even neutral studio lighting, high-end game cinematic character art, sharp. Original character, not Mongolian, not nomadic, no fur hat, no mustache, no recurve horn bow, no text, no labels, no watermark, no logos, no frame borders, no background scenery, no extra characters, no babyface, no distorted hands, no extra fingers
 ```
+
+
+## Danh sách sheet đã chạy (docs/art/sheets/)
+
+- Người: `militia_human`, `infantry_human`, `archer_human`, `cavalry_human`, `marine_human`
+- Orc: `militia_orc`, `infantry_orc`, `archer_orc` (+ `archer_orc_action`), `cavalry_orc`, `goblin`
+- Necromancer: `necromancer`
+- Âm binh gốc người: `undead_human_{militia,infantry,archer,cavalry}`
+- Âm binh gốc orc: `undead_orc_{militia,infantry,archer,cavalry}`
+
+Ghi chú còn lại: `marine_human` cận cảnh cầm cọc/chèo thay vì cung; `undead_human_archer` ống tên đeo hông hơi ngắn.
