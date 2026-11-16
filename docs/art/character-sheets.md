@@ -172,3 +172,10 @@ Character model sheet of the archer shown in the reference pixel sprite, redrawn
 Ghi chú còn lại: `marine_human` cận cảnh cầm cọc/chèo thay vì cung; `undead_human_archer` ống tên đeo hông hơi ngắn.
 
 Ghi chú chạy lại: `undead_human_cavalry` đã thay bằng bản nón trận. Cung thủ và bộ binh âm binh người giữ bản cũ vì bản chạy lại bằng prompt dài bị "cartoon" và mất chi tiết. Bài học: khi sửa một chi tiết, giữ nguyên cấu trúc prompt cũ (tham chiếu là ảnh ghép sprite sống + sprite chết, mô tả ngắn "redrawn faithfully ... adding nothing foreign") và chỉ thay đúng chi tiết cần sửa, đừng viết lại cả prompt.
+
+## Sheet bổ sung (đơn vị còn lại)
+
+- `marine_boat_human`: thủy binh giương cung trong xuồng (theo sprite `human_marineboat`), thay cho panel cận cảnh bị sai trong `marine_human`.
+- `camp_human`, `camp_orc`: trại mục tiêu của nhiệm vụ phá trại. Chưa có sprite pixel nên vẽ từ mô tả chữ; chi tiết như cờ rồng ở trại người là model tự thêm, cần đổi nếu muốn khớp biểu tượng trong game (mặt trời cam-đỏ trên nền xanh).
+
+Toàn bộ sheet nằm trong `docs/art/sheets/` (23 file), lọc từ đây.
