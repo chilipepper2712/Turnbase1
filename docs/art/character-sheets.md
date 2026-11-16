@@ -81,6 +81,10 @@ a medieval East Asian militia spearman, clean-shaven, black cloth cap, grey padd
 a Vietnamese medieval heavy infantryman, small mustache, steel helmet with a red plume and a gilded brow ornament, grey layered steel lamellar armor (small vertical plates laced in staggered rows) with brown trim and layered shoulder guards, dark red under-robe, yellow-and-black patterned sash at the waist, black boots, wielding a long two-handed straight sword (truong kiem) held across the body, with a short dirk in a brown studded scabbard at the left hip, accent color: red plume and dark red robe,
 ```
 
+**Quy tắc vật cứng (mọi sheet có đồ đeo):** ống tên, vỏ kiếm, chuôi kiếm là vật cứng có hình dạng cố định, không được cong hay ôm theo dáng người. Thêm vào prompt: `RIGID OBJECTS RULE: the scabbard is a perfectly straight tapered rigid case angled slightly away from the body, the hilt is a straight rod, the quiver is a stiffened rigid straight tapered tube hanging from a strap and standing off the hip, not a soft bag; none of them bend, curve or wrap around the hip, thigh or torso`.
+
+**Mũ kỵ binh người** là *nón trận* (mũ chiến cứng, vành rộng phẳng, núm tròn trên đỉnh, quai cằm, tấm vải đỏ che gáy), không phải nón lá đan.
+
 **Lưu ý giải phẫu và tỉ lệ (kiểm khi duyệt ảnh, mọi sheet):** tai đối xứng bằng nhau, đủ hai tay hai chân, năm ngón mỗi bàn tay, vũ khí đúng tỉ lệ cơ thể. Lỗi đã gặp: tai một dài một ngắn (do prompt tả "một tai dài" theo sprite nhìn nghiêng, phải viết `two pointed ears of exactly equal size`), cung quá nhỏ như đồ chơi, ống tên quá ngắn.
 
 **Cung thủ** (`human_archer.png`)
@@ -90,7 +94,7 @@ a medieval East Asian foot archer, clean-shaven, short black hair, plain brown c
 
 **Kỵ binh** (`human_cavalry.png`)
 ```
-a Vietnamese medieval banner cavalryman, small round pale straw helmet-hat, grey layered steel lamellar armor (small vertical plates laced in staggered rows) under a red-orange riding tunic and red cape, holding a tall blue war banner with a red-orange emblem and a white tail ribbon, a sword worn at the left hip in a dark brown studded scabbard, riding a chestnut-brown horse with simple dark tack, accent color: blue banner against red tunic,
+a Vietnamese medieval banner cavalryman, a rigid war helmet (non tran): smooth hard domed pale-metal helmet with a wide flat sloped brim, a small round finial on top, a chin strap and a red cloth neck flap (NOT woven straw, NOT a conical rice-paddy hat), grey layered steel lamellar armor (small vertical plates laced in staggered rows) under a red-orange riding tunic and red cape, holding a tall blue war banner with a red-orange emblem and a white tail ribbon, a sword worn at the left hip in a dark brown studded scabbard, riding a chestnut-brown horse with simple dark tack, accent color: blue banner against red tunic,
 ```
 
 **Thủy binh** (`human_marine.png`, `human_marineboat.png`)
@@ -166,3 +170,5 @@ Character model sheet of the archer shown in the reference pixel sprite, redrawn
 - Âm binh gốc orc: `undead_orc_{militia,infantry,archer,cavalry}`
 
 Ghi chú còn lại: `marine_human` cận cảnh cầm cọc/chèo thay vì cung; `undead_human_archer` ống tên đeo hông hơi ngắn.
+
+Đã chạy lại theo quy tắc vật cứng + nón trận: `undead_human_cavalry` (thay bản cũ), `undead_human_archer` (thay bản cũ), `undead_human_infantry_v2` (bản phụ; bản gốc `undead_human_infantry` giáp lá rõ hơn nhưng vỏ kiếm hơi ôm hông).
