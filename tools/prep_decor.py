@@ -70,7 +70,7 @@ def save(group, items):
 def main():
     os.makedirs(OUT, exist_ok=True)
     for f in os.listdir(OUT):
-        if f.endswith(".png"):
+        if f.endswith(".png") and not f.startswith("hill_"):   # hill_0 do tools/prep_hill.py tạo
             os.remove(os.path.join(OUT, f))
     pines = [c[2] for c in sorted(comps(f"{SRC}/pines_sheet.png", 1500), key=lambda c: (round(c[0] / 300), c[1]))]
     save("pine", pines)
@@ -83,8 +83,6 @@ def main():
     save("mound", rg[1][1:])
     save("reed", rg[2])
     save("shrub", rg[3][2:])
-    hg = rows(comps(f"{SRC}/hills_sheet.png", 1500))
-    save("hill", [im for r in hg for im in r])   # u đất phủ cỏ: 0,2,5 vòm lớn; 4,7 gò dài; 1,3,6 u nhỏ
     total = sum(os.path.getsize(os.path.join(OUT, f)) for f in os.listdir(OUT))
     print(len(os.listdir(OUT)), "file,", total, "byte")
 

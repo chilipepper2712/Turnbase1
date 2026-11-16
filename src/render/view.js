@@ -316,10 +316,8 @@ export class GameView {
         return true;
       }
       case 'hill':
-        // đồi = u đất phủ cỏ nhô lên (không phải tảng đá): một vòm hoặc gò dài, đôi khi thêm một u nhỏ bên cạnh
-        mk('hill', 1.5, 0.2, c.y + 2, { x, y }, 1, [0, 2, 5, 4, 7][rng.int(5)]);
-        if (rng() < 0.45) mk('hill', 1.1, 0.9, undefined, undefined, 1, [1, 3, 6][rng.int(3)]);
-        if (rng() < 0.3) mk('tuft', 0.667, 0.8);
+        // đồi = u đất phủ cỏ nhô lên (bản vẽ nháp của mày, tools/prep_hill.py): một loại duy nhất, nằm giữa ô
+        mk('hill', 1.2, 0, c.y + 2, { x, y }, 1, 0);
         return true;
       case 'mountain':
         mk('mound', 1, 0.3, c.y + 2, { x, y });
