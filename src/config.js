@@ -113,20 +113,35 @@ export const STATS = {
     archer:   { atk: 5.2, def: 6,  move: 4, range: [2, 3] },
     cavalry:  { atk: 7.4, def: 11, move: 7, range: [1, 1] },
     objective: { atk: 0,  def: 25, move: 0, range: [1, 1] },
+    goblin:   { atk: 3.6, def: 4,  move: 5, range: [1, 1] },   // toán goblin trong rừng: yếu, nhanh, ẩn mình
   },
 };
 
 // Hệ số khắc chế: MATCHUP[vai trò tấn công][vai trò phòng thủ]
 export const MATCHUP = {
-  militia:  { militia: 1.0, infantry: 0.8, archer: 1.1, cavalry: 1.5, objective: 1.0 }, // giáo chống kỵ
-  infantry: { militia: 1.2, infantry: 1.0, archer: 1.2, cavalry: 0.9, objective: 1.0 },
-  archer:   { militia: 1.2, infantry: 1.0, archer: 1.0, cavalry: 0.8, objective: 0.6 },
-  cavalry:  { militia: 1.3, infantry: 0.9, archer: 1.4, cavalry: 1.0, objective: 0.6 },
-  objective: { militia: 1, infantry: 1, archer: 1, cavalry: 1, objective: 1 },
+  militia:  { militia: 1.0, infantry: 0.8, archer: 1.1, cavalry: 1.5, objective: 1.0, goblin: 1.1 }, // giáo chống kỵ
+  infantry: { militia: 1.2, infantry: 1.0, archer: 1.2, cavalry: 0.9, objective: 1.0, goblin: 1.1 },
+  archer:   { militia: 1.2, infantry: 1.0, archer: 1.0, cavalry: 0.8, objective: 0.6, goblin: 1.0 },
+  cavalry:  { militia: 1.3, infantry: 0.9, archer: 1.4, cavalry: 1.0, objective: 0.6, goblin: 1.0 },
+  objective: { militia: 1, infantry: 1, archer: 1, cavalry: 1, objective: 1, goblin: 1 },
+  goblin:   { militia: 1.1, infantry: 0.9, archer: 1.3, cavalry: 0.9, objective: 0.5, goblin: 1.0 },  // đánh lén cung thủ tốt
 };
 
 // Giá trị tương đối của một squad (dùng cho AI)
-export const UNIT_VALUE = { militia: 1, infantry: 2, archer: 2, cavalry: 2.5, objective: 3 };
+export const UNIT_VALUE = { militia: 1, infantry: 2, archer: 2, cavalry: 2.5, objective: 3, goblin: 1 };
+
+// Toán goblin (thuộc phe Orc): đặt lúc sinh bản đồ trong các cụm rừng lớn, ẩn mình cho tới khi tấn công.
+//   Quân người đi vào ô kề chỗ goblin ẩn thì bị chặn lại và bị phục kích (đòn bất ngờ: không bị đánh trả).
+//   Squad Orc gần goblin hồi thêm quân mỗi lượt.
+//   Goblin không tính vào việc quét sạch quân (là quân phụ).
+export const GOBLIN = {
+  strength: 5,              // quân số mỗi toán lúc xuất hiện
+  minCluster: 4,            // cụm rừng tối thiểu bao nhiêu ô mới có goblin
+  maxBands: 4,              // trần số toán mỗi bản đồ (cỡ nhỏ 2, vừa 3, lớn 4)
+  minHoldDist: 5,           // không đặt gần thành của bất kỳ phe nào hơn số ô này
+  healRadius: 2, heal: 1,   // squad Orc trong bán kính này hồi thêm quân mỗi lượt (không cộng dồn nhiều toán)
+  hideRadius: 2,            // cuối lượt Orc: goblin đứng trong rừng và không có quân người trong tầm này thì ẩn lại
+};
 
 // Đội hình xuất phát (theo thứ tự các ô spawn do mapgen sinh ra)
 // Cỡ bản đồ người chơi chọn. Khung chữ nhật dọc. Quân, làng, tháp, mỏ tăng theo diện tích.

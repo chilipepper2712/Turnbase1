@@ -3,7 +3,7 @@
 //  - "vùng ảnh hưởng" (ô nào tới thành nào trước) chia gần đều,
 //  - mỗi bên có làng và chỗ ẩn nấp thiên nhiên trong vùng của mình.
 // Quy ước: orc ở phía trên (y nhỏ), người ở phía dưới (y lớn).
-import { CONFIG, TERRAIN, MAPGEN, mapScale, armySize } from './config.js';
+import { CONFIG, TERRAIN, MAPGEN, GOBLIN, mapScale, armySize } from './config.js';
 import { makeRng, hash2 } from './rng.js';
 
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -423,6 +423,40 @@ export function generateOnce(seed, w, h) {
   return map;
 }
 
+// Chỗ ẩn của các toán goblin: mỗi cụm rừng lớn (>= minCluster ô, nối 4 hướng) tối đa một toán, đặt ở ô "sâu" nhất cụm
+// (nhiều ô rừng bao quanh nhất). Không sát thành, không đè ô xuất phát. Cụm lớn được chọn trước. Hoàn toàn xác định theo bản đồ.
+export function placeGoblins(map) {
+  const { w, h, tiles } = map;
+  const isForest = (x, y) => x >= 0 && y >= 0 && x < w && y < h && tiles[y * w + x] === 'forest';
+  const spawn = new Set([...map.spawns.human, ...map.spawns.orc].map((p) => p.y * w + p.x));
+  const holds = [map.strongholds.human, map.strongholds.orc];
+  const seen = new Uint8Array(w * h);
+  const clusters = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (!isForest(x, y) || seen[y * w + x]) continue;
+    const cells = [], q = [[x, y]]; seen[y * w + x] = 1;
+    while (q.length) {
+      const [cx, cy] = q.pop(); cells.push({ x: cx, y: cy });
+      for (const [dx, dy] of DIRS) {
+        const nx = cx + dx, ny = cy + dy;
+        if (isForest(nx, ny) && !seen[ny * w + nx]) { seen[ny * w + nx] = 1; q.push([nx, ny]); }
+      }
+    }
+    if (cells.length >= GOBLIN.minCluster) clusters.push(cells);
+  }
+  const depth = (c) => { let n = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && isForest(c.x + dx, c.y + dy)) n++; return n; };
+  const okTile = (c) => !spawn.has(c.y * w + c.x) && holds.every((hd) => Math.abs(hd.x - c.x) + Math.abs(hd.y - c.y) >= GOBLIN.minHoldDist);
+  clusters.sort((a, b) => b.length - a.length || a[0].y - b[0].y || a[0].x - b[0].x);
+  const n = Math.min(GOBLIN.maxBands, 1 + Math.round(mapScale(w, h)));
+  const out = [];
+  for (const cells of clusters) {
+    if (out.length >= n) break;
+    const cands = cells.filter(okTile).sort((a, b) => depth(b) - depth(a) || a.y - b.y || a.x - b.x);
+    if (cands.length) out.push({ x: cands[0].x, y: cands[0].y });
+  }
+  return out;
+}
+
 export function generateMap(seed = 1, w = CONFIG.map.w, h = CONFIG.map.h) {
   let best = null, bestScore = Infinity;
   for (let i = 0; i < 120; i++) {
@@ -433,12 +467,12 @@ export function generateMap(seed = 1, w = CONFIG.map.w, h = CONFIG.map.h) {
     const a = assess(m);
     m.requestedSeed = seed;
     m.fairness = a;
-    if (a.ok) return m;
+    if (a.ok) { m.goblins = placeGoblins(m); return m; }
     if (connected(m, false) && connected(m, true)) {
       const score = a.reasons.length + Math.abs(a.share - 0.5);
       if (score < bestScore) { best = m; bestScore = score; }
     }
   }
-  if (best) return best;
+  if (best) { best.goblins = placeGoblins(best); return best; }
   throw new Error('Không sinh được map hợp lệ cho seed ' + seed);
 }

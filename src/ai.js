@@ -5,7 +5,7 @@ import { CONFIG, UNIT_VALUE, FACTIONS } from './config.js';
 import {
   key, dist, reachable, targetsFrom, previewAttack, calcDamage, defensePct, statsOf,
   enemiesOf, alliesOf, moveCost, inBounds, DIRS, unitAt, other, terrainAt,
-  canFortify, fortifyBonus, terrainDefense, canCapture, moraleState,
+  canFortify, fortifyBonus, terrainDefense, canCapture, moraleState, terrainId,
 } from './rules.js';
 
 // ----- trường khoảng cách tới mục tiêu (Dijkstra nhiều nguồn) -----
@@ -20,13 +20,13 @@ function goalField(s, u) {
     if (u.vip) {
       seed(m.goal.x, m.goal.y, 0);                       // tướng chỉ nhìn về đích
     } else if (f === m.escort) {
-      for (const e of enemiesOf(s, f)) seed(e.x, e.y, 1);   // hộ tống: vừa dọn đường vừa theo về đích
+      for (const e of seenEnemies(s, f)) seed(e.x, e.y, 1);   // hộ tống: vừa dọn đường vừa theo về đích
       seed(m.goal.x, m.goal.y, 3);
     } else {
-      for (const e of enemiesOf(s, f)) seed(e.x, e.y, e.vip ? 0 : 2);   // săn: nhắm tướng trước
+      for (const e of seenEnemies(s, f)) seed(e.x, e.y, e.vip ? 0 : 2);   // săn: nhắm tướng trước
     }
   } else {
-    for (const e of enemiesOf(s, f)) seed(e.x, e.y, 0);
+    for (const e of seenEnemies(s, f)) seed(e.x, e.y, 0);
     if (canCapture(s, f)) { const eh = s.map.strongholds[other(f)]; seed(eh.x, eh.y, 3); }
   }
   while (open.length) {
@@ -46,6 +46,9 @@ function goalField(s, u) {
   return field;
 }
 
+// AI chỉ biết những gì người chơi bên đó thấy: quân địch đang ẩn không có trong tính toán
+const seenEnemies = (s, f) => enemiesOf(s, f).filter((e) => !e.hidden);
+
 const valueOf = (u) => UNIT_VALUE[u.role] * (0.3 + 0.7 * (u.strength / CONFIG.maxStrength));
 
 // ước lượng sát thương địch có thể gây cho "ghost" đứng ở (x,y) ở lượt sau
@@ -53,7 +56,7 @@ function threatAt(s, u, x, y, ignoreId) {
   const ghost = { ...u, x, y };
   const view = { ...s, units: s.units.map((q) => (q.id === u.id ? ghost : q)) };
   let total = 0;
-  for (const e of enemiesOf(s, u.faction)) {
+  for (const e of seenEnemies(s, u.faction)) {
     if (e.id === ignoreId || e.status === 'routed') continue;
     const st = statsOf(e);
     const d = Math.abs(e.x - x) + Math.abs(e.y - y);
@@ -105,8 +108,18 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
   }
   // càng về sau càng phải tiến (chống bế tắc)
   const pressure = 1 + Math.max(0, s.turn - 4) * 0.12;
-  score += adv * w.advance * pressure * (ctx.defensive && !target ? 0.3 : 1) * advMul;
+  score += adv * w.advance * pressure * (ctx.defensive && !target ? 0.3 : 1) * advMul * (u.role === 'goblin' && !target ? 0.4 : 1);
   // chiếm thành địch
+  // goblin: bám rừng, giữ thế ẩn, đứng gần squad Orc bị thương để tiếp quân
+  if (u.role === 'goblin') {
+    const forest = terrainId(s, x, y) === 'forest';
+    if (forest) score += 1.5;
+    if (u.hidden && !forest) score -= target ? 7 : 4;         // đang ẩn: không ra đồng trống, kể cả để đánh
+    if (!u.hidden && !forest && target) score -= 3;           // đã lộ: vẫn ưu tiên đánh từ trong rừng
+    let wounded = 0;
+    for (const a of s.units) if (a.faction === u.faction && a.role !== 'goblin' && !a.static && a.strength < CONFIG.maxStrength && Math.abs(a.x - x) + Math.abs(a.y - y) <= 2) wounded++;
+    score += Math.min(wounded, 3) * 0.6;
+  }
   if (canCapture(s, u.faction) && x === enemyHold.x && y === enemyHold.y && u.status === 'ok') score += w.capture * 3;
   // phòng thủ thành nhà khi bị đe doạ
   if (w.guard && danger) {
@@ -176,7 +189,7 @@ export function planNextAction(s, level = 'tactical') {
   const f = s.current;
   const ownHold = s.map.strongholds[f];
   const enemyHold = s.map.strongholds[other(f)];
-  const danger = s.mission.type !== 'escort' && enemiesOf(s, f).some((e) => Math.abs(e.x - ownHold.x) + Math.abs(e.y - ownHold.y) <= 7);
+  const danger = s.mission.type !== 'escort' && seenEnemies(s, f).some((e) => Math.abs(e.x - ownHold.x) + Math.abs(e.y - ownHold.y) <= 7);
   const fields = {};
   const m = s.mission;
   const defensive = m.type === 'hold' && m.defender === f;

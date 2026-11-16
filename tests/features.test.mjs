@@ -549,3 +549,111 @@ test('bỏ chạy: lưu và tải giữ danh sách squad đã rời trận', () 
   assert.deepEqual(r.escaped, s.escaped);
 });
 import { snapshot, restoreState } from '../src/saves.js';
+
+// ---------- Goblin ----------
+import { placeGoblins } from '../src/mapgen.js';
+import { GOBLIN } from '../src/config.js';
+import { targetsFrom, inEnemyZoc, checkVictory as checkWin, pathTo } from '../src/rules.js';
+
+test('goblin: đặt trong cụm rừng lớn, xa thành, không đè ô xuất phát, xác định theo bản đồ', () => {
+  for (const [seed, w, h] of [[3, 16, 20], [9, 22, 28], [21, 26, 36]]) {
+    const m = generateMap(seed, w, h);
+    assert.deepEqual(placeGoblins(m), m.goblins, 'gọi lại ra y hệt');
+    assert.ok(m.goblins.length <= GOBLIN.maxBands);
+    for (const g of m.goblins) {
+      assert.equal(m.tiles[g.y * m.w + g.x], 'forest');
+      for (const f of ['human', 'orc']) {
+        const hd = m.strongholds[f];
+        assert.ok(Math.abs(hd.x - g.x) + Math.abs(hd.y - g.y) >= GOBLIN.minHoldDist);
+      }
+      assert.ok(![...m.spawns.human, ...m.spawns.orc].some((p) => p.x === g.x && p.y === g.y));
+    }
+    const s = createState(m);
+    const gs = s.units.filter((u) => u.role === 'goblin');
+    assert.equal(gs.length, m.goblins.length);
+    assert.ok(gs.every((u) => u.faction === 'orc' && u.hidden && u.strength === GOBLIN.strength));
+  }
+});
+
+// bản đồ phẳng, một ô rừng ở (5,5) có một toán goblin ẩn
+function goblinMap() {
+  const s = flat({ '5,5': 'forest' });
+  const g = addUnit(s, 'orc', 'goblin', 5, 5, GOBLIN.strength); g.hidden = true;
+  addUnit(s, 'orc', 'infantry', 10, 1);
+  return { s, g };
+}
+
+test('goblin ẩn: quân người không thấy, không bị ZOC chặn, không nhắm bắn được', () => {
+  const { s, g } = goblinMap();
+  const a = addUnit(s, 'human', 'archer', 5, 8);
+  assert.ok(!targetsFrom(s, a, 5, 7).some((e) => e.id === g.id), 'không nhắm được quân ẩn');
+  assert.ok(!inEnemyZoc(s, 'human', 5, 6), 'quân ẩn không gây ZOC');
+  const r = reachable(s, a);
+  assert.ok(r.tiles.has(key(5, 6)) && r.tiles.has(key(5, 5)), 'đường và ô đứng tính như không có gì');
+});
+
+test('goblin phục kích: quân người đi vào ô kề thì bị chặn lại, goblin lộ diện và đánh ngay', () => {
+  const { s, g } = goblinMap();
+  const a = addUnit(s, 'human', 'cavalry', 3, 6);
+  const node = reachable(s, a).tiles.get(key(7, 5));
+  const path = pathTo(node);
+  const first = path.findIndex((p, i) => i > 0 && (Math.abs(p.x - 5) + Math.abs(p.y - 5) <= 1));
+  assert.ok(first > 0 && first < path.length - 1, 'đường đi ngang qua sát chỗ goblin');
+  const ev = moveUnit(s, a, 7, 5);
+  const stopAt = Math.abs(path[first].x - 5) + Math.abs(path[first].y - 5) === 0 ? path[first - 1] : path[first];
+  assert.deepEqual([a.x, a.y], [stopAt.x, stopAt.y], 'dừng ở ô kề đầu tiên trên đường');
+  assert.equal(g.hidden, false, 'goblin lộ diện');
+  assert.ok(ev.some((e) => e.type === 'reveal' && e.ambush && e.unit === g.id));
+  assert.ok(ev.some((e) => e.type === 'attack' && e.attacker === g.id && e.defender === a.id), 'goblin đánh trước');
+  assert.ok(a.moved && !a.acted, 'quân bị phục kích vẫn còn ra đòn được');
+  assert.ok(!ev.some((e) => e.type === 'counter'), 'bị bất ngờ nên không đánh trả');
+  assert.ok(s.units.includes(g), 'goblin sống sót sau đòn phục kích');
+  if (s.units.includes(g)) assert.ok(targetsFrom(s, a, a.x, a.y).some((e) => e.id === g.id), 'lộ diện rồi thì đánh trả được');
+});
+
+test('goblin: tự ra khỏi rừng hoặc ra đòn thì lộ diện; cuối lượt Orc trong rừng, vắng quân người thì ẩn lại', () => {
+  const { s, g } = goblinMap();
+  const h = addUnit(s, 'human', 'infantry', 9, 9);
+  s.current = 'orc';
+  const ev = moveUnit(s, g, 5, 8);                // ra đồng trống
+  assert.ok(ev, 'goblin đi được');
+  assert.equal(g.hidden, false, 'ra khỏi rừng thì lộ');
+  g.x = 5; g.y = 5;
+  endTurn(s);                                     // hết lượt Orc: trong rừng, không ai trong 2 ô -> ẩn
+  assert.equal(g.hidden, true, 'ẩn lại');
+  s.current = 'orc'; h.x = 5; h.y = 7; g.hidden = false;
+  endTurn(s);
+  assert.equal(g.hidden, false, 'có quân người trong 2 ô thì không ẩn được');
+  const { s: s2, g: g2 } = goblinMap(); s2.current = 'orc';
+  const v = addUnit(s2, 'human', 'militia', 5, 6);
+  const ev2 = attackUnit(s2, g2, v);
+  assert.equal(g2.hidden, false);
+  assert.equal(ev2[0].type, 'reveal', 'lộ diện trước khi ra đòn');
+});
+
+test('goblin tiếp quân: squad Orc trong bán kính 2 hồi thêm 1 quân mỗi lượt, không cộng dồn, xa thì không', () => {
+  const { s, g } = goblinMap();
+  const g2 = addUnit(s, 'orc', 'goblin', 6, 5, 5); g2.hidden = true;
+  const near = addUnit(s, 'orc', 'infantry', 5, 3, 5);     // cách goblin 2 ô
+  const far = addUnit(s, 'orc', 'infantry', 9, 5, 5);
+  s.current = 'human';
+  endTurn(s);                                      // sang lượt Orc
+  assert.equal(near.strength, 5 + GOBLIN.heal, 'hồi đúng 1, hai toán không cộng dồn');
+  assert.equal(far.strength, 5);
+  assert.equal(g.strength, GOBLIN.strength, 'goblin không tự hồi');
+});
+
+test('goblin là quân phụ: Orc hết quân chính thì thua dù goblin còn; goblin không chiếm thành', () => {
+  const { s } = goblinMap();
+  s.units = s.units.filter((u) => u.role === 'goblin');
+  addUnit(s, 'human', 'infantry', 1, 10);
+  checkWin(s);
+  assert.equal(s.winner, 'human');
+  assert.equal(s.winReason, 'elimination');
+  const { s: c, g } = goblinMap();
+  addUnit(c, 'human', 'infantry', 1, 10);
+  const hold = c.map.strongholds.human;
+  g.x = hold.x; g.y = hold.y; g.hidden = false;
+  c.current = 'human'; endTurn(c); endTurn(c); endTurn(c); endTurn(c);
+  assert.equal(c.capture.orc, 0, 'goblin đứng trên thành cũng không tính chiếm');
+});

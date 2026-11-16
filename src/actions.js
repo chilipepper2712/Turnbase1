@@ -14,6 +14,9 @@ export function executeAction(s, a) {
     const ev = moveUnit(s, u, a.to.x, a.to.y);
     if (!ev) return waitUnit(s, u);
     events = events.concat(ev);
+    // bị phục kích giữa đường: kế hoạch cũ không còn đúng, dừng ở đó
+    if (!s.units.includes(u)) return events;
+    if (u.x !== a.to.x || u.y !== a.to.y) return events.concat(waitUnit(s, u));
   } else {
     u.moved = true;
   }

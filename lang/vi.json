@@ -244,5 +244,9 @@
   "ui.flee.none": "Bị chặn đường, không chạy được",
   "ui.escaped": "Rút khỏi trận",
   "ui.escaped.demoted": "Rút khỏi trận, mất 1 cấp",
-  "ui.flee.exitElite": "Sắp rút khỏi trận! Bị giáng 1 cấp"
+  "ui.flee.exitElite": "Sắp rút khỏi trận! Bị giáng 1 cấp",
+  "unit.orc.goblin": "Goblin",
+  "unit.desc.goblin": "Ẩn trong rừng, chỉ hiện hình khi ra đòn hoặc ra khỏi rừng. Quân địch đi vào ô sát chỗ ẩn sẽ bị chặn lại và bị phục kích (không kịp đánh trả). Squad Orc trong bán kính 2 ô hồi thêm 1 quân mỗi lượt. Không tính vào việc quét sạch quân.",
+  "ui.ambush": "Phục kích!",
+  "ui.toast.ambushed": "Bị goblin phục kích! Không hoàn tác được nước đi này."
 }

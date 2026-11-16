@@ -45,6 +45,8 @@ export class Game {
   }
 
   get state() { return this.view.state; }
+  // quân ở ô này mà người chơi nhìn thấy (quân ẩn của địch coi như không có)
+  seenAt(s, x, y) { const u = unitAt(s, x, y); return u && !(u.hidden && u.faction !== 'human') ? u : null; }
   get speed() { return SPEEDS[this.settings.speed] || 1; }
 
   // ---------- Vòng đời ----------
@@ -134,7 +136,7 @@ export class Game {
     while (!s.winner && (a = planNextAction(s, level)) && guard++ < 80) {
       const u = s.units.find((x) => x.id === a.unit.id);
       if (!u) break;
-      await this.view.ensureVisible(u.x, u.y);
+      if (!(u.hidden && u.faction !== 'human')) await this.view.ensureVisible(u.x, u.y);   // không lộ quân ẩn qua camera
       const ev = executeAction(s, a);
       await this.view.playEvents(ev);
       await wait(140 / this.speed);
@@ -267,7 +269,7 @@ export class Game {
       if (statsOf(u).range[1] > 1) o.range = tilesInRange(s, u, mt.x, mt.y);
     }
     if (!o.range && !this.splitting) o.range = this.hoverRange || this.rangeTiles || undefined;
-    const watch = this.inspectTile ? unitAt(s, this.inspectTile.x, this.inspectTile.y) : u;
+    const watch = this.inspectTile ? this.seenAt(s, this.inspectTile.x, this.inspectTile.y) : u;
     if (watch && watch.status === 'routed' && !watch.static) {         // đích bỏ chạy hiện trên bản đồ để người chơi can thiệp được
       const p = fleePlan(s, watch);
       if (p.dest) o.flee = { x: p.dest.x, y: p.dest.y, exit: p.kind === 'exit' };
@@ -284,7 +286,7 @@ export class Game {
     const same = tile && this.hoverTile && tile.x === this.hoverTile.x && tile.y === this.hoverTile.y;
     if (same || (!tile && !this.hoverTile)) return;
     this.hoverTile = tile;
-    this.hoverUnit = tile ? unitAt(this.state, tile.x, tile.y) : null;
+    this.hoverUnit = tile ? this.seenAt(this.state, tile.x, tile.y) : null;
     this.hoverRange = null;
     const u = this.sel;
     if (tile && u && this.mode === 'selected' && statsOf(u).range[1] > 1 && this.reach.tiles.has(key(tile.x, tile.y))) {
@@ -302,7 +304,7 @@ export class Game {
     const s = this.state;
     if (this.busy || s.winner || this.players[s.current].type !== 'player') return;
     if (!tile) return this.cancel();
-    const u = unitAt(s, tile.x, tile.y);
+    const u = this.seenAt(s, tile.x, tile.y);
     const sel = this.sel;
 
     if (this.splitting) {
@@ -339,7 +341,7 @@ export class Game {
     const s = this.state, u = this.sel;
     if (!u || this.busy || s.winner || this.mode === 'view') return false;
     if (this.splitting) return splitTiles(s, u).some((p) => p.x === tile.x && p.y === tile.y);
-    const at = unitAt(s, tile.x, tile.y);
+    const at = this.seenAt(s, tile.x, tile.y);
     if (at) {
       if (this.attackOpts?.has(at.id)) return true;
       return this.mode === 'selected' && this.reach.merges.has(at.id);
@@ -355,7 +357,7 @@ export class Game {
       this.inspectTile = null; this.threat = null;
     } else {
       this.inspectTile = tile;
-      const u = unitAt(s, tile.x, tile.y);
+      const u = this.seenAt(s, tile.x, tile.y);
       this.threat = u && u.faction !== s.current && !u.static ? threatTiles(s, u) : null;
     }
     this.pending = null; this.hidePreview();
@@ -382,6 +384,10 @@ export class Game {
     if (p.node.x !== u.x || p.node.y !== u.y) {
       const ev = moveUnit(s, u, p.node.x, p.node.y);
       if (ev) await this.view.playEvents(ev);
+      // bị phục kích giữa đường: không đánh mục tiêu cũ nữa, trả quyền điều khiển cho người chơi
+      if (s.winner) return this.afterAction();
+      if (!s.units.includes(u)) return this.afterAction();
+      if (u.x !== p.node.x || u.y !== p.node.y) { this.busy = false; this.toast(t('ui.toast.ambushed'), 2400); this.select(u); this.origin = null; return; }
     }
     const tgt = s.units.find((x) => x.id === p.target.id);
     if (tgt) await this.view.playEvents(attackUnit(s, u, tgt));
@@ -425,8 +431,12 @@ export class Game {
     this.busy = false;
     // bước chân có thể quyết định ván (tướng hộ tống tới đích): phải kết thúc ngay, không để kẹt giữa chừng
     if (s.winner) { this.sel = null; this.origin = null; this.mode = 'idle'; this.refreshAll(); return this.gameOver(); }
+    const ambushed = ev && ev.some((e) => e.type === 'reveal' && e.ambush);
+    if (!s.units.includes(u)) return this.afterAction();          // chết trong trận phục kích
     this.select(u);
-    this.origin = { id: u.id, ...origin };
+    // bị phục kích thì không hoàn tác được nữa (đã lộ thông tin, đã có đòn đánh)
+    this.origin = ambushed ? null : { id: u.id, ...origin };
+    if (ambushed) { this.toast(t('ui.toast.ambushed'), 2400); this.refreshActions(); }
     this.refreshActions();
   }
 
@@ -434,7 +444,7 @@ export class Game {
     const s = this.state, u = this.sel;
     this.busy = true; this.hidePreview(); this.view.setOverlay({});
     const ev = mergeUnits(s, u, tgt);
-    if (ev) { await this.view.playEvents(ev); this.toast(t('ui.toast.merged')); } else (this.snd('ui_deny'), this.toast(t('ui.toast.mergeFail')));
+    if (ev) { await this.view.playEvents(ev); this.toast(t(ev.some((e) => e.type === 'merge') ? 'ui.toast.merged' : 'ui.toast.ambushed')); } else (this.snd('ui_deny'), this.toast(t('ui.toast.mergeFail')));
     this.afterAction();
   }
 
@@ -547,7 +557,7 @@ export class Game {
   refreshPanel() {
     const s = this.state, el = $('panel');
     const at = this.inspectTile || this.hoverTile;
-    const atUnit = at && unitAt(s, at.x, at.y);
+    const atUnit = at && this.seenAt(s, at.x, at.y);
     let html;
     if (atUnit) html = this.unitCard(atUnit);
     else if (at) html = this.terrainCard(at);

@@ -10,7 +10,7 @@ import { makeCanvas, drawTree, drawHill, drawMountain, drawMine, drawFallbackUni
 export const RES = 2; // texture dựng ở độ phân giải gấp đôi, sprite scale 1/RES
 
 // Chiều cao thân mong muốn (đơn vị thế giới). Kỵ binh giữ nguyên cả ngựa lẫn cờ vì to hơn sẽ che hết ô.
-const UNIT_HEIGHT = { militia: 62, infantry: 62, archer: 62, cavalry: 70 };
+const UNIT_HEIGHT = { militia: 62, infantry: 62, archer: 62, cavalry: 70, goblin: 50 };
 // Animation đi bộ: dải frame ngang assets/units/<phe>_<quân>_walk.png (tools/prep_walk.py). frames = số frame,
 // scale = chỉnh cỡ so với sprite đứng yên (1 = cùng chiều cao), fps = nhịp bước.
 export const WALK = {

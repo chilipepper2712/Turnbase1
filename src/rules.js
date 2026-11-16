@@ -1,7 +1,7 @@
 // Luật chơi thuần logic (không đụng DOM/Pixi). Mọi hàm đổi state đều trả về mảng sự kiện
 // để lớp hiển thị diễn lại bằng animation.
 import {
-  CONFIG, TERRAIN, FACTIONS, FORMATION_MAX, STATS, MATCHUP, ROSTER, FORTIFY, LEVEL, MORALE,
+  CONFIG, TERRAIN, FACTIONS, FORMATION_MAX, STATS, MATCHUP, ROSTER, FORTIFY, LEVEL, MORALE, GOBLIN,
 } from './config.js';
 
 export const key = (x, y) => x + ',' + y;
@@ -18,6 +18,12 @@ export function createState(map) {
   };
   for (const f of ['human', 'orc']) {
     map.spawns[f].forEach((p, i) => addUnit(state, f, ROSTER[i % ROSTER.length], p.x, p.y));
+  }
+  // toán goblin ẩn trong rừng (phe Orc)
+  for (const g of map.goblins || []) {
+    if (state.units.some((u) => u.x === g.x && u.y === g.y)) continue;
+    const u = addUnit(state, 'orc', 'goblin', g.x, g.y, GOBLIN.strength);
+    u.hidden = true;
   }
   for (const u of state.units) { u.moved = false; u.acted = false; }
   return state;
@@ -69,6 +75,10 @@ export const inBounds = (s, x, y) => x >= 0 && y >= 0 && x < s.map.w && y < s.ma
 export const unitAt = (s, x, y) => s.units.find((u) => u.x === x && u.y === y) || null;
 export const statsOf = (u) => STATS[u.faction][u.role];
 export const isRegular = (u) => u.role !== 'militia';
+// Quân phụ: không tính vào việc quét sạch, không chiếm thành (trại tĩnh, toán goblin)
+export const isAux = (u) => !!u.static || u.role === 'goblin';
+// Quân ẩn chỉ phe mình thấy
+export const hiddenFrom = (u, f) => !!u.hidden && u.faction !== f;
 
 export function enemiesOf(s, f) { return s.units.filter((u) => u.faction !== f); }
 export function alliesOf(s, f) { return s.units.filter((u) => u.faction === f); }
@@ -83,7 +93,7 @@ export function adjacentUnits(s, x, y) {
 }
 
 export function inEnemyZoc(s, f, x, y) {
-  return adjacentUnits(s, x, y).some((u) => u.faction !== f && !u.static);
+  return adjacentUnits(s, x, y).some((u) => u.faction !== f && !u.static && !u.hidden);
 }
 
 // Chi phí vào một loại địa hình theo phe + vai trò (không cần state)
@@ -198,7 +208,7 @@ export function reachable(s, u) {
       const nx = cur.x + dx, ny = cur.y + dy;
       if (!inBounds(s, nx, ny)) continue;
       const occ = unitAt(s, nx, ny);
-      if (occ && occ.faction !== f) continue;
+      if (occ && occ.faction !== f && !occ.hidden) continue;     // quân địch đang ẩn: người đi không biết, nên vẫn tính đường
       const c = moveCost(s, u, nx, ny);
       if (!isFinite(c)) continue;
       const total = cur.cost + c;
@@ -219,7 +229,7 @@ export function reachable(s, u) {
   const tiles = new Map();
   for (const [k, n] of best) {
     const occ = unitAt(s, n.x, n.y);
-    if (occ && occ.id !== u.id) continue;
+    if (occ && occ.id !== u.id && !hiddenFrom(occ, f)) continue;
     tiles.set(k, n);
   }
   // mục tiêu gộp: đồng đội kề một ô dừng được
@@ -248,7 +258,7 @@ export function targetsFrom(s, u, x, y) {
   const [mn, mx] = rangeAt(s, u, x, y);
   const out = [];
   for (const e of s.units) {
-    if (e.faction === u.faction) continue;
+    if (e.faction === u.faction || e.hidden) continue;
     const d = Math.abs(e.x - x) + Math.abs(e.y - y);
     if (d >= mn && d <= mx) out.push(e);
   }
@@ -360,7 +370,7 @@ export function checkVictory(s) {
   if (s.winner) return;
   const m = s.mission;
   for (const f of FACTION_IDS) {
-    if (!s.units.some((u) => u.faction === f && !u.static)) { win(s, other(f), 'elimination'); return; }
+    if (!s.units.some((u) => u.faction === f && !isAux(u))) { win(s, other(f), 'elimination'); return; }
   }
   if (m.type === 'destroy') {
     for (const f of FACTION_IDS) if (!s.units.some((u) => u.id === m.targets[f])) { win(s, other(f), 'destroyed'); return; }
@@ -380,10 +390,13 @@ function checkTimeLimit(s) {
 }
 
 // Atk phải đứng đúng vị trí tấn công. Trả về events.
-export function attackUnit(s, atk, def) {
+// surprise = đòn phục kích: mục tiêu bị bất ngờ, không đánh trả
+export function attackUnit(s, atk, def, surprise = false) {
   const events = [];
+  if (atk.hidden) { atk.hidden = false; events.push({ type: 'reveal', unit: atk.id, x: atk.x, y: atk.y }); }   // ra đòn thì lộ diện
   const pv = previewAttack(s, atk, def);
-  events.push({ type: 'attack', attacker: atk.id, defender: def.id, attackerRole: atk.role, preview: pv });
+  if (surprise) { pv.counter = 0; pv.atkLeft = atk.strength; pv.counterKills = false; }
+  events.push({ type: 'attack', attacker: atk.id, defender: def.id, attackerRole: atk.role, preview: pv, surprise });
   atk.fort = 0;                         // ra đòn thì phá trại
   damageUnit(s, def, pv.dmg, events);
   atk.morale = Math.min(100, atk.morale + CONFIG.moraleHit);
@@ -412,6 +425,42 @@ export function attackUnit(s, atk, def) {
   return events;
 }
 
+// ---------- Phục kích ----------
+// Đi theo đường đã chọn, dừng lại ngay khi bước vào ô kề quân địch đang ẩn (hoặc sắp bước vào ô của nó).
+// Ghi sự kiện 'move' cho đoạn đã đi. Trả về { cost, ambushers }.
+function walkPath(s, u, path, events, routed = false) {
+  const f = u.faction;
+  let stop = path.length - 1, ambushers = [];
+  for (let i = 1; i < path.length; i++) {
+    const p = path[i];
+    const occ = unitAt(s, p.x, p.y);
+    if (occ && hiddenFrom(occ, f)) { stop = i - 1; ambushers = [occ]; break; }
+    const adj = adjacentUnits(s, p.x, p.y).filter((a) => hiddenFrom(a, f));
+    if (adj.length) { stop = i; ambushers = adj.sort((a, b) => a.id - b.id); break; }
+  }
+  const walked = path.slice(0, stop + 1);
+  let cost = 0;
+  for (let i = 1; i < walked.length; i++) cost += moveCost(s, u, walked[i].x, walked[i].y);
+  if (walked.length > 1) {
+    events.push(routed ? { type: 'move', unit: u.id, path: walked, routed: true } : { type: 'move', unit: u.id, path: walked });
+    const end = walked[walked.length - 1];
+    u.x = end.x; u.y = end.y;
+  }
+  // quân ẩn tự đi ra khỏi rừng thì lộ diện
+  if (u.hidden && terrainId(s, u.x, u.y) !== 'forest') { u.hidden = false; events.push({ type: 'reveal', unit: u.id, x: u.x, y: u.y }); }
+  return { cost, ambushers };
+}
+
+// Các toán ẩn kề bên lộ diện và lần lượt đánh vào quân vừa đi tới (bị đánh trả như thường)
+function ambush(s, ambushers, victim, events) {
+  for (const g of ambushers) {
+    if (!s.units.includes(g) || !s.units.includes(victim)) break;
+    g.hidden = false;
+    events.push({ type: 'reveal', unit: g.id, x: g.x, y: g.y, ambush: true, target: victim.id });
+    events.push(...attackUnit(s, g, victim, true));
+  }
+}
+
 // ---------- Hành động ----------
 export function waitUnit(s, u) { u.acted = true; u.moved = true; return [{ type: 'wait', unit: u.id }]; }
 
@@ -419,9 +468,10 @@ export function moveUnit(s, u, x, y) {
   const reach = reachable(s, u);
   const node = reach.tiles.get(key(x, y));
   if (!node || u.moved) return null;
-  const path = pathTo(node);
-  const events = [{ type: 'move', unit: u.id, path }];
-  u.x = x; u.y = y; u.moved = true; u.movedDist = node.cost; u.fort = 0;
+  const events = [];
+  const res = walkPath(s, u, pathTo(node), events);
+  u.moved = true; u.movedDist = res.cost; u.fort = 0;
+  if (res.ambushers.length) ambush(s, res.ambushers, u, events);
   checkVictory(s);
   return events;
 }
@@ -434,8 +484,13 @@ export function mergeUnits(s, u, tgt) {
   const events = [];
   const via = m.via;
   if (via.x !== u.x || via.y !== u.y) {
-    events.push({ type: 'move', unit: u.id, path: pathTo(via) });
-    u.x = via.x; u.y = via.y;
+    const res = walkPath(s, u, pathTo(via), events);
+    if (res.ambushers.length) {                      // bị phục kích giữa đường: không gộp được nữa
+      u.moved = true; u.movedDist = res.cost; u.fort = 0;
+      ambush(s, res.ambushers, u, events);
+      checkVictory(s);
+      return events;
+    }
   }
   const room = CONFIG.maxStrength - tgt.strength;
   const move = Math.min(room, u.strength);
@@ -608,8 +663,8 @@ function runFlee(s, u, events) {
     if (sc < bestScore - 1e-9) { bestScore = sc; best = n; }
   }
   if (best && (best.x !== u.x || best.y !== u.y)) {
-    events.push({ type: 'move', unit: u.id, path: pathTo(best), routed: true });
-    u.x = best.x; u.y = best.y;
+    const res = walkPath(s, u, pathTo(best), events, true);
+    if (res.ambushers.length) { ambush(s, res.ambushers, u, events); return; }
   }
   if (plan.kind === 'exit' && u.y === plan.edgeY) escapeUnit(s, u, events);
 }
@@ -618,6 +673,14 @@ function runFlee(s, u, events) {
 export function endTurn(s) {
   const events = [];
   if (s.winner) return events;
+  // cuối lượt: toán goblin còn trong rừng, không có quân địch trong tầm thì ẩn lại
+  for (const g of s.units) {
+    if (g.faction !== s.current || g.role !== 'goblin' || g.hidden) continue;
+    if (terrainId(s, g.x, g.y) !== 'forest') continue;
+    if (s.units.some((e) => e.faction !== g.faction && !e.static && dist(e, g) <= GOBLIN.hideRadius)) continue;
+    g.hidden = true;
+    events.push({ type: 'hide', unit: g.id });
+  }
   const next = other(s.current);
   s.current = next;
   if (next === 'human') s.turn++;
@@ -644,6 +707,8 @@ export function endTurn(s) {
       const camp = s.units.find((c) => c.id === s.mission.targets[next]);
       if (camp && dist(camp, u) === 1) heal = Math.max(heal, CONFIG.healStronghold);
     }
+    // toán goblin gần đó tiếp thêm quân cho squad Orc (không cộng dồn nhiều toán)
+    if (u.role !== 'goblin' && s.units.some((g) => g.faction === next && g.role === 'goblin' && dist(g, u) <= GOBLIN.healRadius)) heal += GOBLIN.heal;
     if (heal && u.strength < CONFIG.maxStrength) {
       const add = Math.min(heal, CONFIG.maxStrength - u.strength);
       u.strength += add;
@@ -668,7 +733,7 @@ export function endTurn(s) {
   const holder = unitAt(s, enemyHold.x, enemyHold.y);
   if (!canCapture(s, next)) {
     s.capture[next] = 0;
-  } else if (holder && holder.faction === next && holder.status === 'ok') {
+  } else if (holder && holder.faction === next && holder.status === 'ok' && !isAux(holder)) {
     s.capture[next]++;
     events.push({ type: 'capture', faction: next, progress: s.capture[next] });
     if (s.capture[next] >= CONFIG.captureTurns) {

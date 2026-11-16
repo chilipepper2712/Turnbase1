@@ -244,5 +244,9 @@
   "ui.flee.none": "Cut off, cannot flee",
   "ui.escaped": "Left the battle",
   "ui.escaped.demoted": "Left the battle, lost 1 level",
-  "ui.flee.exitElite": "About to leave the battle! Loses 1 level"
+  "ui.flee.exitElite": "About to leave the battle! Loses 1 level",
+  "unit.orc.goblin": "Goblin",
+  "unit.desc.goblin": "Hides in forests and only shows itself when it attacks or leaves the forest. Enemies stepping next to its hiding spot are stopped and ambushed (no counterattack). Orc squads within 2 tiles recover 1 extra troop per turn. Does not count for wiping out an army.",
+  "ui.ambush": "Ambush!",
+  "ui.toast.ambushed": "Ambushed by goblins! This move can no longer be undone."
 }

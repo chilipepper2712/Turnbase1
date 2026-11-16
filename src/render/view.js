@@ -72,6 +72,10 @@ export class GameView {
   }
 
   // Bắt đầu ván mới trên cùng renderer
+  // phe đang ngồi trước màn hình: quân ẩn của phe kia không được vẽ
+  get viewer() { return this._viewer || 'human'; }
+  set viewer(f) { this._viewer = f; }
+
   reset(state) {
     this.state = state;
     this.tweens.length = 0;
@@ -327,6 +331,7 @@ export class GameView {
     const c = tileToWorld(u.x, u.y);
     root.position.set(c.x, c.y + 8);
     root.zIndex = c.y + 8 + 0.1;
+    root.visible = !(u.hidden && u.faction !== this.viewer);
     this.objects.addChild(root);
     const us = { id: u.id, root, body, sprite, badge, txt, flag, fortG, stars, fort: -1, shown: u.strength, facing: u.static || u.faction === 'human' ? 1 : -1, bx: 0, by: 0 };
     us.sprite.scale.x = Math.abs(us.sprite.scale.x) * (us.facing < 0 ? -1 : 1);
@@ -399,6 +404,7 @@ export class GameView {
       us.root.zIndex = c.y + 8.1;
       us.body.position.set(0, 0);
       this.setShown(us, u.strength);
+      us.root.visible = !(u.hidden && u.faction !== this.viewer);   // quân ẩn: chỉ phe mình thấy
       const mine = u.faction === s.current;
       us.body.alpha = mine && u.acted && u.status === 'ok' && !s.winner ? 0.55 : 1;
       us.flag.text = u.status === 'routed' ? this.t('ui.routed') : '';
@@ -803,6 +809,7 @@ export class GameView {
       case 'die': this.snd('unit_die'); break;
       case 'rout': this.snd('rout'); break;
       case 'escape': this.snd('rout'); break;
+      case 'reveal': if (ev.ambush) this.snd('rout'); break;
       case 'heal': this.snd('heal'); break;
       case 'merge': this.snd('merge'); break;
       case 'split': this.snd('split'); break;
@@ -822,6 +829,12 @@ export class GameView {
         case 'move': {
           const us = this.sprites.get(ev.unit);
           if (!us) break;
+          const mover = s.units.find((q) => q.id === ev.unit);
+          if (mover && mover.hidden && mover.faction !== this.viewer) {     // quân ẩn của địch đi: không vẽ, không lộ
+            const end = tileToWorld(ev.path[ev.path.length - 1].x, ev.path[ev.path.length - 1].y);
+            us.root.position.set(end.x, end.y + 8); us.root.zIndex = end.y + 8.1;
+            break;
+          }
           const pts = ev.path.map((p) => tileToWorld(p.x, p.y + 0));
           const per = Math.min(130, 700 / Math.max(1, pts.length - 1));
           const u = s.units.find((q) => q.id === ev.unit);
@@ -877,6 +890,23 @@ export class GameView {
           const us = this.sprites.get(ev.unit);
           if (us) { us.flag.text = this.t('ui.routed'); this.float(this.t('ui.routed'), us.root.x, us.root.y - 56, 0xffd54a, 22); }
           await wait(250 / this.speed);
+          break;
+        }
+        case 'reveal': {
+          const us = this.sprites.get(ev.unit);
+          if (!us) break;
+          const c = tileToWorld(ev.x, ev.y);
+          us.root.position.set(c.x, c.y + 8); us.root.zIndex = c.y + 8.1;
+          const was = us.root.visible;
+          us.root.visible = true;
+          if (!was) { us.root.alpha = 0; await this.tween(260, (k) => { us.root.alpha = k; }); }
+          if (ev.ambush) await this.float(this.t('ui.ambush'), c.x, c.y - 60, 0xd8402f, 24);
+          break;
+        }
+        case 'hide': {
+          const us = this.sprites.get(ev.unit);
+          const u = s.units.find((q) => q.id === ev.unit);
+          if (us && u && u.faction !== this.viewer) { await this.tween(260, (k) => { us.root.alpha = 1 - k; }); us.root.visible = false; us.root.alpha = 1; }
           break;
         }
         case 'escape': {

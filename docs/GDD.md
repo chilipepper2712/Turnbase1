@@ -168,6 +168,18 @@ Orc **mạnh hơn nhưng không kỷ luật** **[CHỐT]**, thể hiện bằng:
 
 Đội hình xuất phát: 2 bộ binh, 2 cung thủ, 2 dân quân, 1 kỵ binh mỗi bên, đứng quanh thành (cách 2–5 ô, hướng về phía địch). **[CHỐT ý "quanh cứ điểm"]**
 
+### Toán goblin (phe Orc) **[CHỐT ý; số liệu MẶC ĐỊNH]**
+
+- **Thuộc phe Orc**, do AI Orc điều khiển (sau này chơi bên Orc thì là của người chơi). Là **quân phụ**: không tính vào việc quét sạch, không chiếm thành.
+- **Xuất hiện lúc sinh bản đồ**, theo seed nên xác định: mỗi cụm rừng lớn (≥ 4 ô) tối đa một toán, đặt ở ô sâu nhất trong cụm, cách thành ≥ 5 ô, không đè ô xuất phát. Cỡ nhỏ 2 toán, vừa 3, lớn 4. Mỗi toán 5 quân; chỉ số yếu (sát thương 3,6, thủ 4) nhưng đi nhanh (5 ô) và hưởng trọn thủ rừng của Orc.
+- **Ẩn trong rừng** **[CHỐT]**: phe người không thấy (không vẽ, không có trong thẻ thông tin, camera không theo), không bị ZOC của nó, không nhắm được nó. Đây là **ngoại lệ đầu tiên của luật "không sương mù"**.
+- **Phục kích:** quân người đi vào ô kề chỗ goblin ẩn (hoặc định bước vào ô của nó) thì **bị chặn lại ngay ô đó**, goblin lộ diện và đánh một **đòn bất ngờ, không bị đánh trả**. Quân bị phục kích vẫn còn ra đòn được trong lượt đó; **không hoàn tác được** nước đi đó. AI phe người cũng không biết chỗ goblin ẩn.
+- **Lộ diện** khi ra đòn hoặc tự đi ra khỏi rừng. **Ẩn lại** cuối lượt Orc nếu đang đứng trong rừng và không có quân người trong 2 ô.
+- **Tiếp quân:** squad Orc trong bán kính 2 ô của một toán goblin hồi thêm 1 quân mỗi đầu lượt Orc (không cộng dồn nhiều toán; cộng với hồi ở làng/thành).
+- **AI goblin:** bám rừng, giữ thế ẩn (không ra đồng trống để đánh), đứng gần squad Orc bị thương.
+- **Đo (AI đấu AI, 60 ván cỡ nhỏ):** giao tranh người từ ~43% xuống ~38% (goblin là lợi thế thêm cho Orc); phục kích hiếm trong ván AI đấu AI (AI phe người ít đi vào rừng), sẽ khác khi người chơi tự đi. **[MỞ]** có cần bù cho phe người không.
+- **Sprite:** pixel art sinh bằng Higgsfield theo mẫu bộ sprite cũ (`tools/prep_alpha_sprite.py --pixel 100`).
+
 ## 8. Chiến đấu
 
 **Deterministic, không random.** Luôn xem trước kết quả (sát thương gây ra, sát thương nhận lại, có tiêu diệt không) trước khi xác nhận. **[CHỐT]**
@@ -414,5 +426,6 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 | Hộ tống | Bỏ thành của cả hai phe, chỉ còn: tướng tới điểm rút / hạ tướng / quét sạch (dev giữ ô rút và bỏ hạn giờ, chờ mày xác nhận) | Mày chốt, dev diễn giải |
 | Cố thủ | Cả hai bên đều chiếm được thành đối phương để thắng; hạn 12 lượt; người cũng có 1 đợt tiếp viện | Mày chốt |
 | Lưu / tải ván | Lưu bản đồ đầy đủ trong bản lưu; chỗ lưu chính là db của tài khoản, dự phòng localStorage, và xuất/nhập file; 1 ô tự động đầu lượt + 3 ô thủ công | Dev quyết, mày duyệt khi chơi |
+| Goblin | Toán goblin phe Orc ẩn trong rừng, phục kích quân người đi vào sát (đòn bất ngờ, không bị đánh trả), tiếp quân cho Orc gần đó, đặt theo seed lúc sinh map | Mày đề xuất và chốt; chi tiết số liệu do dev đặt |
 | Thứ tự roadmap | Mục tiêu đa dạng, rồi lưu/tải, rồi hệ trạng thái sĩ khí | Mày đồng ý |
 | Biến đổi địa hình | Dân quân đốt rừng, đặt bẫy, xây cầu | Mày đề xuất |
