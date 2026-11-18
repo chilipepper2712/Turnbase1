@@ -7,6 +7,7 @@ Model ảnh: Seedream 5.5 (keyframe). Video: Seedance 2.5 `omni_reference`, `dra
 |---|---|---|---|
 | U1 | Lùi ra sau lưng orc, thây ma orc nhổm dậy từ đầm lầy | u01b | u01_v1 |
 | U2 | Thây ma chém, orc né | u02 | u02_v1 |
+| U2b | Orc phản đòn: húc vai, đẩy thây ma văng xuống nước, giơ đao gầm (4 giây, khung đầu là khung cuối của u02_v1) | u02_lastframe | u02b_counter_4s |
 | U3 | Orc trúng 3 mũi tên vào lưng, gầm lên | u03b | u03_v1 |
 | U4 | Góc qua vai: 3 cung thủ thây ma rút tên, giương cung | u04 | u04_v1 |
 | U5 | Lùi qua đội hình: bộ binh, dân quân, kỵ binh thây ma | u05 | u05_v1 |
