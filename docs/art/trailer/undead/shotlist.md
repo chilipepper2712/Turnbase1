@@ -13,3 +13,15 @@ Model ảnh: Seedream 5.5 (keyframe). Video: Seedance 2.5 `omni_reference`, `dra
 | U6 | Necromancer niệm chú, mây đen xoáy, sét xanh | u06 | u06_v1 |
 | U7 | Kéo ra: cột sáng xanh lục phóng xuống necromancer | u06 → u07 | u07_v1 |
 | U8 | Cực rộng trên ngọn cây: cột sáng, nổ, sóng xung kích, chim bay | u08 | u08_v1 |
+
+## Thêm
+| Clip | Nội dung |
+|---|---|
+| u_fpv_necro_8s | FPV 8 giây bay xuyên qua đội quân thây ma, mở ra necromancer (khung đầu u05, khung cuối u06). Thay cho U5 + U6 nếu dùng |
+| b1_eyes | B-roll: cận sọ dân quân thây ma, mắt bùng lửa xanh, há hàm |
+| b2_sword | B-roll: trường kiếm gỉ trong tay xương, chân bước trong bùn (gần như tĩnh) |
+| b3_armor | B-roll: giáp lá gỉ vỡ, dây buộc mục, khăn và chùm lông đỏ bay |
+| b4_hand | B-roll: đất nứt ánh xanh, bàn tay xương thò lên bám đất, đầu lâu trồi theo |
+| b5_bubbles | B-roll đầm: nước sủi bọt, ánh xanh dưới nước lớn dần |
+| b6_cleaver | B-roll đầm: bàn tay thối nắm đao gỉ trồi khỏi mặt nước |
+| b7_face | B-roll đầm: mặt orc thây ma nhô khỏi nước, mắt lửa xanh bùng lên |
