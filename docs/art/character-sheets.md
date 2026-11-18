@@ -81,7 +81,7 @@ a medieval East Asian militia spearman, clean-shaven, black cloth cap, grey padd
 a Vietnamese medieval heavy infantryman, small mustache, steel helmet with a red plume and a gilded brow ornament, grey layered steel lamellar armor (small vertical plates laced in staggered rows) with brown trim and layered shoulder guards, dark red under-robe, yellow-and-black patterned sash at the waist, black boots, wielding a long two-handed straight sword (truong kiem) held across the body, with a short dirk in a brown studded scabbard at the left hip, accent color: red plume and dark red robe,
 ```
 
-**Quy tắc vật cứng (mọi sheet có đồ đeo):** ống tên, vỏ kiếm, chuôi kiếm là vật cứng có hình dạng cố định, không được cong hay ôm theo dáng người. Thêm vào prompt: `RIGID OBJECTS RULE: the scabbard is a perfectly straight tapered rigid case angled slightly away from the body, the hilt is a straight rod, the quiver is a stiffened rigid straight tapered tube hanging from a strap and standing off the hip, not a soft bag; none of them bend, curve or wrap around the hip, thigh or torso`.
+**Quy tắc vật cứng (mọi sheet có đồ đeo, mọi prompt trailer):** giáo, cán cờ, cung, mũi tên, càng xe, ống tên, vỏ kiếm, chuôi kiếm là vật cứng có hình dạng cố định, không được cong hay ôm theo dáng người. Thêm vào prompt: `RIGID OBJECTS RULE: the scabbard is a perfectly straight tapered rigid case angled slightly away from the body, the hilt is a straight rod, the quiver is a stiffened rigid straight tapered tube hanging from a strap and standing off the hip, not a soft bag; none of them bend, curve or wrap around the hip, thigh or torso`.
 
 **Mũ kỵ binh người** là *nón trận* (mũ chiến cứng, vành rộng phẳng, núm tròn trên đỉnh, quai cằm, tấm vải đỏ che gáy), không phải nón lá đan.
 
@@ -109,6 +109,7 @@ a medieval East Asian river boatman soldier, clean-shaven, hair in a top bun wit
 - **Orc chiến binh (bộ binh)**: thêm `hulking and massive, hunched powerful frame, enormous forearms`.
 - **Orc cung thủ và Orc phỉ**: thêm `lean-muscled and wiry, agile and quick, taut sinewy build, light on his feet, ready to spring, no fat, no pot belly, not bulky`.
 - Goblin vẫn nhỏ và gầy (luật này không áp dụng).
+- **Tỉ lệ so với người (trailer, cutscene):** orc **không phải người khổng lồ**. Đứng thẳng chỉ cao hơn người khoảng **2 cái đầu** (khoảng 1,3 lần), to ở vai, ngực và tay. Khi khom thủ thế, đầu orc chỉ cao hơn đầu người khoảng 1 đầu, khớp với cảnh bộ binh người đấu orc ở trailer phe người. Prompt ảnh và video ghi: `SCALE RULE: the orc is NOT a giant, standing upright only about two heads taller than a human (about 1.3x human height), all figures on the same ground plane at similar distance from camera`.
 
 **Orc phỉ** (`orc_militia.png`)
 ```
