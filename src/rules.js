@@ -15,7 +15,7 @@ export const foeOf = (s, f) => (s.sides[0] === f ? s.sides[1] : s.sides[0]);
 export function createState(map) {
   const sides = ['human', Object.keys(map.spawns).find((f) => f !== 'human') || 'orc'];
   const state = {
-    map, sides, units: [], boats: [], current: 'human', turn: 1, nextId: 1,
+    map, sides, units: [], boats: [], graves: [], current: 'human', turn: 1, nextId: 1,
     capture: { human: 0, orc: 0 }, winner: null, winReason: null,
     mission: { type: 'skirmish' },
   };
@@ -93,6 +93,7 @@ export function cloneState(s) {
     units: s.units.map((u) => ({ ...u })),
     capture: { ...s.capture },
     boats: (s.boats || []).map((b) => ({ ...b })),
+    graves: (s.graves || []).map((g) => ({ ...g })),
     mission: { ...s.mission, waves: s.mission.waves && s.mission.waves.map((w) => ({ ...w })) },
   };
 }
@@ -402,6 +403,7 @@ function removeIfDead(s, u, events) {
   if (u.strength > 0) return false;
   s.units = s.units.filter((x) => x.id !== u.id);
   events.push({ type: 'die', unit: u.id, x: u.x, y: u.y, faction: u.faction, role: u.role });
+  digGrave(s, u, events);
   // necromancer chết: cả đạo âm binh mất phép điều khiển, đổ sụp thành xác vô hồn
   if (u.role === 'necromancer') {
     for (const x of s.units.filter((q) => q.faction === u.faction && !q.static)) {
@@ -584,6 +586,60 @@ export function launchBoat(s, u) {
   const from = { x: u.x, y: u.y };
   u.x = p.x; u.y = p.y; u.afloat = true; u.timber = false; u.moved = true; u.acted = true; u.fort = 0;
   return [{ type: 'move', unit: u.id, path: [from, { x: p.x, y: p.y }] }, { type: 'embark', unit: u.id, x: p.x, y: p.y, launch: true }];
+}
+
+// ---------- Mộ tử sĩ (necromancer triệu hồi âm binh) ----------
+// Có phe âm binh trong trận thì quân phe sống chết đi để lại mộ ở ô nó ngã xuống.
+// Âm binh chết là tan hẳn; trại tĩnh và goblin không để lại mộ; mỗi ô chỉ một mộ.
+export const graveAt = (s, x, y) => (s.graves || []).find((g) => g.x === x && g.y === y) || null;
+// loại quân khi trỗi dậy: thủy binh đứng trên bộ thì thành dân quân (âm binh không có thuyền)
+const raisedRole = (role) => (role === 'marine' ? 'militia' : role);
+
+function digGrave(s, u, events) {
+  if (!s.sides.includes('undead') || u.faction === 'undead' || u.static || u.role === 'goblin') return;
+  if (graveAt(s, u.x, u.y) || terrainId(s, u.x, u.y) === 'river') return;   // chết dưới nước: không có mộ
+  s.graves ||= [];
+  const g = { x: u.x, y: u.y, faction: u.faction, role: raisedRole(u.role), turn: s.turn };
+  s.graves.push(g);
+  events.push({ type: 'grave', ...g });
+}
+
+// Số lượt còn lại trước khi mộ trỗi dậy được (0 = đầu lượt âm binh tới là dậy, nếu trong tầm necromancer)
+export const graveWait = (s, g) => Math.max(0, g.turn + UNDEAD.raiseDelay - s.turn);
+// Mộ đang nằm trong tầm triệu hồi của necromancer nào đó
+export function graveInRange(s, g) {
+  return s.units.some((n) => n.role === 'necromancer' && dist(n, g) <= UNDEAD.raiseRadius);
+}
+
+// Đầu lượt phe có necromancer: mộ đủ lượt chờ, trong tầm, ô trống thì trỗi dậy thành âm binh
+function raiseGraves(s, f, events) {
+  const necros = s.units.filter((n) => n.faction === f && n.role === 'necromancer');
+  if (!necros.length || !(s.graves || []).length) return;
+  const keep = [];
+  for (const g of s.graves) {
+    const ready = graveWait(s, g) === 0 && necros.some((n) => dist(n, g) <= UNDEAD.raiseRadius) && !unitAt(s, g.x, g.y);
+    if (!ready) { keep.push(g); continue; }
+    const u = addUnit(s, f, g.role, g.x, g.y, Math.max(1, Math.round(CONFIG.maxStrength * UNDEAD.raiseStrength)));
+    u.origin = g.faction;
+    events.push({ type: 'rise', unit: u.id, x: g.x, y: g.y, origin: g.faction });
+  }
+  s.graves = keep;
+}
+
+// An táng tử sĩ: squad phe sống đứng trên hoặc cạnh mộ, chưa ra đòn trong lượt (đi rồi vẫn được),
+// bỏ lượt đó để chôn cất, làm lễ cầu siêu: mộ mất, necromancer không triệu hồi được nữa.
+const graveNear = (s, u) => (s.graves || [])
+  .filter((g) => dist(g, u) <= 1)
+  .sort((a, b) => graveWait(s, a) - graveWait(s, b) || a.turn - b.turn || a.y - b.y || a.x - b.x)[0] || null;
+export function canBury(s, u) {
+  return u.faction !== 'undead' && !u.static && u.role !== 'goblin' && !u.afloat && !u.acted && u.status === 'ok' && !!graveNear(s, u);
+}
+export function buryGrave(s, u) {
+  if (!canBury(s, u)) return null;
+  const g = graveNear(s, u);
+  s.graves = s.graves.filter((q) => q !== g);
+  u.moved = true; u.acted = true; u.fort = 0;
+  return [{ type: 'bury', unit: u.id, x: g.x, y: g.y, faction: g.faction }];
 }
 
 // ---------- Hành động ----------
@@ -821,6 +877,7 @@ export function endTurn(s) {
     const made = spawnSquads(s, next, w.n);
     if (made.length) events.push({ type: 'reinforce', faction: next, units: made.map((u) => u.id) });
   }
+  raiseGraves(s, next, events);
   const fac = FACTIONS[next];
   const own = s.map.strongholds[next];
 

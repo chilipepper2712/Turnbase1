@@ -20,7 +20,7 @@ export function snapshot(state, meta = {}) {
     map: clone({ w, h, tiles, seed, strongholds, spawns }),
     state: clone({
       turn: state.turn, current: state.current, nextId: state.nextId, capture: state.capture,
-      mission: state.mission, units: state.units, escaped: state.escaped || [], sides: state.sides, boats: state.boats || [],
+      mission: state.mission, units: state.units, escaped: state.escaped || [], sides: state.sides, boats: state.boats || [], graves: state.graves || [],
     }),
   };
 }
@@ -61,6 +61,9 @@ export function restoreState(snap) {
   st.mission = s.mission;
   st.escaped = s.escaped || [];
   st.boats = Array.isArray(s.boats) ? s.boats : [];
+  // mộ tử sĩ (bản lưu cũ không có): chỉ nhận mộ hợp lệ
+  st.graves = (Array.isArray(s.graves) ? s.graves : []).filter((g) => g && isNum(g.x) && isNum(g.y) && isNum(g.turn)
+    && g.x >= 0 && g.y >= 0 && g.x < map.w && g.y < map.h && ['human', 'orc'].includes(g.faction) && ['militia', 'infantry', 'archer', 'cavalry'].includes(g.role));
   if (Array.isArray(s.sides) && s.sides.length === 2) st.sides = s.sides;
   st.winner = null; st.winReason = null;
   return st;

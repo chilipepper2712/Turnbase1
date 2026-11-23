@@ -5,13 +5,13 @@ import {
   createState, reachable, targetsFrom, previewAttack, moveUnit, attackUnit, waitUnit, mergeUnits,
   splitUnit, splitTiles, canSplit, endTurn, unitAt, key, pathTo, defensePct, statsOf, terrainId,
   alliesOf, rangeAt, inEnemyZoc, terrainFacts, tilesInRange, threatTiles, moveCostFor, canFortify, fortifyUnit, fortifyBonus, levelOf, nextLevelXp, fleePlan, moraleState,
-  canChop, chopTree, canLaunch, launchBoat,
+  canChop, chopTree, canLaunch, launchBoat, canBury, buryGrave, graveAt, graveWait, graveInRange, dist,
 } from './rules.js';
 import { planNextAction } from './ai.js';
 import { executeAction } from './actions.js';
 import { t, setLang, getLang, LANGS, langName } from './i18n.js';
 import { icon, rankIcon } from './icons.js';
-import { MORALE } from './config.js';
+import { MORALE, UNDEAD } from './config.js';
 import { createMissionState, MISSION_TYPES } from './missions.js';
 import { snapshot, restoreState, summarize, parseSaveText, SLOTS } from './saves.js';
 
@@ -278,6 +278,14 @@ export class Game {
       if (p.dest) o.flee = { x: p.dest.x, y: p.dest.y, exit: p.kind === 'exit' };
     }
     if (this.threat) o.threat = this.threat;
+    // necromancer đang chọn / đang xem: tô vùng triệu hồi (mộ trong vùng này trỗi dậy được)
+    if (watch && watch.role === 'necromancer') {
+      o.raise = [];
+      const R = UNDEAD.raiseRadius;
+      for (let y = watch.y - R; y <= watch.y + R; y++) for (let x = watch.x - R; x <= watch.x + R; x++) {
+        if (x >= 0 && y >= 0 && x < s.map.w && y < s.map.h && dist({ x, y }, watch) <= R) o.raise.push({ x, y });
+      }
+    }
     o.hover = this.inspectTile || this.hoverTile || undefined;
     this.view.setOverlay(o);
     this.placeMoveBtn();
@@ -562,6 +570,7 @@ export class Game {
       if (canFortify(s, u)) h += btn('fortify', t('ui.fortify'), '', 'tent');
       if (canChop(s, u)) h += btn('chop', t('ui.chop'));
       if (canLaunch(s, u)) h += btn('launch', t('ui.launch'), 'primary');
+      if (canBury(s, u)) h += btn('bury', t('ui.bury'), '', 'grave');
       if (canSplit(s, u)) h += btn('split', t('ui.split'));
       if (this.mode === 'moved' && this.origin && this.origin.id === u.id) h += btn('undo', t('ui.undo'), '', 'undo');
       h += btn('cancel', '', 'x', 'x', t('ui.cancel'));
@@ -575,7 +584,7 @@ export class Game {
     const at = this.inspectTile || this.hoverTile;
     const atUnit = at && this.seenAt(s, at.x, at.y);
     let html;
-    if (atUnit) html = this.unitCard(atUnit);
+    if (atUnit) html = this.unitCard(atUnit) + this.graveCard(at);
     else if (at) html = this.terrainCard(at);
     else if (this.sel && s.units.some((x) => x.id === this.sel.id)) html = this.unitCard(this.sel);
     else html = `<div class="hint">${esc(t(this.sel ? 'ui.hint.selected' : 'ui.hint.empty'))}</div>`;
@@ -614,7 +623,19 @@ export class Game {
       you = `<div class="you"><div><b>${esc(t('fx.forYou', { unit: unitName(u) }))}</b> ${icon('shield')} ${def}% ${icon('foot')} ${this.costText(cost)}</div>`
         + `<div>${icon('tent')} ${esc(t('fx.fort', { n: fb }))}</div></div>`;
     }
-    return `<h3>${esc(t('terrain.' + tid))}</h3><ul class="fx">${L}</ul>${you}${note === nk ? '' : `<div class="note">${esc(note)}</div>`}`;
+    return `<h3>${esc(t('terrain.' + tid))}</h3><ul class="fx">${L}</ul>${you}${note === nk ? '' : `<div class="note">${esc(note)}</div>`}${this.graveCard(tile)}`;
+  }
+
+  // Mộ tử sĩ trên ô: ai nằm đây, bao giờ trỗi dậy, có trong tầm necromancer không, cách chặn
+  graveCard(tile) {
+    const s = this.state, g = graveAt(s, tile.x, tile.y);
+    if (!g) return '';
+    const n = graveWait(s, g), inR = graveInRange(s, g), R = UNDEAD.raiseRadius;
+    const L = [
+      ['grave', n > 0 ? t('grave.wait', { n }) : t('grave.ready')],
+      [inR ? 'skull' : 'ban', t(inR ? 'grave.inRange' : 'grave.outRange', { r: R })],
+    ].map(([ic, tx]) => `<li>${icon(ic)}<span>${esc(tx)}</span></li>`).join('');
+    return `<h3 class="grave">${esc(t('grave.title', { unit: t(`unit.${g.faction}.${g.role}`) }))}</h3><ul class="fx">${L}</ul><div class="note">${esc(t('grave.note'))}</div>`;
   }
 
   portrait(u) {
@@ -736,6 +757,7 @@ export class Game {
     else if (a === 'fortify') this.doFortify();
     else if (a === 'chop') this.doRule(chopTree);
     else if (a === 'launch') this.doRule(launchBoat);
+    else if (a === 'bury') this.doRule(buryGrave);
     else if (a === 'undo') this.doUndo();
     else if (a === 'movehere') this.confirmMove();
     else if (a === 'cancel') this.cancel();

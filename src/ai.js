@@ -1,11 +1,12 @@
 // AI hai mức. planNextAction trả về MỘT hành động cho lượt hiện tại (hoặc null khi xong),
 // để lớp hiển thị chạy animation giữa các hành động.
 //   action = { unit, to:{x,y}, target?:unit, merge?:unit }
-import { CONFIG, UNIT_VALUE, FACTIONS } from './config.js';
+import { CONFIG, UNIT_VALUE, FACTIONS, UNDEAD } from './config.js';
 import {
   key, dist, reachable, targetsFrom, previewAttack, calcDamage, defensePct, statsOf,
   enemiesOf, alliesOf, moveCost, inBounds, DIRS, unitAt, terrainAt,
   canFortify, fortifyBonus, terrainDefense, canCapture, moraleState, terrainId, foeOf,
+  graveAt, graveWait,
 } from './rules.js';
 
 // ----- trường khoảng cách tới mục tiêu (Dijkstra nhiều nguồn) -----
@@ -126,6 +127,12 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
     for (const a of s.units) if (a.faction === u.faction && a.role !== 'goblin' && !a.static && a.strength < CONFIG.maxStrength && Math.abs(a.x - x) + Math.abs(a.y - y) <= 2) wounded++;
     score += Math.min(wounded, 3) * 0.6;
   }
+  // mộ tử sĩ: necromancer đứng sao cho nhiều mộ nằm trong tầm triệu hồi; âm binh khác không đứng chặn lên mộ
+  if (w.threat && s.graves && s.graves.length && u.faction === 'undead') {
+    if (u.role === 'necromancer') {
+      for (const g of s.graves) if (Math.abs(g.x - x) + Math.abs(g.y - y) <= UNDEAD.raiseRadius) score += UNIT_VALUE[g.role] * (graveWait(s, g) <= 1 ? 0.9 : 0.5);
+    } else if (graveAt(s, x, y)) score -= 1.5;
+  }
   if (canCapture(s, u.faction) && x === enemyHold.x && y === enemyHold.y && u.status === 'ok') score += w.capture * 3;
   // phòng thủ thành nhà khi bị đe doạ
   if (w.guard && danger) {
@@ -173,6 +180,24 @@ function unitOptions(s, u, level, ctx) {
       if (terrainDefense(s, u.faction, u.x, u.y) >= 10) gain += 0.8;
       if (ctx.danger && Math.abs(u.x - ctx.ownHold.x) + Math.abs(u.y - ctx.ownHold.y) <= 3) gain += 1.2;
       out.push({ unit: u, to: { x: u.x, y: u.y }, fortify: true, score: base + gain - 0.4 });
+    }
+  }
+  if (level === 'tactical' && s.graves && s.graves.length && u.faction !== 'undead' && !u.static && u.role !== 'goblin' && !u.afloat) {
+    // an táng tử sĩ: chặn necromancer triệu hồi xác đồng đội thành âm binh. Chỉ đáng khi necromancer với tới mộ.
+    const necros = s.units.filter((n) => n.role === 'necromancer');
+    const reachN = (g) => necros.some((n) => Math.abs(n.x - g.x) + Math.abs(n.y - g.y) <= UNDEAD.raiseRadius + statsOf(n).move);
+    const live = s.graves.filter(reachN);
+    if (live.length) {
+      for (const node of reach.tiles.values()) {
+        let best = 0;
+        for (const g of live) {
+          if (Math.abs(g.x - node.x) + Math.abs(g.y - node.y) > 1) continue;
+          best = Math.max(best, UNIT_VALUE[g.role] * 5 * (graveWait(s, g) <= 1 ? 1 : 0.6));
+        }
+        if (!best) continue;
+        const base = scoreOption(s, u, node, null, w, field, ctx.ownHold, ctx.enemyHold, ctx.danger, ctx);
+        out.push({ unit: u, to: { x: node.x, y: node.y }, bury: true, score: base + best });
+      }
     }
   }
   if (level === 'tactical') {

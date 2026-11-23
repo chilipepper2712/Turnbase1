@@ -732,6 +732,103 @@ test('âm binh: mọi nhiệm vụ chạy được với âm binh, AI đánh t�
   assert.deepEqual(r.units.map((u) => u.origin), s.units.map((u) => u.origin));
 });
 
+// ---------- Mộ tử sĩ: necromancer triệu hồi xác quân địch ----------
+import { graveAt, graveWait, canBury, buryGrave } from '../src/rules.js';
+
+// bản đồ phẳng người đấu âm binh, xoá quân mặc định để tự đặt
+function graveMap() {
+  const w = 12, h = 16;
+  const s = createState({ w, h, tiles: new Array(w * h).fill('plain'), strongholds: { human: { x: 5, y: 15 }, undead: { x: 6, y: 0 } }, spawns: { human: [], undead: [] } });
+  s.units = [];
+  return s;
+}
+// đẩy tới đầu lượt âm binh của lượt t
+function toUndeadTurn(s, t) {
+  let g = 0;
+  while (!(s.current === 'undead' && s.turn === t) && g++ < 20) endTurn(s);
+}
+
+test('mộ tử sĩ: quân phe sống chết thì để lại mộ; âm binh chết thì tan hẳn; trận người - Orc không có mộ', () => {
+  const s = graveMap();
+  addUnit(s, 'undead', 'necromancer', 6, 1);
+  const v = addUnit(s, 'human', 'archer', 5, 8); v.strength = 1;
+  const z = addUnit(s, 'undead', 'infantry', 5, 7); z.origin = 'orc';
+  const ev = attackUnit(s, z, v);
+  assert.ok(ev.some((e) => e.type === 'grave'), 'có sự kiện đào mộ');
+  const g = graveAt(s, 5, 8);
+  assert.ok(g && g.faction === 'human' && g.role === 'archer' && g.turn === 1);
+  const h = addUnit(s, 'human', 'cavalry', 4, 7); z.strength = 1;
+  attackUnit(s, h, z);
+  assert.ok(!graveAt(s, 5, 7), 'âm binh chết không để lại mộ');
+  const o = flat(); const a = addUnit(o, 'human', 'cavalry', 5, 5); const d = addUnit(o, 'orc', 'militia', 5, 6); d.strength = 1;
+  attackUnit(o, a, d);
+  assert.equal((o.graves || []).length, 0, 'không có âm binh thì không có mộ');
+});
+
+test('mộ tử sĩ: đủ 2 lượt, trong bán kính 7 của necromancer, ô trống thì trỗi dậy thành âm binh 50% quân', () => {
+  const s = graveMap();
+  addUnit(s, 'undead', 'necromancer', 6, 1);
+  addUnit(s, 'human', 'militia', 0, 15);                     // còn quân người để ván chưa kết thúc
+  s.graves.push({ x: 6, y: 8, faction: 'human', role: 'cavalry', turn: 1 });                  // cách necromancer 7 ô
+  s.graves.push({ x: 6, y: 9, faction: 'human', role: 'infantry', turn: 1 });                 // 8 ô: ngoài tầm
+  s.graves.push({ x: 3, y: 4, faction: 'human', role: 'archer', turn: 1 });                   // trong tầm nhưng bị chặn
+  const blocker = addUnit(s, 'undead', 'militia', 3, 4); blocker.origin = 'orc';
+  toUndeadTurn(s, 2);
+  assert.equal(s.units.filter((u) => u.x === 6 && u.y === 8).length, 0, 'chưa đủ 2 lượt thì chưa dậy');
+  assert.equal(graveWait(s, graveAt(s, 6, 8)), 1);
+  endTurn(s); const ev = endTurn(s);                         // sang đầu lượt âm binh của lượt 3
+  assert.equal(s.current, 'undead'); assert.equal(s.turn, 3);
+  const r = s.units.find((u) => u.x === 6 && u.y === 8);
+  assert.ok(r, 'trỗi dậy');
+  assert.equal(r.faction, 'undead'); assert.equal(r.role, 'cavalry'); assert.equal(r.origin, 'human');
+  assert.equal(r.strength, Math.round(CONFIG.maxStrength * UNDEAD.raiseStrength));
+  assert.ok(ev.some((e) => e.type === 'rise' && e.unit === r.id));
+  assert.ok(!r.acted && !r.moved, 'trỗi dậy đầu lượt thì hành động được ngay');
+  assert.ok(!graveAt(s, 6, 8), 'mộ đã dậy thì mất');
+  assert.ok(graveAt(s, 6, 9), 'ngoài tầm: mộ còn đó, chờ necromancer tới');
+  assert.ok(graveAt(s, 3, 4), 'ô có quân đứng: chưa dậy');
+  blocker.x = 0; blocker.y = 0;
+  endTurn(s); endTurn(s);
+  assert.ok(s.units.some((u) => u.x === 3 && u.y === 4 && u.faction === 'undead' && u.role === 'archer'), 'ô trống lại thì dậy');
+});
+
+test('mộ tử sĩ: an táng mất lượt của squad, được làm sau khi đi, chặn trỗi dậy; âm binh không an táng', () => {
+  const s = graveMap();
+  addUnit(s, 'undead', 'necromancer', 6, 1);
+  s.graves.push({ x: 5, y: 8, faction: 'human', role: 'infantry', turn: 1 });
+  const u = addUnit(s, 'human', 'militia', 5, 11);
+  assert.ok(!canBury(s, u), 'xa mộ thì không');
+  moveUnit(s, u, 5, 9);
+  assert.ok(canBury(s, u), 'đi tới cạnh mộ rồi vẫn an táng được');
+  const ev = buryGrave(s, u);
+  assert.ok(ev && ev[0].type === 'bury');
+  assert.ok(!graveAt(s, 5, 8));
+  assert.ok(u.acted && u.moved, 'mất lượt');
+  s.graves.push({ x: 2, y: 2, faction: 'human', role: 'militia', turn: 1 });
+  const z = addUnit(s, 'undead', 'infantry', 2, 3); z.origin = 'orc';
+  assert.ok(!canBury(s, z), 'âm binh không an táng');
+  const done = addUnit(s, 'human', 'archer', 1, 2); done.acted = true;
+  assert.ok(!canBury(s, done), 'đã ra đòn thì không còn lượt để an táng');
+});
+
+test('mộ tử sĩ: âm binh trỗi dậy chết lần nữa thì tan hẳn; lưu/tải giữ mộ, bỏ mộ hỏng', () => {
+  const s = graveMap();
+  addUnit(s, 'undead', 'necromancer', 6, 1);
+  addUnit(s, 'human', 'militia', 0, 15);
+  s.graves.push({ x: 6, y: 5, faction: 'human', role: 'militia', turn: 1 });
+  toUndeadTurn(s, 3);
+  const r = s.units.find((u) => u.x === 6 && u.y === 5 && u.faction === 'undead');
+  assert.ok(r);
+  const k = addUnit(s, 'human', 'cavalry', 6, 6); r.strength = 1;
+  attackUnit(s, k, r);
+  assert.ok(!graveAt(s, 6, 5), 'không có mộ thứ hai');
+  s.graves.push({ x: 1, y: 1, faction: 'human', role: 'archer', turn: 2 });
+  const snap = JSON.parse(JSON.stringify(snapshot(s)));
+  snap.state.graves.push({ x: 99, y: 1, faction: 'human', role: 'archer', turn: 1 }, { x: 1, y: 2, faction: 'undead', role: 'archer', turn: 1 }, { x: 1, y: 3, faction: 'human', role: 'necromancer', turn: 1 });
+  const back = restoreState(snap);
+  assert.deepEqual(back.graves, [{ x: 1, y: 1, faction: 'human', role: 'archer', turn: 2 }]);
+});
+
 // ---------- Thủy binh ----------
 import { canChop, chopTree, canLaunch, launchBoat, boatAt, isTransition } from '../src/rules.js';
 import { MARINE } from '../src/config.js';

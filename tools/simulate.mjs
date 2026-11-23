@@ -1,28 +1,40 @@
 // Chạy AI vs AI headless để kiểm tra game kết thúc và đo cân bằng sơ bộ.
-// node tools/simulate.mjs [số seed] [orcLevel] [humanLevel] [small|medium|large]
+// node tools/simulate.mjs [số seed] [enemyLevel] [humanLevel] [small|medium|large] [orc|undead] [skirmish|hold|destroy|escort]
 import { generateMap } from '../src/mapgen.js';
 import { MAP_SIZES } from '../src/config.js';
-import { createState, endTurn } from '../src/rules.js';
+import { endTurn } from '../src/rules.js';
+import { createMissionState } from '../src/missions.js';
 import { planNextAction } from '../src/ai.js';
 import { executeAction } from '../src/actions.js';
 
 const N = +process.argv[2] || 20;
-const levels = { orc: process.argv[3] || 'tactical', human: process.argv[4] || 'tactical' };
+const enemy = process.argv[6] || 'orc';
+const mission = process.argv[7] || 'skirmish';
+const levels = { [enemy]: process.argv[3] || 'tactical', human: process.argv[4] || 'tactical' };
 const size = MAP_SIZES[process.argv[5] || 'small'];
 const MAX_TURNS = 60;
 
-let wins = { human: 0, orc: 0, draw: 0 }, turns = 0, how = {};
+const wins = { human: 0, [enemy]: 0, draw: 0 }, how = {};
+let turns = 0, risen = 0, buried = 0, graves = 0;
 const t0 = Date.now();
 for (let seed = 1; seed <= N; seed++) {
-  const s = createState(generateMap(seed, size.w, size.h));
+  const s = createMissionState(generateMap(seed, size.w, size.h), mission, 'human', enemy);
   let guard = 0;
+  const count = (ev) => {
+    for (const e of ev || []) {
+      if (e.type === 'rise') risen++;
+      else if (e.type === 'bury') buried++;
+      else if (e.type === 'grave') graves++;
+    }
+  };
   while (!s.winner && s.turn <= MAX_TURNS && guard++ < 5000) {
     let a;
-    while (!s.winner && (a = planNextAction(s, levels[s.current]))) executeAction(s, a);
-    endTurn(s);
+    while (!s.winner && (a = planNextAction(s, levels[s.current]))) count(executeAction(s, a));
+    count(endTurn(s));
   }
   if (s.winner) { wins[s.winner]++; how[s.winReason] = (how[s.winReason] || 0) + 1; } else wins.draw++;
   turns += s.turn;
 }
-console.log(`levels orc=${levels.orc} human=${levels.human}`, wins, how,
-  `avg turns ${(turns / N).toFixed(1)}`, `${((Date.now() - t0) / N).toFixed(0)}ms/ván`);
+const extra = enemy === 'undead' ? ` mộ ${(graves / N).toFixed(1)}/ván, trỗi dậy ${(risen / N).toFixed(1)}, an táng ${(buried / N).toFixed(1)}` : '';
+console.log(`${enemy} ${mission} levels ${enemy}=${levels[enemy]} human=${levels.human}`, wins, how,
+  `avg turns ${(turns / N).toFixed(1)}`, `${((Date.now() - t0) / N).toFixed(0)}ms/ván${extra}`);

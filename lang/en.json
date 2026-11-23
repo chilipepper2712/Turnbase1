@@ -265,7 +265,7 @@
   "unit.undead.cavalry": "Dead rider",
   "unit.undead.necromancer": "Necromancer",
   "unit.undead.objective": "Camp",
-  "unit.desc.necromancer": "Commander of the undead host; casts dark bolts 2–3 tiles away, frail body. If the necromancer falls, the whole host collapses into lifeless corpses.",
+  "unit.desc.necromancer": "Commander of the undead host; casts dark bolts 2–3 tiles away, frail body. Fallen enemies leave graves; graves within 7 tiles of the necromancer rise as undead at half strength after 2 turns. If the necromancer falls, the whole host collapses into lifeless corpses.",
   "unit.desc.undead": "Undead: no morale, never flees; deals 18% less damage and moves 1 tile less than when alive. Collapses if the necromancer dies.",
   "ui.mstate.none": "None",
   "ui.win.necromancer": "The necromancer has fallen; the undead host collapses into lifeless corpses.",
@@ -278,5 +278,14 @@
   "ui.launch": "Launch",
   "ui.timber": "Timber",
   "ui.chopped": "Timber cut",
-  "ui.launched": "Launched!"
+  "ui.launched": "Launched!",
+  "ui.bury": "Bury the fallen",
+  "ui.buried": "Laid to rest",
+  "ui.risen": "Risen!",
+  "grave.title": "Grave of the fallen: {unit}",
+  "grave.wait": "Rises as undead in {n} turn(s)",
+  "grave.ready": "Rises at the start of the next undead turn",
+  "grave.inRange": "Within the necromancer's reach ({r} tiles)",
+  "grave.outRange": "Out of the necromancer's reach ({r} tiles): cannot rise yet",
+  "grave.note": "A squad on or next to the grave can Bury the fallen (uses that squad's turn): the soldiers are laid to rest and the necromancer can no longer raise them. Risen undead return at half strength and stay dead if they fall again."
 }

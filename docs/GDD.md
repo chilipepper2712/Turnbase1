@@ -188,7 +188,15 @@ Orc **mạnh hơn nhưng không kỷ luật** **[CHỐT]**, thể hiện bằng:
 - **Luôn có đúng một necromancer chỉ huy** (tạo hình kiểu Á: áo đen nhiều lớp, mũ chóp phủ chữ bùa, chuỗi tiền đồng, phướn chiêu hồn). Phóng tà thuật 2–3 ô, sát thương 3,5, thủ 10, đi 4. Đứng sau đạo quân (ô kề thành nhà, xa địch nhất); AI giữ nó tránh nguy hiểm như tướng hộ tống. **Necromancer chết thì cả đạo âm binh đổ sụp thành xác vô hồn và bên kia thắng ngay** (lý do thắng riêng). AI đối phương ưu tiên săn necromancer. **[CHỐT]**
 - **Bù cho phe yếu:** đạo âm binh **đông hơn 2 squad** (xác thì không thiếu). Đo AI đấu AI 40–60 ván cỡ nhỏ, giao tranh: không thêm thì người thắng 80%; +1: 60%; **+2: người ~35%**, ngang mức khi đấu Orc (~38%).
 - **[MỞ]** **Cố thủ trước âm binh quá dễ** (người giữ được ~92%, so với ~67% trước Orc) vì âm binh chậm, không kịp phá trong 12 lượt. Cần thêm lượt hoặc thêm quân cho âm binh trong nhiệm vụ này.
-- **[MỞ]** Necromancer chưa có phép gì riêng ngoài đòn tầm xa (gợi ý: dựng xác từ squad vừa chết thành quân mới).
+- **Mộ tử sĩ, triệu hồi âm binh** **[CHỐT ý; số liệu MẶC ĐỊNH]** (`UNDEAD.raise*` trong config):
+  - Trận có âm binh: **quân phe sống bị tiêu diệt để lại mộ** ở ô nó ngã xuống (chết dưới nước thì không; trại, goblin không có mộ; mỗi ô một mộ). **Âm binh chết là tan hẳn**, kể cả quân vừa trỗi dậy.
+  - **Tự động**, đầu lượt âm binh: mộ **đủ 2 lượt** (mộ đào ở lượt T dậy sớm nhất ở lượt T + 2), **trong 7 ô (Manhattan) quanh necromancer**, ô đang trống thì **trỗi dậy thành âm binh** cùng loại quân, gốc là phe đã chết, **50% quân số**, chịu đủ nerf âm binh, hành động được ngay lượt đó. Ngoài tầm hoặc bị chặn thì mộ chờ.
+  - **An táng tử sĩ** (phe sống): squad đứng trên hoặc cạnh mộ, **chưa ra đòn trong lượt** (đi rồi vẫn được), bỏ lượt đó để chôn cất và cầu siêu: mộ mất, không trỗi dậy được nữa. Nhiều mộ thì chôn mộ sắp dậy nhất.
+  - Hiển thị: mộ người là bia đá đầu tròn, mộ Orc là ụ đá cắm ngược đao (vẽ bằng code, sau thay sprite). Mộ trong tầm necromancer có vòng xanh ma trơi + số lượt còn lại ("!" = dậy ở lượt âm binh tới). Xem necromancer thì tô tím vùng triệu hồi. Thẻ ô có mộ ghi lượt chờ, có trong tầm không và cách an táng. Bản lưu giữ mộ.
+  - AI: phe sống an táng mộ mà necromancer với tới (ưu tiên mộ sắp dậy, quân giá trị cao); necromancer đứng sao cho nhiều mộ trong tầm; âm binh khác không đứng chặn mộ.
+  - Bán kính 7 thay vì 15–20: bản nhỏ 16×20 chỉ có 320 ô, vùng bán kính 15 (~481 ô) phủ gần hết bản đồ. 7 ô (~113 ô) phủ khu giao tranh và buộc necromancer tiến gần trận.
+  - **Đo** (AI chiến thuật đấu AI chiến thuật, âm binh thắng, trước → sau): giao tranh nhỏ 60 ván 48% → 57%; phá trại nhỏ 52% → 57%; hộ tống nhỏ 50% → 52%; giao tranh vừa 30 ván 13% → 33%; cố thủ nhỏ 7% → 8% (không đổi). Mỗi ván ~4–5 mộ, ~1 lần trỗi dậy, ~2,4 lần an táng.
+  - **[MỞ]** Cố thủ vẫn quá dễ: necromancer đứng xa tiền tuyến nên mộ quanh thành người hiếm khi trong tầm. Cần xử lý riêng (thêm lượt / thêm quân cho âm binh, hoặc AI đẩy necromancer lên khi có mộ).
 
 ### Thủy binh (phe người) **[CHỐT ý; số liệu MẶC ĐỊNH]**
 

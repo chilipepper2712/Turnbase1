@@ -2,7 +2,7 @@
 // Render-on-demand: không có gì thay đổi thì không vẽ lại (đỡ nóng máy).
 import { CONFIG, FACTIONS } from '../config.js';
 import { hash2, makeRng } from '../rng.js';
-import { terrainId, levelOf } from '../rules.js';
+import { terrainId, levelOf, graveWait, graveInRange } from '../rules.js';
 import { RES, TERRAIN_DECO } from './assets.js';
 import { drawGroundTile, makeCanvas, drawCloud, INK } from './doodle.js';
 import { paintPixelGround } from './pixelground.js';
@@ -512,6 +512,57 @@ export class GameView {
     }
   }
 
+  // Mộ tử sĩ (s.graves): người = bia đá đầu tròn trên ụ đất, Orc = ụ đất cắm ngược thanh đao.
+  // Mộ trong tầm necromancer: vòng xanh ma trơi + số lượt còn lại trước khi trỗi dậy.
+  drawGraves() {
+    this.graveSprites ||= new Map();
+    const s = this.state, graves = s.graves || [];
+    const sig = (g) => `${g.faction}|${graveWait(s, g)}|${graveInRange(s, g) ? 1 : 0}`;
+    const want = new Map(graves.map((g) => [g.x + ',' + g.y, g]));
+    for (const [k, gr] of this.graveSprites) {
+      const g = want.get(k);
+      if (!g || gr.sig !== sig(g)) { gr.node.destroy({ children: true }); this.graveSprites.delete(k); }
+    }
+    for (const g of graves) {
+      const k = g.x + ',' + g.y;
+      if (this.graveSprites.has(k)) continue;
+      const node = this.makeGrave(g);
+      this.objects.addChild(node);
+      this.graveSprites.set(k, { node, sig: sig(g) });
+    }
+  }
+
+  makeGrave(g) {
+    const s = this.state, c = tileToWorld(g.x, g.y);
+    const box = new PIXI.Container();
+    box.position.set(c.x, c.y + 4);
+    box.zIndex = c.y + 4;
+    const live = graveInRange(s, g);
+    const d = new PIXI.Graphics();
+    if (live) d.ellipse(0, 2, 30, 14).fill({ color: 0x8be07a, alpha: 0.3 }).stroke({ width: 2.6, color: 0xc8ffb0, alpha: 0.95 });
+    d.ellipse(0, 2, 20, 8).fill(0x6b4a2a).stroke({ width: 1.6, color: 0x1b1b1b });          // ụ đất
+    if (g.faction === 'orc') {
+      d.poly([-14, 1, -6, -7, 4, -8, 14, 0, 6, 5, -8, 5], true).fill(0x8a8378).stroke({ width: 1.4, color: 0x1b1b1b, join: 'round' });   // đống đá
+      // đao cắm ngược: lưỡi rộng, sống thẳng, mũi vát, có khía; chuôi gỗ và chắn tay trên cùng
+      d.poly([-1, -2, -1, -38, 11, -38, 11, -26, 8, -23, 11, -20, 11, -2], true).fill(0xb8bcc2).stroke({ width: 1.4, color: 0x1b1b1b, join: 'round' });
+      d.moveTo(2, -6).lineTo(2, -34).stroke({ width: 1, color: 0x7d838a });               // sống đao
+      d.rect(-4, -42, 18, 4).fill(0x3a2a1a).stroke({ width: 1, color: 0x1b1b1b });         // chắn tay
+      d.rect(2, -53, 6, 11).fill(0x6b4a2a).stroke({ width: 1, color: 0x1b1b1b });          // chuôi
+    } else {
+      d.moveTo(-9, -2).lineTo(-9, -24).arc(0, -24, 9, Math.PI, 0).lineTo(9, -2).closePath()
+        .fill(0x9aa0a6).stroke({ width: 1.8, color: 0x1b1b1b, join: 'round' });             // bia đá đầu tròn
+      d.moveTo(-4.5, -21).lineTo(4.5, -21).moveTo(-4.5, -16).lineTo(4.5, -16).stroke({ width: 1.4, color: 0x4a4f55 });
+    }
+    box.addChild(d);
+    if (live) {
+      const n = graveWait(s, g);
+      const tx = new PIXI.Text({ text: n > 0 ? String(n) : '!', style: { fontFamily: FONT, fontSize: 15, fill: 0xd8ffcf, fontWeight: 'bold', stroke: { color: 0x1b1b1b, width: 4 } } });
+      tx.anchor.set(0.5, 1); tx.position.set(14, -24);
+      box.addChild(tx);
+    }
+    return box;
+  }
+
   // đồng bộ cứng sprite với state
   reconcile() {
     const s = this.state;
@@ -522,6 +573,7 @@ export class GameView {
       if (!live.has(id) || (u && !!us.afloat !== !!u.afloat)) { us.root.destroy({ children: true }); this.sprites.delete(id); }
     }
     this.drawBoats();
+    this.drawGraves();
     for (const u of s.units) {
       let us = this.sprites.get(u.id);
       if (!us) us = this.makeUnit(u);
@@ -563,6 +615,7 @@ export class GameView {
       for (const p of list || []) g.poly(dia(p.x, p.y, k)).fill({ color, alpha });
     };
     paint(o.threat, 0xd8402f, 0.16);
+    paint(o.raise, 0x8a5ad0, 0.3);                           // vùng triệu hồi của necromancer (màu phe âm binh)
     paint(o.move, 0xf2c200, 0.38);
     paint(o.split, 0x3a78d8, 0.38);
     paint(o.merge, 0x3aa86a, 0.42);
@@ -1005,7 +1058,8 @@ export class GameView {
       case 'rout': this.snd('rout'); break;
       case 'escape': this.snd('rout'); break;
       case 'reveal': if (ev.ambush) this.snd('rout'); break;
-      case 'heal': this.snd('heal'); break;
+      case 'heal': case 'bury': this.snd('heal'); break;
+      case 'rise': this.snd('rout'); break;
       case 'merge': this.snd('merge'); break;
       case 'split': this.snd('split'); break;
       case 'fortify': this.snd('fortify'); break;
@@ -1157,6 +1211,33 @@ export class GameView {
         case 'embark': case 'disembark': {
           this.reconcile();
           if (ev.launch) { const c = tileToWorld(ev.x, ev.y); await this.float(this.t('ui.launched'), c.x, c.y - 50, 0x3a78d8, 20); }
+          break;
+        }
+        case 'grave': {
+          this.drawGraves();
+          const gr = this.graveSprites.get(ev.x + ',' + ev.y);
+          if (gr) { gr.node.alpha = 0; await this.tween(260, (k) => { gr.node.alpha = k; }); }
+          break;
+        }
+        case 'bury': {
+          const gr = this.graveSprites?.get(ev.x + ',' + ev.y), c = tileToWorld(ev.x, ev.y);
+          this.float(this.t('ui.buried'), c.x, c.y - 44, 0xf2e6b0, 20);
+          if (gr) { await this.tween(420, (k) => { gr.node.alpha = 1 - k; }); }
+          this.drawGraves();
+          break;
+        }
+        case 'rise': {                                // xác trỗi dậy thành âm binh: mộ vỡ, quân nhô lên từ đất
+          const u = s.units.find((q) => q.id === ev.unit);
+          await this.ensureVisible(ev.x, ev.y);
+          this.drawGraves();
+          if (u && !this.sprites.has(u.id)) {
+            const us = this.makeUnit(u);
+            us.root.alpha = 0;
+            const c = tileToWorld(ev.x, ev.y);
+            this.float(this.t('ui.risen'), c.x, c.y - 56, 0x8be07a, 22);
+            await this.tween(520, (k) => { us.root.alpha = k; us.body.position.set(0, 18 * (1 - k)); });
+            us.body.position.set(0, 0);
+          }
           break;
         }
         case 'chop': {
