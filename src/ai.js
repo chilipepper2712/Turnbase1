@@ -76,6 +76,9 @@ function adjacentAllies(s, u, x, y) {
   return n;
 }
 
+// hệ số tiến của necromancer khi phe âm binh là bên tấn công trong cố thủ (bình thường 0.3: đứng sau)
+const NECRO_PUSH = 1.0;
+
 const W = {
   tactical: { dmg: 1.0, kill: 0.9, counter: 1.0, threat: 0.45, terrain: 0.8, advance: 0.7, form: 0.2, capture: 8, guard: 0.6, rangedKeep: 0.5 },
   easy: { dmg: 1.0, kill: 0.0, counter: 0.0, threat: 0.0, terrain: 0.0, advance: 0.6, form: 0.0, capture: 3, guard: 0.0, rangedKeep: 0 },
@@ -92,7 +95,8 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
   // âm binh: xác không biết sợ, cứ lao lên; necromancer thì đứng sau, giữ mạng là trên hết
   const commander = u.vip || u.role === 'necromancer';
   if (u.faction === 'undead' && !commander) { advMul = 1.3; thrMul = 0.6; }
-  if (u.role === 'necromancer') { advMul = 0.3; }
+  // necromancer thường đứng sau; khi phe mình phải tấn công có hạn lượt (cố thủ, mình là bên đánh) thì tiến theo quân
+  if (u.role === 'necromancer') { advMul = ctx.necroPush ? NECRO_PUSH : 0.3; }
   if (target) {
     const pv = previewAttack(s, u, target, x, y, node.cost);
     score += (pv.dmg / CONFIG.maxStrength) * UNIT_VALUE[target.role] * 10 * w.dmg;
@@ -227,6 +231,7 @@ export function planNextAction(s, level = 'tactical') {
   const guardPos = ownHold;
   const ctx = {
     ownHold, enemyHold, danger, defensive, guardPos,
+    necroPush: m.type === 'hold' && m.defender !== f,
     fieldFor: (u) => {
       const k = u.vip ? 'v' : u.role === 'cavalry' ? 'c' : 'f';   // (necromancer đi bộ, dùng chung trường 'f')
       return (fields[k] ||= goalField(s, u));

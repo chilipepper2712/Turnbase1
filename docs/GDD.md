@@ -196,7 +196,8 @@ Orc **mạnh hơn nhưng không kỷ luật** **[CHỐT]**, thể hiện bằng:
   - AI: phe sống an táng mộ mà necromancer với tới (ưu tiên mộ sắp dậy, quân giá trị cao); necromancer đứng sao cho nhiều mộ trong tầm; âm binh khác không đứng chặn mộ.
   - Bán kính 7 thay vì 15–20: bản nhỏ 16×20 chỉ có 320 ô, vùng bán kính 15 (~481 ô) phủ gần hết bản đồ. 7 ô (~113 ô) phủ khu giao tranh và buộc necromancer tiến gần trận.
   - **Đo** (AI chiến thuật đấu AI chiến thuật, âm binh thắng, trước → sau): giao tranh nhỏ 60 ván 48% → 57%; phá trại nhỏ 52% → 57%; hộ tống nhỏ 50% → 52%; giao tranh vừa 30 ván 13% → 33%; cố thủ nhỏ 7% → 8% (không đổi). Mỗi ván ~4–5 mộ, ~1 lần trỗi dậy, ~2,4 lần an táng.
-  - **[MỞ]** Cố thủ vẫn quá dễ: necromancer đứng xa tiền tuyến nên mộ quanh thành người hiếm khi trong tầm. Cần xử lý riêng (thêm lượt / thêm quân cho âm binh, hoặc AI đẩy necromancer lên khi có mộ).
+  - **Cố thủ: necromancer chủ động tiến theo quân** (âm binh là bên tấn công có hạn lượt), không đứng chờ ở hậu phương; vẫn giữ mức né đòn như tướng. **[CHỐT]** Đo 60 ván cỡ nhỏ: trỗi dậy 0,18 → 0,78 lần/ván, nhưng âm binh thắng chỉ 8% → 10% (necromancer tiến nhanh hơn: 1,3 thì 13%, và bắt đầu bị hạ).
+  - **[MỞ]** Cố thủ trước âm binh vẫn quá dễ vì âm binh chậm (−1 ô), không kịp phá trong 12 lượt. Đo với necromancer tiến: số lượt ×1,33 (16 lượt) thì âm binh thắng ~42%; ×1,67 (20 lượt) ~55%. Mốc khi đấu Orc: Orc thắng ~33%.
 
 ### Thủy binh (phe người) **[CHỐT ý; số liệu MẶC ĐỊNH]**
 
