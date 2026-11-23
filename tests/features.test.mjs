@@ -829,6 +829,49 @@ test('mộ tử sĩ: âm binh trỗi dậy chết lần nữa thì tan hẳn; l�
   assert.deepEqual(back.graves, [{ x: 1, y: 1, faction: 'human', role: 'archer', turn: 2 }]);
 });
 
+// ---------- Cố thủ trước âm binh: tiếp viện bọc sườn ----------
+import { MISSIONS } from '../src/config.js';
+
+test('cố thủ: tiếp viện âm binh có cờ ở mép bản đồ bên hông thành, sớm và đông hơn; Orc giữ đợt thường', () => {
+  for (const size of [[16, 20], [22, 28], [26, 36]]) {
+    const s = createMissionState(generateMap(5, size[0], size[1]), 'hold', 'human', 'undead');
+    const hold = s.map.strongholds.human;
+    const att = s.mission.waves.filter((w) => w.faction === 'undead');
+    assert.equal(att.length, 2);
+    for (const w of att) {
+      assert.ok(w.spot, 'có điểm cờ ' + size);
+      assert.ok(w.spot.x === 0 || w.spot.x === s.map.w - 1, 'ở mép trái / phải');
+      assert.ok(Math.abs(w.spot.y - hold.y) <= MISSIONS.hold.flankRows, 'ngang tầm thành');
+      assert.ok(Math.abs(w.spot.x - hold.x) + Math.abs(w.spot.y - hold.y) >= MISSIONS.hold.flankMinDist, 'không sát thành');
+      assert.equal(w.n, 2);
+    }
+    assert.notEqual(att[0].spot.x, att[1].spot.x, 'hai đợt ở hai bên');
+    const orcFirst = createMissionState(generateMap(5, size[0], size[1]), 'hold', 'human', 'orc').mission.waves.find((w) => w.faction === 'orc');
+    assert.ok(att[0].at < orcFirst.at, 'sớm hơn đợt thường cùng bản đồ');
+  }
+  const o = createMissionState(generateMap(5, 16, 20), 'hold', 'human', 'orc');
+  const ow = o.mission.waves.filter((w) => w.faction === 'orc');
+  assert.ok(ow.every((w) => !w.spot && w.n === 1), 'Orc: đợt thường quanh thành nhà');
+  assert.equal(o.mission.turns, MISSIONS.hold.turns);
+});
+
+test('cố thủ: âm binh có thêm lượt trên bản đồ dài; tiếp viện xuất hiện quanh cờ và gỡ cờ', () => {
+  const small = createMissionState(generateMap(5, 16, 20), 'hold', 'human', 'undead');
+  assert.equal(small.mission.turns, MISSIONS.hold.turns, 'bản nhỏ không thêm lượt');
+  const med = createMissionState(generateMap(5, 22, 28), 'hold', 'human', 'undead');
+  const medOrc = createMissionState(generateMap(5, 22, 28), 'hold', 'human', 'orc');
+  assert.equal(med.mission.turns, medOrc.mission.turns + Math.round(8 * MISSIONS.hold.slowTurns.undead));
+  const s = small;
+  const w = s.mission.waves.find((x) => x.faction === 'undead');
+  const before = s.units.filter((u) => u.faction === 'undead').length;
+  let g = 0;
+  while (!(s.current === 'undead' && s.turn === w.at) && g++ < 40) endTurn(s);
+  assert.ok(w.done);
+  const fresh = s.units.filter((u) => u.faction === 'undead').slice(before);
+  assert.equal(fresh.length, w.n);
+  for (const u of fresh) assert.ok(Math.abs(u.x - w.spot.x) + Math.abs(u.y - w.spot.y) <= 2, 'xuất hiện sát cờ');
+});
+
 // ---------- Thủy binh ----------
 import { canChop, chopTree, canLaunch, launchBoat, boatAt, isTransition } from '../src/rules.js';
 import { MARINE } from '../src/config.js';

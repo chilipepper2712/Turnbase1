@@ -512,6 +512,31 @@ export class GameView {
     }
   }
 
+  // Cờ báo điểm tiếp viện bọc sườn của địch (đợt chưa tới): cờ màu phe + lượt sẽ xuất hiện. Đợt tới rồi thì gỡ cờ.
+  drawWaveFlags() {
+    this.waveFlags ||= new Map();
+    const waves = (this.state.mission?.waves || []).filter((w) => w.spot && !w.done);
+    const want = new Set(waves.map((w) => `${w.spot.x},${w.spot.y},${w.at}`));
+    for (const [k, node] of this.waveFlags) if (!want.has(k)) { node.destroy({ children: true }); this.waveFlags.delete(k); }
+    for (const w of waves) {
+      const k = `${w.spot.x},${w.spot.y},${w.at}`;
+      if (this.waveFlags.has(k)) continue;
+      const c = tileToWorld(w.spot.x, w.spot.y), col = parseInt(FACTIONS[w.faction].fill.slice(1), 16);
+      const box = new PIXI.Container();
+      box.position.set(c.x, c.y); box.zIndex = c.y + 1;
+      const g = new PIXI.Graphics();
+      g.poly([0, -TH / 2, TW / 2, 0, 0, TH / 2, -TW / 2, 0], true).fill({ color: col, alpha: 0.18 }).stroke({ width: 2.4, color: col, alpha: 0.85, join: 'round' });
+      g.moveTo(0, 4).lineTo(0, -40).stroke({ width: 2.6, color: 0x1b1b1b, cap: 'round' });
+      g.poly([0, -40, 24, -32, 0, -24], true).fill(col).stroke({ width: 1.8, color: 0x1b1b1b, join: 'round' });
+      box.addChild(g);
+      const tx = new PIXI.Text({ text: String(w.at), style: { fontFamily: FONT, fontSize: 15, fill: 0xffffff, fontWeight: 'bold', stroke: { color: 0x1b1b1b, width: 4 } } });
+      tx.anchor.set(0.5, 0.5); tx.position.set(8, -32);
+      box.addChild(tx);
+      this.objects.addChild(box);
+      this.waveFlags.set(k, box);
+    }
+  }
+
   // Mộ tử sĩ (s.graves): người = bia đá đầu tròn trên ụ đất, Orc = ụ đất cắm ngược thanh đao.
   // Mộ trong tầm necromancer: vòng xanh ma trơi + số lượt còn lại trước khi trỗi dậy.
   drawGraves() {
@@ -574,6 +599,7 @@ export class GameView {
     }
     this.drawBoats();
     this.drawGraves();
+    this.drawWaveFlags();
     for (const u of s.units) {
       let us = this.sprites.get(u.id);
       if (!us) us = this.makeUnit(u);

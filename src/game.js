@@ -86,6 +86,7 @@ export class Game {
       if (at.length) chips.push(t(key, { list: at.join(', ') }));
     }
     const notes = list(`mission.note.${m.type}`);
+    if (m.type === 'hold' && this.state.sides.includes('undead')) notes.push(t('mission.note.hold.undead'));
     el.innerHTML = `<div class="card mission">
       <div class="head"><h2>${esc(t('mission.' + m.type))}</h2>${start ? '' : `<button data-m="x" class="icon" aria-label="${esc(t('ui.close'))}" title="${esc(t('ui.close'))}">${icon('x')}</button>`}</div>
       <div class="body">
@@ -623,7 +624,9 @@ export class Game {
       you = `<div class="you"><div><b>${esc(t('fx.forYou', { unit: unitName(u) }))}</b> ${icon('shield')} ${def}% ${icon('foot')} ${this.costText(cost)}</div>`
         + `<div>${icon('tent')} ${esc(t('fx.fort', { n: fb }))}</div></div>`;
     }
-    return `<h3>${esc(t('terrain.' + tid))}</h3><ul class="fx">${L}</ul>${you}${note === nk ? '' : `<div class="note">${esc(note)}</div>`}${this.graveCard(tile)}`;
+    const waves = (s.mission.waves || []).filter((w) => w.spot && !w.done && w.spot.x === tile.x && w.spot.y === tile.y);
+    const wv = waves.map((w) => `<div class="note">${icon('flag')} ${esc(t('mission.flank', { turn: w.at, n: w.n, side: t('faction.name.' + w.faction) }))}</div>`).join('');
+    return `<h3>${esc(t('terrain.' + tid))}</h3><ul class="fx">${L}</ul>${you}${note === nk ? '' : `<div class="note">${esc(note)}</div>`}${wv}${this.graveCard(tile)}`;
   }
 
   // Mộ tử sĩ trên ô: ai nằm đây, bao giờ trỗi dậy, có trong tầm necromancer không, cách chặn

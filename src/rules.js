@@ -87,6 +87,26 @@ export function spawnSquads(s, f, n) {
   return out;
 }
 
+// Thêm n squad cho phe f vào các ô trống đi được gần điểm p nhất (tiếp viện bọc sườn có cờ báo trước)
+export function spawnSquadsAt(s, f, n, p) {
+  const cands = [];
+  for (let y = 0; y < s.map.h; y++) for (let x = 0; x < s.map.w; x++) {
+    const t = terrainId(s, x, y);
+    if (t === 'stronghold' || t === 'bridge' || unitAt(s, x, y)) continue;
+    const tt = TERRAIN[t];
+    if (!isFinite(tt.cost) || tt.noCavalry) continue;
+    cands.push({ x, y, d: Math.abs(x - p.x) + Math.abs(y - p.y) });
+  }
+  cands.sort((a, b) => a.d - b.d || a.y - b.y || a.x - b.x);
+  const out = [];
+  for (let i = 0; i < n && i < cands.length; i++) {
+    const u = addUnit(s, f, ROSTER[i % ROSTER.length], cands[i].x, cands[i].y);
+    if (f === 'undead') u.origin = UNDEAD.origins[(s.nextId + i) % UNDEAD.origins.length];
+    out.push(u);
+  }
+  return out;
+}
+
 export function cloneState(s) {
   return {
     ...s,
@@ -94,7 +114,7 @@ export function cloneState(s) {
     capture: { ...s.capture },
     boats: (s.boats || []).map((b) => ({ ...b })),
     graves: (s.graves || []).map((g) => ({ ...g })),
-    mission: { ...s.mission, waves: s.mission.waves && s.mission.waves.map((w) => ({ ...w })) },
+    mission: { ...s.mission, waves: s.mission.waves && s.mission.waves.map((w) => ({ ...w, spot: w.spot && { ...w.spot } })) },
   };
 }
 
@@ -874,7 +894,7 @@ export function endTurn(s) {
   for (const w of s.mission.waves || []) {
     if (w.done || w.faction !== next || s.turn < w.at) continue;
     w.done = true;
-    const made = spawnSquads(s, next, w.n);
+    const made = w.spot ? spawnSquadsAt(s, next, w.n, w.spot) : spawnSquads(s, next, w.n);
     if (made.length) events.push({ type: 'reinforce', faction: next, units: made.map((u) => u.id) });
   }
   raiseGraves(s, next, events);

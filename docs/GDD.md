@@ -197,7 +197,13 @@ Orc **mạnh hơn nhưng không kỷ luật** **[CHỐT]**, thể hiện bằng:
   - Bán kính 7 thay vì 15–20: bản nhỏ 16×20 chỉ có 320 ô, vùng bán kính 15 (~481 ô) phủ gần hết bản đồ. 7 ô (~113 ô) phủ khu giao tranh và buộc necromancer tiến gần trận.
   - **Đo** (AI chiến thuật đấu AI chiến thuật, âm binh thắng, trước → sau): giao tranh nhỏ 60 ván 48% → 57%; phá trại nhỏ 52% → 57%; hộ tống nhỏ 50% → 52%; giao tranh vừa 30 ván 13% → 33%; cố thủ nhỏ 7% → 8% (không đổi). Mỗi ván ~4–5 mộ, ~1 lần trỗi dậy, ~2,4 lần an táng.
   - **Cố thủ: necromancer chủ động tiến theo quân** (âm binh là bên tấn công có hạn lượt), không đứng chờ ở hậu phương; vẫn giữ mức né đòn như tướng. **[CHỐT]** Đo 60 ván cỡ nhỏ: trỗi dậy 0,18 → 0,78 lần/ván, nhưng âm binh thắng chỉ 8% → 10% (necromancer tiến nhanh hơn: 1,3 thì 13%, và bắt đầu bị hạ).
-  - **[MỞ]** Cố thủ trước âm binh vẫn quá dễ vì âm binh chậm (−1 ô), không kịp phá trong 12 lượt. Đo với necromancer tiến: số lượt ×1,33 (16 lượt) thì âm binh thắng ~42%; ×1,67 (20 lượt) ~55%. Mốc khi đấu Orc: Orc thắng ~33%.
+  - **Cố thủ trước âm binh: tiếp viện bọc sườn** **[CHỐT ý; số liệu MẶC ĐỊNH]** (`MISSIONS.hold.flank*`, `slowTurns`). Âm binh chậm (−1 ô) nên đợt tiếp viện xuất hiện quanh thành nhà thì mất mấy lượt đi đường. Thay vào đó:
+    - Mỗi đợt tiếp viện của âm binh **trồi lên ở mép bản đồ bên hông thành người** (mép trái / phải, lệch hàng ≤ 4, cách thành ≥ 5 ô), hai đợt ở hai bên. **Cắm cờ màu phe + số lượt từ đầu trận** để người chơi chuẩn bị; chạm ô cờ có giải thích. Cờ gỡ khi đợt đã tới.
+    - Đợt **sớm hơn và đông hơn**: lượt 4 và 7, mỗi đợt 2 squad (đợt thường: lượt 5 và 9, 1 squad). Mốc lượt vẫn giãn theo cỡ bản đồ.
+    - **Bản đồ dài hơn bản nhỏ thì âm binh có thêm lượt**: + round((h − 20) × 0,4), tức bản vừa +3, bản lớn +6.
+    - **Chỉ áp dụng cho âm binh** (`flankFor`); Orc giữ đợt thường vì cố thủ trước Orc đang cân. Đo thử cho cả Orc: Orc thắng 30% → 37% (nhỏ), 43% → 60% (vừa), quá mạnh.
+    - Đo (âm binh thắng cố thủ, trước → sau): nhỏ 60 ván 8% → 28%; vừa 30 ván 0% → 33%. Mốc Orc: 30% (nhỏ), 43% (vừa), 35% (lớn, 20 ván).
+  - **[MỞ]** Cố thủ trước âm binh ở **bản lớn** vẫn 0/20: đường quá dài, và necromancer tiến theo quân bị hạ 6/20 ván. Giảm độ hăng của necromancer (0,6) thì bản lớn không khá hơn mà bản nhỏ, bản vừa tụt. Cần xử lý riêng cho bản lớn (thêm lượt nhiều hơn, hoặc âm binh xuất phát gần hơn).
 
 ### Thủy binh (phe người) **[CHỐT ý; số liệu MẶC ĐỊNH]**
 

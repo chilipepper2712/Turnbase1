@@ -287,5 +287,7 @@
   "grave.ready": "Rises at the start of the next undead turn",
   "grave.inRange": "Within the necromancer's reach ({r} tiles)",
   "grave.outRange": "Out of the necromancer's reach ({r} tiles): cannot rise yet",
-  "grave.note": "A squad on or next to the grave can Bury the fallen (uses that squad's turn): the soldiers are laid to rest and the necromancer can no longer raise them. Risen undead return at half strength and stay dead if they fall again."
+  "grave.note": "A squad on or next to the grave can Bury the fallen (uses that squad's turn): the soldiers are laid to rest and the necromancer can no longer raise them. Risen undead return at half strength and stay dead if they fall again.",
+  "mission.flank": "At the start of turn {turn}, {n} {side} reinforcement squad(s) appear around this flag (flanking attack).",
+  "mission.note.hold.undead": "Undead: reinforcements rise at the map edge beside our stronghold, marked by flags with the turn number; on longer maps the undead get extra turns"
 }

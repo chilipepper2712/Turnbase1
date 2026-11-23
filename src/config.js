@@ -205,7 +205,11 @@ export const armySize = (w, h) => Math.max(7, Math.round(7 * mapScale(w, h)));
 // waves: đợt tiếp viện. at = lượt (tính ở bản nhỏ, co giãn theo số lượt), n = số squad, side = 'attacker' (bên tấn công) hoặc 'defender'.
 export const MISSIONS = {
   skirmish: {},
-  hold:    { turns: 12, extra: 1, waves: [{ at: 5, n: 1, side: 'attacker' }, { at: 9, n: 1, side: 'attacker' }, { at: 7, n: 1, side: 'defender' }] },
+  // flank: đợt tiếp viện của bên tấn công xuất hiện ở mép bản đồ, bên hông thành phòng thủ (có cờ báo trước từ đầu trận)
+  // flankFor: phe tấn công nào dùng tiếp viện bọc sườn; phe khác giữ đợt thường (xuất hiện quanh thành nhà, at/n gốc)
+  // slowTurns: phe chậm (âm binh −1 ô) cần thêm lượt khi bản đồ dài hơn bản nhỏ: + round((h − 20) × hệ số)
+  hold:    { turns: 12, extra: 1, flankMinDist: 5, flankRows: 4, flankFor: ['undead'], slowTurns: { undead: 0.4 },
+             waves: [{ at: 5, n: 1, side: 'attacker', flank: { at: 4, n: 2 } }, { at: 9, n: 1, side: 'attacker', flank: { at: 7, n: 2 } }, { at: 7, n: 1, side: 'defender' }] },
   destroy: {},
   escort:  {},
 };
