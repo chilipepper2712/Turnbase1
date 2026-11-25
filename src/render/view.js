@@ -657,6 +657,14 @@ export class GameView {
       g.moveTo(c.x - 9, c.y - 4).lineTo(c.x, c.y + 6).lineTo(c.x + 9, c.y - 4).stroke({ width: 3.2, color: col, cap: 'round', join: 'round' });
     }
     if (o.selected) g.poly(dia(o.selected.x, o.selected.y, 1), true).stroke({ width: 3, color: 0xf2c200 });
+    if (o.tut) {                                               // hướng dẫn: vòng sáng + mũi tên chỉ xuống ô cần chạm
+      const c = tileToWorld(o.tut.x, o.tut.y);
+      g.poly(dia(o.tut.x, o.tut.y, 1.08), true).stroke({ width: 4.5, color: 0x1b1b1b, alpha: 0.9 });
+      g.poly(dia(o.tut.x, o.tut.y, 1.08), true).stroke({ width: 2.5, color: 0x3ad0ff });
+      const ay = c.y - 74;
+      g.poly([c.x - 11, ay, c.x + 11, ay, c.x, ay + 16], true).fill(0x3ad0ff).stroke({ width: 2, color: 0x1b1b1b, join: 'round' });
+      g.rect(c.x - 4, ay - 14, 8, 14).fill(0x3ad0ff).stroke({ width: 2, color: 0x1b1b1b });
+    }
     if (o.hover) g.poly(dia(o.hover.x, o.hover.y, 0.9), true).stroke({ width: 1.6, color: 0x1b1b1b, alpha: 0.55 });
     if (o.path && o.path.length > 1) {
       const pts = o.path.map((p) => tileToWorld(p.x, p.y));

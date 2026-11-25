@@ -70,6 +70,18 @@ async function main() {
     }, 350);
   };
   startBtn.addEventListener('click', () => begin(null));
+  // Nút hướng dẫn: lần đầu chơi thì nổi bật hơn nút vào trận (người đã biết vẫn bấm Bắt đầu để bỏ qua)
+  const tutBtn = document.getElementById('splash-tutorial');
+  tutBtn.innerHTML = icon('flag') + ' ' + t('tut.start');
+  if (!game.tutorialDone) { tutBtn.classList.add('primary'); startBtn.classList.remove('primary'); }
+  tutBtn.addEventListener('click', async () => {
+    tutBtn.disabled = true; startBtn.disabled = true; contBtn.disabled = true;
+    splash.classList.add('leaving');
+    await audio.unlock();
+    audio.startPlaylist();
+    audio.play('ui_confirm');
+    setTimeout(() => { splash.hidden = true; document.getElementById('hud').hidden = false; game.startTutorial(0); }, 350);
+  });
   // Nút "Tiếp tục": chỉ hiện khi có ván đã lưu (tự động hoặc ô thủ công), lấy bản mới nhất
   const contBtn = document.getElementById('splash-continue');
   saves.init().then(async () => {
@@ -83,6 +95,7 @@ async function main() {
     contBtn.addEventListener('click', () => begin(best));
   }).catch(() => {});
   if (q.get('autostart')) startBtn.click();
+  if (q.get('tutorial')) tutBtn.click();
   if (assets.report.fallback.length) console.info('[assets] đang dùng fallback code cho:', assets.report.fallback.join(', '));
 }
 

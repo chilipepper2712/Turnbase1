@@ -27,6 +27,7 @@ Mỗi phe chơi một kiểu:
 - Goblin phục kích trong rừng, thủy binh chặt cây đóng thuyền
 - AI hai mức, lưu và tải ván
 - Nền pixel art hoặc nền giấy vẽ tay (bật tắt được)
+- Bài hướng dẫn 3 phút cho người mới (bỏ qua được)
 - Chơi bằng chuột hoặc cảm ứng; tiếng Việt và tiếng Anh
 
 ## Cách chơi nhanh

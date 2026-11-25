@@ -14,6 +14,9 @@ import { icon, rankIcon } from './icons.js';
 import { MORALE, UNDEAD } from './config.js';
 import { createMissionState, MISSION_TYPES } from './missions.js';
 import { snapshot, restoreState, summarize, parseSaveText, SLOTS } from './saves.js';
+import { Tutorial, LESSONS } from './tutorial.js';
+
+const TUT_KEY = 'turnbase1.tutorialDone';
 
 const SPEEDS = { normal: 1, fast: 2.4, instant: 14 };
 const $ = (id) => document.getElementById(id);
@@ -55,6 +58,7 @@ export class Game {
   // ---------- Vòng đời ----------
   // hold = true: dựng bản đồ nhưng chưa bắt đầu lượt (màn mở đầu đang che phía trước)
   newGame(seed, hold = false) {
+    this.leaveTutorial();
     this.seed = seed >>> 0;
     const size = MAP_SIZES[this.settings.mapSize] || MAP_SIZES.small;
     const map = generateMap(this.seed, size.w, size.h);
@@ -66,6 +70,68 @@ export class Game {
     this.view.reset(st);
     this.refreshAll();
     if (!hold) { this.briefMission(); this.beginTurn(); }
+  }
+
+  // ---------- Hướng dẫn tân thủ ----------
+  get tutorialDone() { try { return localStorage.getItem(TUT_KEY) === '1'; } catch { return false; } }
+  markTutorialDone() { try { localStorage.setItem(TUT_KEY, '1'); } catch { /* bỏ qua */ } }
+
+  startTutorial(i = 0) {
+    $('modal').hidden = true;
+    this.leaveTutorial();
+    const tut = new Tutorial(this, LESSONS[i]);
+    this.lessonIndex = i;
+    this.seed = 0;
+    this.busy = false; this.confirmEnd = false; this.moveTarget = null;
+    this.sel = null; this.pending = null; this.origin = null; this.splitting = false; this.mode = 'idle';
+    this.view.speed = this.speed;
+    this.view.reset(tut.state);
+    this.tutorial = tut;
+    this.refreshAll();
+    this.beginTurn();
+  }
+
+  leaveTutorial() {
+    if (!this.tutorial) return;
+    this.tutorial = null;
+    const el = $('tut'); if (el) el.hidden = true;
+    document.body.dataset.tutGlow = '';
+  }
+
+  // bỏ qua: đánh dấu đã xem, vào trận thường
+  skipTutorial() {
+    this.markTutorialDone();
+    this.newGame(Math.floor(Math.random() * 1e6));
+  }
+
+  // chặn thao tác ngoài bước hướng dẫn hiện tại: true = bị chặn (kèm lời nhắc)
+  tutBlock(kind, arg) {
+    const tut = this.tutorial;
+    if (!tut || tut.allows(kind, arg)) return false;
+    this.snd('ui_deny');
+    this.toast(t('tut.blocked'), 1800);
+    return true;
+  }
+
+  tutorialOver() {
+    const s = this.state, m = $('modal'), won = s.winner === 'human';
+    if (won) this.markTutorialDone();
+    this.snd(won ? 'victory' : 'defeat');
+    m.innerHTML = `<div class="card">
+      <h2 class="${won ? 'win' : 'lose'}">${esc(t(won ? 'tut.win.title' : 'tut.lose.title'))}</h2>
+      <p>${esc(t(won ? 'tut.win.text' : 'tut.lose.text'))}</p>
+      <div class="btns">
+        <button data-m="play" class="primary">${esc(t('tut.play'))}</button>
+        <button data-m="again">${esc(t('tut.again'))}</button>
+      </div></div>`;
+    m.hidden = false;
+    m.onclick = (e) => {
+      const b = e.target.closest('button[data-m]');
+      if (!b) return;
+      m.hidden = true; m.onclick = null;
+      if (b.dataset.m === 'again') this.startTutorial(this.lessonIndex || 0);
+      else this.newGame(Math.floor(Math.random() * 1e6));
+    };
   }
 
   // Bảng nhiệm vụ: tự hiện lúc bắt đầu (trừ giao tranh), mở lại bất cứ lúc nào bằng nút trên thanh trên cùng
@@ -107,7 +173,7 @@ export class Game {
 
   async beginTurn() {
     const f = this.state.current;
-    if (f === 'human' && !this.state.winner) this.autosave();          // đầu lượt người chơi: điểm lưu an toàn nhất
+    if (f === 'human' && !this.state.winner && !this.tutorial) this.autosave();          // đầu lượt người chơi: điểm lưu an toàn nhất
     this.snd(f === 'human' ? 'turn_player' : 'turn_enemy');
     this.banner(t(f === 'human' ? 'ui.yourTurn' : 'ui.enemyTurn'), f);
     this.refreshAll();
@@ -133,7 +199,7 @@ export class Game {
   async runAI(f) {
     this.busy = true;
     this.refreshAll();
-    const level = f === 'orc' ? this.settings.difficulty : this.settings.difficulty;
+    const level = this.tutorial ? 'easy' : this.settings.difficulty;
     const s = this.state;
     await wait(550 / this.speed);
     let guard = 0, a;
@@ -151,7 +217,7 @@ export class Game {
   }
 
   afterTurnChange() {
-    if (this.state.winner) return this.gameOver();
+    if (this.state.winner) return this.tutorial ? this.tutorialOver() : this.gameOver();
     this.beginTurn();
   }
 
@@ -164,6 +230,7 @@ export class Game {
   async onEndTurn() {
     const s = this.state;
     if (this.busy || s.winner || this.players[s.current].type !== 'player') return;
+    if (this.tutBlock('endturn')) return;
     const idle = this.idleUnits().length;
     if (idle > 0 && !this.confirmEnd) {
       this.confirmEnd = true;
@@ -207,6 +274,7 @@ export class Game {
 
   select(u) {
     const s = this.state;
+    if (u.faction === s.current && this.tutBlock('select', u)) return;
     this.snd('ui_select');
     this.sel = u; this.pending = null; this.splitting = false;
     this.clearInfo();
@@ -250,7 +318,10 @@ export class Game {
   }
 
   refreshOverlay() {
+    this.tutorial?.update();
     const s = this.state, u = this.sel, o = {};
+    const tf = this.tutorial?.focusTile();
+    if (tf) o.tut = tf;
     if (u) {
       o.selected = { x: u.x, y: u.y };
       if (this.splitting) {
@@ -334,6 +405,7 @@ export class Game {
       return this.proposeAttack(u);
     }
     if (u && sel && u.id !== sel.id && u.faction === s.current && this.mode === 'selected' && this.reach.merges.has(u.id)) {
+      if (this.tutBlock('merge', u)) return;
       return this.doMerge(u);
     }
     if (u) {
@@ -365,6 +437,7 @@ export class Game {
   inspect(tile) {
     const s = this.state;
     if (this.busy || !tile || s.winner) return;
+    if (this.tutBlock('inspect', tile)) return;
     if (this.inspectTile && this.inspectTile.x === tile.x && this.inspectTile.y === tile.y) {
       this.inspectTile = null; this.threat = null;
     } else {
@@ -378,6 +451,7 @@ export class Game {
   }
 
   proposeAttack(enemy) {
+    if (this.tutBlock('attack', enemy)) return;
     const opt = this.attackOpts.get(enemy.id);
     if (!opt) return;
     this.moveTarget = null;
@@ -389,6 +463,7 @@ export class Game {
   async confirmAttack() {
     const s = this.state, u = this.sel, p = this.pending;
     if (!u || !p) return;
+    if (this.tutBlock('attack', p.target)) return;
     this.snd('ui_confirm');
     this.busy = true;
     this.hidePreview();
@@ -409,6 +484,7 @@ export class Game {
   // Bước xác nhận di chuyển: chạm ô chỉ đánh dấu đích; quân chỉ đi khi bấm nút "Tới đây" ngay trên ô (đỡ trượt tay)
   proposeMove(tile) {
     if (this.moveTarget && this.moveTarget.x === tile.x && this.moveTarget.y === tile.y) return;
+    if (this.tutBlock('move', tile)) return;
     this.snd('ui_select');
     this.moveTarget = { x: tile.x, y: tile.y };
     this.hidePreview(); this.pending = null;
@@ -742,6 +818,12 @@ export class Game {
     $('btn-mission').innerHTML = icon('flag');
     $('btn-mission').setAttribute('aria-label', t('ui.missionBtn')); $('btn-mission').title = t('ui.missionBtn');
     $('btn-mission').addEventListener('click', () => { if (!this.busy) this.showMission(false); });
+    $('tut').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-tut]');
+      if (!b || !this.tutorial) return;
+      if (b.dataset.tut === 'next') this.tutorial.next();
+      else if (b.dataset.tut === 'skip') this.skipTutorial();
+    });
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') this.cancel();
       if (e.key === 'Enter' && this.pending) this.confirmAttack();
@@ -755,6 +837,7 @@ export class Game {
     const b = e.target.closest('button[data-act]');
     if (!b || this.busy) return;
     const a = b.dataset.act;
+    if (!['cancel', 'movehere', 'confirm'].includes(a) && this.tutBlock(a)) return;
     if (a === 'wait') this.doWait();
     else if (a === 'split') this.startSplit();
     else if (a === 'fortify') this.doFortify();
@@ -799,6 +882,7 @@ export class Game {
         <button data-m="new" class="primary">${esc(t('ui.newMap'))}</button>
         <button data-m="restart">${esc(t('ui.restart'))}</button>
         <button data-m="saves">${esc(t('ui.save.title'))}</button>
+        <button data-m="tutorial">${esc(t('tut.menu'))}</button>
       </div></div>`;
     m.hidden = false;
     const apply = async () => {
@@ -833,6 +917,7 @@ export class Game {
       if (act === 'new') this.newGame(Math.floor(Math.random() * 1e6));
       else if (act === 'restart') this.newGame(+$('m-seed').value || this.seed);
       else if (act === 'saves') { this.refreshAll(); this.openSaves(); }
+      else if (act === 'tutorial') this.startTutorial(0);
       else this.refreshAll();
     };
   }
@@ -928,6 +1013,7 @@ export class Game {
   }
 
   gameOver() {
+    if (this.tutorial) return this.tutorialOver();
     const s = this.state, m = $('modal');
     const won = s.winner === 'human';
     this.snd(won ? 'victory' : 'defeat');

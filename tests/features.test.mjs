@@ -947,3 +947,29 @@ test('thủy binh: khắc chế theo dạng (trên thuyền như cung thủ, tr�
   const r = restoreState(JSON.parse(JSON.stringify(snapshot(s))));
   assert.deepEqual(r.boats, s.boats);
 });
+
+// ---------- Hướng dẫn tân thủ ----------
+import { LESSONS } from '../src/tutorial.js';
+
+test('hướng dẫn bài 1: bộ binh lên đồi được, cung thủ đánh được Orc phỉ, đánh tiếp thì thắng', () => {
+  const { state: s, refs: r } = LESSONS[0].build();
+  assert.deepEqual(s.sides, ['human', 'orc']);
+  const inf = s.units.find((u) => u.id === r.inf.id), arc = s.units.find((u) => u.id === r.arc.id);
+  assert.ok(reachable(s, inf).tiles.has(key(r.hill.x, r.hill.y)), 'đồi trong tầm đi');
+  moveUnit(s, inf, r.hill.x, r.hill.y);
+  assert.equal(inf.x, r.hill.x); assert.equal(inf.y, r.hill.y);
+  waitUnit(s, inf);
+  const reach = reachable(s, arc);
+  const spot = [...reach.tiles.values()].find((n) => targetsFrom(s, arc, n.x, n.y).some((t) => t.id === r.e1.id));
+  assert.ok(spot, 'cung thủ có chỗ bắn được Orc phỉ');
+  moveUnit(s, arc, spot.x, spot.y);
+  attackUnit(s, arc, s.units.find((u) => u.id === r.e1.id));
+  endTurn(s);
+  let g = 0;
+  while (!s.winner && s.turn <= 15 && g++ < 200) {
+    let a, g2 = 0;
+    while (!s.winner && (a = planNextAction(s, s.current === 'human' ? 'tactical' : 'easy')) && g2++ < 50) executeAction(s, a);
+    endTurn(s);
+  }
+  assert.equal(s.winner, 'human');
+});

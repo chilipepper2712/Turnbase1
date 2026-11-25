@@ -27,6 +27,7 @@ This is a **playtest build**. Feedback is very welcome: what is confusing, what 
 - Goblin ambushes in the forest, marines building boats
 - Two AI difficulty levels, save and load
 - Pixel-art terrain or hand-drawn paper style (toggle)
+- 3-minute tutorial for newcomers (skippable)
 - Mouse or touch controls; English and Vietnamese
 
 ## Quick start
