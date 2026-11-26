@@ -613,7 +613,7 @@ function burnUnit(s, u, events) {
 
 // Ô rừng cung thủ đốt được từ chỗ đang đứng: trong tầm bắn (kể cả ô kề), chưa cháy, không đang mưa
 export function igniteTiles(s, u, fx = u.x, fy = u.y) {
-  if (u.faction !== 'human' || u.role !== 'archer' || u.acted || u.status !== 'ok' || u.afloat) return [];
+  if (u.faction !== 'human' || u.role !== 'archer' || u.acted || u.status !== 'ok' || u.afloat || fireWait(s, u) > 0) return [];
   const mx = rangeAt(s, u, fx, fy)[1], out = [];
   for (let y = fy - mx; y <= fy + mx; y++) for (let x = fx - mx; x <= fx + mx; x++) {
     const d = Math.abs(x - fx) + Math.abs(y - fy);
@@ -624,17 +624,26 @@ export function igniteTiles(s, u, fx = u.x, fy = u.y) {
   return out;
 }
 export const canIgnite = (s, u) => igniteTiles(s, u).length > 0;
+// còn bao nhiêu lượt nữa mới dùng lại hỏa công (0 = sẵn sàng)
+export const fireWait = (s, u) => Math.max(0, (u.fireReady || 0) - s.turn);
 
-// Bắn tên lửa vào ô rừng: ô bén lửa ngay, quân trong đó mất quân. Hết lượt của cung thủ.
+// Bắn tên lửa vào ô rừng (bắn mù cũng được): ô bén lửa ngay. Có quân trong đó (kể cả quân đang ẩn) thì
+// trúng một mũi tên như bắn thường (có phản đòn nếu với tới) rồi bị lửa táp. Hết lượt cung thủ, chờ hồi FIRE.cooldown lượt.
 export function igniteForest(s, u, x, y) {
   if (!igniteTiles(s, u).some((p) => p.x === x && p.y === y)) return null;
   const events = [{ type: 'ignite', unit: u.id, x, y }];
   if (u.hidden) { u.hidden = false; events.push({ type: 'reveal', unit: u.id, x: u.x, y: u.y }); }
   startFire(s, x, y);
   events.push({ type: 'fire', x, y });
-  u.acted = true; u.moved = true;
+  u.fireReady = s.turn + FIRE.cooldown;
   const v = unitAt(s, x, y);
-  if (v) burnUnit(s, v, events);
+  if (v && !v.static && v.faction !== u.faction) {
+    if (v.hidden) { v.hidden = false; events.push({ type: 'reveal', unit: v.id, x: v.x, y: v.y, fire: true }); }
+    const ev = attackUnit(s, u, v);
+    for (const e of ev) { if (e.type === 'attack') e.fireShot = true; events.push(e); }
+    if (s.units.includes(v) && !s.winner) burnUnit(s, v, events);
+  } else if (v && !s.winner) burnUnit(s, v, events);
+  u.acted = true; u.moved = true;
   checkVictory(s);
   return events;
 }

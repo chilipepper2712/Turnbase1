@@ -113,6 +113,7 @@
   "fire.burning": "Đang cháy, tàn sau {n} lượt. Không ai vào được; quân đứng trong mất 1 quân mỗi lượt. Có thể lan theo gió, mưa thì tắt.",
   "terrain.burnt": "Rừng cháy",
   "terrain.note.burnt": "Rừng đã cháy trụi: như đồng bằng, không còn chỗ ẩn nấp.",
+  "fire.cooldown": "Hỏa công: hồi sau {n} lượt",
   "fx.blocked": "Không đi qua được, phải đi vòng",
   "fx.cost": "Người {h} · Orc {o} · Kỵ {c}",
   "fx.def": "Người {h} · Orc {o}",

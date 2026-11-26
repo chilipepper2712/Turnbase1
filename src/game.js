@@ -5,7 +5,7 @@ import {
   createState, reachable, targetsFrom, previewAttack, moveUnit, attackUnit, waitUnit, mergeUnits,
   splitUnit, splitTiles, canSplit, endTurn, unitAt, key, pathTo, defensePct, statsOf, terrainId,
   alliesOf, rangeAt, inEnemyZoc, terrainFacts, tilesInRange, threatTiles, moveCostFor, canFortify, fortifyUnit, fortifyBonus, levelOf, nextLevelXp, fleePlan, moraleState,
-  canChop, chopTree, canLaunch, launchBoat, canBury, buryGrave, canIgnite, igniteTiles, igniteForest, graveAt, graveWait, graveInRange, dist,
+  canChop, chopTree, canLaunch, launchBoat, canBury, buryGrave, canIgnite, igniteTiles, igniteForest, fireWait, graveAt, graveWait, graveInRange, dist,
 } from './rules.js';
 import { planNextAction } from './ai.js';
 import { executeAction } from './actions.js';
@@ -790,6 +790,8 @@ export class Game {
     const nx = nextLevelXp(u);
     const xpTxt = nx ? `${u.xp}/${nx}` : t('ui.xpmax');
     const tdef = terrainFacts(tid).def[u.faction];
+    const fw = u.faction === 'human' && u.role === 'archer' ? fireWait(s, u) : 0;
+    const fireLine = fw ? `<div class="fortline">${icon('fire')}${esc(t('fire.cooldown', { n: fw }))}</div>` : '';
     const fort = u.fort === 2 ? `<div class="fortline">${icon('tent')}${esc(t('ui.fort.on', { n: Math.round(fortifyBonus(s, u)) }))}</div>` : '';
     const ic = (k) => icon({ strength: 'heart', morale: 'flag', xp: 'chevron', def: 'shield', atk: 'sword', move: 'foot', range: 'bow' }[k]);
     return `<div class="phead">${this.portrait(u)}<div class="pname"><h3><span class="chip" style="background:${f.fill}"></span>${esc(unitName(u))}${u.vip ? `<span class="tag vip">${esc(t('ui.vip'))}</span>` : ''}${u.timber ? `<span class="tag vip">${esc(t('ui.timber'))}</span>` : ''}<span class="stars">${rankIcon(lvl, 'gold')}</span></h3>
@@ -800,7 +802,7 @@ export class Game {
       `}${mfx ? `<div class="mfx ${ms}">${esc(mfx)}</div>` : ''}
       <div class="stats"><span title="${esc(t('ui.defense'))}">${ic('def')} <b>${def}%</b></span><span title="${esc(t('ui.atk'))}">${ic('atk')} <b>${atk}</b></span><span title="${esc(t('ui.move'))}">${ic('move')} <b>${st.move}</b></span><span title="${esc(t('ui.range'))}">${ic('range')} <b>${mn === mx ? mx : mn + '–' + mx}</b></span></div>
       <div class="terr">${esc(t('terrain.' + tid))}${tdef ? ` · ${ic('def')}${this.sg(tdef)}%` : ''}</div>
-      ${fort}
+      ${fort}${fireLine}
       <span class="tag">${esc(status)}</span>
       <details><summary>${esc(lvl ? t('ui.rank.' + lvl) : t('ui.info'))}</summary><div class="desc">${esc(t('unit.desc.' + (u.role === 'marine' && u.afloat ? 'marineboat' : u.role)))}${u.faction === 'undead' && u.role !== 'necromancer' ? ' ' + esc(t('unit.desc.undead')) : ''}</div></details>`;
   }

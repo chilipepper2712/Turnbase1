@@ -236,4 +236,5 @@ export const FIRE = {
   burnTurns: 2,     // cháy bao nhiêu lượt rồi tàn thành rừng cháy (= đồng bằng)
   spread: 0.12,     // mỗi lượt, khả năng bén sang ô rừng kề theo chiều gió
   damage: 1,        // quân mất mỗi lượt khi đứng trong ô cháy (và lúc ô vừa bén lửa)
+  cooldown: 3,      // cung thủ đã dùng hỏa công phải chờ bao nhiêu lượt mới dùng lại
 };

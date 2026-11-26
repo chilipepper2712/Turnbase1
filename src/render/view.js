@@ -1425,6 +1425,7 @@ export class GameView {
         }
         case 'attack': {
           const ranged = ev.attackerRole === 'archer';
+          if (ev.fireShot) break;                     // tên lửa đã bay ở sự kiện 'ignite'
           if (ranged) await this.shoot(ev.attacker, ev.defender); else await this.lunge(ev.attacker, ev.defender);
           break;
         }

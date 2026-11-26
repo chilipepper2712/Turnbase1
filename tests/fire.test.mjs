@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createState, addUnit, endTurn, moveCost, reachable, key, canIgnite, igniteTiles, igniteForest, cloneState } from '../src/rules.js';
+import { createState, addUnit, endTurn, moveCost, reachable, key, canIgnite, igniteTiles, igniteForest, cloneState, previewAttack, fireWait } from '../src/rules.js';
 import { initWeather } from '../src/weather.js';
 import { snapshot, restoreState } from '../src/saves.js';
 import { FIRE, WEATHER } from '../src/config.js';
@@ -30,20 +30,23 @@ test('đốt ô có địch: mất quân ngay, ô không đi vào được, đ�
   const s = board([[5, 3], [5, 2]]);
   const a = addUnit(s, 'human', 'archer', 5, 5);
   const e = addUnit(s, 'orc', 'infantry', 5, 3);
-  const before = e.strength;
+  const shot = previewAttack(s, a, e).dmg;
   const ev = igniteForest(s, a, 5, 3);
   assert.ok(ev.some((x) => x.type === 'fire'));
-  assert.equal(e.strength, before - FIRE.damage);
+  assert.ok(ev.some((x) => x.type === 'attack' && x.fireShot), 'trúng một mũi tên như bắn thường');
+  assert.ok(shot > 0);
+  assert.equal(e.strength, 10 - shot - FIRE.damage);
   assert.ok(a.acted, 'hết lượt cung thủ');
   assert.ok(fireAt(s, 5, 3));
   // quân khác không vào được ô cháy
   const h = addUnit(s, 'human', 'infantry', 4, 4);
   assert.equal(moveCost(s, h, 5, 3), Infinity);
   assert.ok(!reachable(s, h).tiles.has(key(5, 3)));
+  const after = e.strength;
   endTurn(s);                 // sang lượt orc: orc chưa bị đốt thêm
-  assert.equal(e.strength, before - FIRE.damage);
+  assert.equal(e.strength, after);
   endTurn(s);                 // orc đứng lì cả lượt: mất thêm
-  assert.equal(e.strength, before - 2 * FIRE.damage);
+  assert.equal(e.strength, after - FIRE.damage);
 });
 
 test('lửa tàn sau burnTurns lượt: rừng thành rừng cháy (đi như đồng bằng)', () => {
@@ -103,4 +106,26 @@ test('lửa: sao chép và lưu / tải giữ nguyên', () => {
   assert.deepEqual(cloneState(s).fires, s.fires);
   const r = restoreState(JSON.parse(JSON.stringify(snapshot(s))));
   assert.deepEqual(r.fires, s.fires);
+});
+
+test('bắn mù: tên lửa trúng goblin đang ẩn, goblin lộ diện', () => {
+  const s = board([[5, 3]]);
+  const a = addUnit(s, 'human', 'archer', 5, 5);
+  const g = addUnit(s, 'orc', 'goblin', 5, 3); g.hidden = true;
+  const ev = igniteForest(s, a, 5, 3);
+  assert.ok(!g.hidden || !s.units.includes(g));
+  assert.ok(ev.some((x) => x.type === 'reveal' && x.unit === g.id));
+  assert.ok(ev.some((x) => x.type === 'attack' && x.defender === g.id));
+});
+
+test('hỏa công phải chờ hồi FIRE.cooldown lượt', () => {
+  const s = board([[5, 3], [5, 2]]);
+  const a = addUnit(s, 'human', 'archer', 5, 5);
+  addUnit(s, 'orc', 'archer', 11, 11);
+  igniteForest(s, a, 5, 3);
+  assert.equal(fireWait(s, a), FIRE.cooldown);
+  for (let i = 1; i < FIRE.cooldown; i++) { endTurn(s); endTurn(s); assert.ok(!canIgnite(s, a), 'chưa hồi sau ' + i + ' lượt'); }
+  endTurn(s); endTurn(s);
+  assert.equal(fireWait(s, a), 0);
+  assert.ok(igniteTiles(s, a).some((p) => p.x === 5 && p.y === 2));
 });

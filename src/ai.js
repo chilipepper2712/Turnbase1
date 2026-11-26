@@ -9,8 +9,8 @@ import {
   canFortify, fortifyBonus, terrainDefense, canCapture, moraleState, terrainId, foeOf,
   graveAt, graveWait, igniteTiles,
 } from './rules.js';
-// hỏa công: coi như gây ~1.5 quân (1 ngay + có thể 1 nữa) và tước chỗ thủ rừng của địch
-const FIRE_AI_DMG = 1.5, FIRE_AI_DENY = 4;
+// hỏa công: lửa coi như gây thêm ~1.5 quân (1 ngay + có thể 1 nữa), tước chỗ thủ rừng; trừ giá trị giữ lại vì phải chờ hồi
+const FIRE_AI_DMG = 1.5, FIRE_AI_DENY = 4, FIRE_AI_SAVE = 1.5;
 
 // ----- trường khoảng cách tới mục tiêu (Dijkstra nhiều nguồn) -----
 function goalField(s, u) {
@@ -210,18 +210,19 @@ function unitOptions(s, u, level, ctx) {
     }
   }
   if (level === 'tactical' && u.faction === 'human' && u.role === 'archer' && u.status === 'ok' && !u.acted) {
-    // hỏa công: đốt ô rừng có địch đứng (mất quân ngay, đứng lại mất tiếp, mất chỗ ẩn nấp). Không đốt ô có quân mình.
+    // hỏa công: tên lửa vào ô rừng có địch = một phát bắn thường + lửa táp (mất thêm nếu đứng lại) + tước chỗ thủ rừng.
+    // Hồi FIRE.cooldown lượt, nên trừ một khoản "giữ lại dùng sau" để không đốt khi lợi ít. Không đốt ô có quân mình.
     for (const node of reach.tiles.values()) {
-      let best = 0, tile = null;
+      let best = -Infinity, tile = null;
       for (const p of igniteTiles(s, u, node.x, node.y)) {
         const v = unitAt(s, p.x, p.y);
         if (!v || v.faction === u.faction || v.static || v.hidden) continue;
-        const val = (FIRE_AI_DMG / CONFIG.maxStrength) * UNIT_VALUE[v.role] * 10 * w.dmg + (terrainDefense(s, v.faction, p.x, p.y) / 100) * FIRE_AI_DENY;
+        const val = scoreOption(s, u, node, v, w, field, ctx.ownHold, ctx.enemyHold, ctx.danger, ctx) + 2
+          + (FIRE_AI_DMG / CONFIG.maxStrength) * UNIT_VALUE[v.role] * 10 * w.dmg + (terrainDefense(s, v.faction, p.x, p.y) / 100) * FIRE_AI_DENY - FIRE_AI_SAVE;
         if (val > best) { best = val; tile = p; }
       }
       if (!tile) continue;
-      const base = scoreOption(s, u, node, null, w, field, ctx.ownHold, ctx.enemyHold, ctx.danger, ctx);
-      out.push({ unit: u, to: { x: node.x, y: node.y }, ignite: tile, score: base + best + 1 });
+      out.push({ unit: u, to: { x: node.x, y: node.y }, ignite: tile, score: best });
     }
   }
   if (level === 'tactical') {
