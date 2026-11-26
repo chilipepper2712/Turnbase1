@@ -1,45 +1,34 @@
 # Handoff: game chiến thuật theo lượt + art/trailer
 
-Cập nhật: 2026-11-17. Nhánh làm việc: `claude/strategy-game-prototype-dv6kf7` (mọi thứ đã commit và push, commit cuối `ff5bd4f`).
-Người dùng: dùng "mày - tao", peer-level. Nhận xét thẳng ý tưởng trước (hay / dở / thiếu gì), chỉ ra chỗ lỏng và hỏi lại, không fill thay, không khen máy móc, không drift khi bị push back. Không làm thay những gì họ nên tự làm. UI game bằng tiếng Việt qua `lang/*.json`.
+Cập nhật: 2026-11-26. Nhánh làm việc: `claude/strategy-game-prototype-dv6kf7` (mọi thứ đã commit và push).
+Người dùng: dùng "mày - tao", peer-level. Nhận xét thẳng ý tưởng trước (hay / dở / thiếu gì), chỉ ra chỗ lỏng và hỏi lại, không fill thay, không khen máy móc, không drift khi bị push back. Không làm thay những gì họ nên tự làm. UI game bằng tiếng Việt qua `lang/*.json`. Người dùng tự tạo trang itch và tự đăng.
 
 ## 1. Game (code)
-- Game trình duyệt chiến thuật theo lượt, lưới vuông, nhìn isometric. Người vs Orc hoặc Âm binh (thay Orc). AI hai mức. Có nhiệm vụ (đánh nhau, cố thủ, phá trại, hộ tống), sĩ khí và bỏ chạy, goblin phục kích, âm binh (necromancer), thủy binh, lưu / tải ván. Chi tiết luật ở `docs/GDD.md` (đã publish artifact v21; chưa cập nhật phần nền pixel).
-- Logic thuần: `src/rules.js`, `src/ai.js`, `src/missions.js`, `src/mapgen.js`, `src/config.js`. Render Pixi: `src/render/view.js`, `assets.js`, `pixelground.js`, `pixelcloud.js`, `doodle.js`. UI: `src/game.js`, `index.html`, `style.css`.
-- Test: `npm test` (73 qua). Build một file: `node tools/build_single.mjs` → `dist/artifact.html` (~13,1 MB; trần Artifact 16 MB, âm thanh chiếm ~7,6 MB).
-- Artifact game: https://claude.ai/artifact/CSx81EnZweknsmJP2FXymS (v55 lúc cuối). Publish lại bằng Artifact tool với `file_path=/home/user/Turnbase1/dist/artifact.html` và `url` trên.
-- Playwright có sẵn để chụp ảnh game thật (`python3 -m http.server 8099`, mở `index.html?seed=21&tiles=1&clouds=0`, bấm `#splash-start`).
+- Game trình duyệt chiến thuật theo lượt, lưới vuông, isometric (Pixi). Người vs Orc hoặc Âm binh. Nhiệm vụ: giao tranh, cố thủ, phá trại, hộ tống. Sĩ khí / bỏ chạy, goblin phục kích, thủy binh, âm binh + necromancer + mộ tử sĩ, thời tiết, hỏa công, sương mù chiến tranh, tutorial bài 1, lưu / tải. Luật đầy đủ ở `docs/GDD.md`.
+- Logic thuần: `src/rules.js`, `ai.js`, `missions.js`, `mapgen.js`, `config.js`, `weather.js`, `fire.js`, `fog.js`, `tutorial.js`, `saves.js`. Render: `src/render/view.js` (+ `assets.js`, `pixelground.js`, `doodle.js`...). UI: `src/game.js`, `index.html`, `style.css`.
+- Test: `npm test` (102 qua). Build: `npm install` (không commit package-lock) rồi `node tools/build_single.mjs` → `dist/artifact.html` và `dist/standalone.html` (~13,2 MB).
+- Đo cân bằng: `node tools/simulate.mjs N enemyLvl humanLvl size enemy mission` (env `NOFOG=1`, `NOWEATHER=1` để so).
+- Artifact game: https://claude.ai/artifact/CSx81EnZweknsmJP2FXymS (v63). Publish lại bằng Artifact tool, `file_path=/home/user/Turnbase1/dist/artifact.html`, `url` trên.
+- Chụp ảnh game thật: Playwright mở `file:///home/user/Turnbase1/dist/standalone.html?seed=5`, bấm `#splash-start`, đóng modal; `window.__game` là đối tượng game (`.state`, `.view`). Server http cục bộ bị chặn, dùng file build.
 
-## 2. Nền pixel art (đã vào game, mặc định bật)
-- Nút bật/tắt `#btn-tiles` trên thanh trên + công tắc trong menu; `?tiles=0|1` trên URL; lưu `settings.pixelTiles`. Nền cũ (giấy vẽ tay) vẫn còn khi tắt.
-- Nền phẳng theo địa hình vẽ bằng code (`pixelground.js`), vật thể là sprite pixel `assets/terrain/<nhóm>_<n>.png` (pine, tuft, bush, tiny, boulder, mound, reed, shrub, hill, house, tower, mine, castle, camp). Sprite sinh từ sheet Higgsfield (nền magenta) rồi `tools/prep_decor.py`, `prep_buildings.py`, `prep_hill.py`. Đồi dùng bản vẽ nháp của user (`docs/art/tiles/decor/hill_user.png`).
-- Nước lấp lánh (loop 0,2 s), mây pixel sinh bằng code, nền chấm bi đứng yên theo màn hình, chân dung đơn vị trong thẻ thông tin lấy từ sheet trailer (`assets/portraits`, `tools/prep_portraits.py`).
-- **Việc user đang tự làm:** vẽ bóng chân cho công trình (nhà, tháp, mỏ, thành, trại). Họ sẽ gửi file `<nhóm>_<n>_shadow.png`, game đã có chỗ nhận (xem `docs/art/tiles/README.md`). Khi nhận, đặt vào `assets/terrain/` và build lại.
-- Chưa kiểm: hiệu năng bản đồ lớn / điện thoại thật, chân dung trên màn hẹp, bóng chân camp/castle trên mọi địa hình. Chuyển tiếp giữa các loại đất còn hơi lốm đốm.
-- Bản đồ ~30% không có sông; user đã hỏi nhưng chưa quyết có ép bản đồ nào cũng có nước không (đụng cân bằng và seed lưu, cần hỏi lại).
+## 2. Làm trong đợt này (đã xong)
+- **Thời tiết:** gió 8 hướng (hiếm đổi), mây đen lớn/nhỏ trôi liên tục chậm hơn mây trắng, ~27% mây lớn đang mưa, mưa biến đồng bằng thành đầm lầy 2 lượt. Kỵ binh vào được đầm lầy (chậm).
+- **Hỏa công:** chỉ cung thủ người, tên lửa = phát bắn thường + lửa (1 quân/lượt), hồi 3 lượt, cháy 2 lượt rồi thành rừng cháy, lan xuôi gió 12%/lượt, mưa dập. Sprite cây cháy / cây cụt gen Seedream (`assets/terrain/fire_*`, `burnt_*`).
+- **Sương mù:** tầm nhìn 3 (+1 cung, +1 đồi/tháp, +2 núi thấp); Orc trong rừng = bóng đen + "?"; goblin vẫn tàng hình; đâm vào quân khuất sương thì dừng; bắn từ sương bị định vị; AI chơi công bằng. Menu bật/tắt sương mù và thời tiết.
+- **Mộ tử sĩ:** cả bản đồ bị ếm; vùng 12 ô quanh necromancer dậy sau 2 lượt, ngoài vùng 4 lượt; mộ nào cũng đếm lùi. Hành động đổi tên **"Cầu siêu"** (EN vẫn "Bury the fallen"). Sprite mộ gen Seedream, không đổ bóng, viền hoà cỏ (`graveh_*`, `graveo_*`).
+- **Cỏ đồng bằng** (nền pixel) hạt nhuyễn hơn.
+- **AI âm binh** hung hãn hơn (`UNDEAD_AI` trong `ai.js`), hộ vệ necromancer (`NECRO_GUARD`), cố thủ bên đánh lấy thành làm đích chính.
 
-## 3. Character sheet (trailer/cutscene)
-- 24 sheet trong `docs/art/sheets/`, prompt và quy tắc ở `docs/art/character-sheets.md` (đọc kỹ: luôn đính kèm sprite làm tham chiếu và chỉ mô tả cái sprite thấy; giáp lá xám, đoản kiếm ở hông; tai orc đối xứng; vật cứng như ống tên / vỏ kiếm không được cong ôm người).
-- Lỗi đã biết, chưa sửa: **kỵ binh người cần mũ nón trận** (vành rộng phẳng, núm tròn, vải đỏ che gáy, KHÔNG phải nón lá đan; sheet `cavalry_human.png` và các cảnh trailer có kỵ binh đang đội nón vàng giống nón lá); `undead_human_archer` ống tên ngắn / vỏ kiếm hơi ôm hông; `undead_human_infantry` vỏ kiếm hơi ôm hông; marine chưa chọn A hay B (`marine_archer_human_a|b`).
-- Quy tắc rút ra: khi sửa một chi tiết, giữ nguyên prompt cũ và chỉ đổi đúng chi tiết đó. Viết lại cả prompt dài làm ảnh bị cartoon và mất chi tiết.
+## 3. Việc mở (theo thứ tự)
+1. **AI âm binh vs người chơi thật.** User thắng âm binh bằng cách *thủ chắc, để âm binh dồn lên rồi bắn cung*; thỉnh thoảng dùng kỵ binh vòng đường khác đánh necromancer. Lưu ý: bản hung hãn mới (v63) có thể còn dễ bị bẫy này hơn. Hướng đề xuất (chưa làm, chưa hỏi user): **đánh theo đợt**: âm binh dừng ngay ngoài tầm đe doạ của địch cho tới khi đủ quân cùng lao vào trong một lượt, thay vì từng con đi vào tầm cung; cung thủ âm binh bắn đáp trả vị trí thủ; necromancer dùng mộ để ép người chơi ra khỏi thế thủ.
+2. Đóng gói lại bản itch (`docs/itch/`: zip, ảnh chụp, bài đăng đã cập nhật luật mộ) + viết **devlog #2** (thời tiết, hỏa công, sương mù, mộ ếm toàn bản đồ, âm binh hung hơn).
+3. **Chế độ chinh chiến** (mang squad elite qua trận): user đang suy nghĩ, chưa làm. Đề xuất đã đưa: chuỗi trận bật riêng, thắng được mang tối đa 2 elite (giữ cấp, hồi đủ quân), AI mạnh dần mỗi trận, thua là hết chuỗi. Xem GDD mục 16.
+4. Tutorial bài 2–4 (địa hình/sĩ khí, quân đặc biệt, âm binh/cầu siêu), chờ góp ý bài 1.
+5. Cố thủ vs Orc khi có sương mù: AI orc đánh tốt hơn khi không thấy quân người (GDD ghi [MỞ]).
 
-## 4. Trailer phe người (15 giây, 16:9)
-- Ý tưởng user: rừng yên tĩnh → loạt tên của cung thủ orc → bộ binh gạt tên, va chạm orc → cung thủ người → dân quân xung phong, kỵ binh bay qua đầu (worm's-eye) → kỵ binh đâm vào orc, toàn cảnh. Chỉ đánh với orc (đã chốt bỏ âm binh), có thể cài tia lửa ma xanh làm hook cuối.
-- Công cụ: Higgsfield MCP. Ảnh: `gpt_image_2_6`. Video: **`seedance_2_5` mode `omni_reference` 720p** (35 credit / 5 s); Kling 3.0 thử rồi bỏ (quay lưng, không chạm tên). Dùng skill `seedance-director` để viết prompt EN+ZH. Prompt lưu ở `docs/art/trailer/prompts/`.
-- Clip nằm ở `docs/art/trailer/shots/`; bản cắt thô `trailer_human_roughcut.mp4` do `docs/art/trailer/edit.py` dựng (ffmpeg). **User đã tự edit bản cuối ngoài session**, nên cắt thô chỉ để tham khảo.
-- Cảnh gạt tên sai (2 tên bay tới, ra 5 cây) đã gen lại: `docs/art/trailer/fix/s03_slash_2arrows_B.mp4` (nên dùng) và `_A`.
-- Lỗi còn lại: cận mắt chưa đủ góc cao; worm's-eye chưa chĩa thẳng lên trời; nón kỵ binh (xem mục 3); style lệch nhẹ giữa các cảnh; cảnh orc đầu có hàng rào khiên gỗ model tự thêm. Seedance đếm số lượng không tuyệt đối, ghi rõ "EXACTLY N" và cắt dựng tránh đoạn mảnh vụn rơi.
-- Âm thanh (nhạc, dây cung, tên, va chạm, vó ngựa) chưa có.
-- **Credit Higgsfield hết hạn 20/11/2026** (còn ~1.128 lúc cuối); user bảo cứ dùng. Kế hoạch dùng nốt: reroll sheet kỵ binh (nón trận) → gen lại cảnh có kỵ binh → gen lại cận mắt → render 1080p (~80 credit / cảnh) cho các cảnh giữ lại. Hỏi user cảnh nào giữ trước khi tốn credit.
-- Rate limit 429 khi gửi 3+ video cùng lúc; gửi ít một và dùng `jobs_wait` poll. Muốn xem clip thì trích khung bằng ffmpeg (`fps=3`) ghép thành strip.
+## 4. Art / trailer
+- Character sheet: `docs/art/sheets/`, quy tắc ở `docs/art/character-sheets.md`. Trailer: `docs/art/trailer/{orc,undead,goblin}` (đã xong đợt trước).
+- Higgsfield: ảnh dùng `seedream_5_5` (user thích), ~3,5 credit/ảnh. Upload tham chiếu: `media_upload` → `curl -X PUT` → `media_confirm`. Sprite game: gen trên nền magenta, tách nền và hạ về mật độ pixel của cây thông gốc (`assets/terrain/pine_*`, ~33×72 px) bằng BOX downscale + alpha cứng.
 
 ## 5. Môi trường
-- Mạng đã được user cho phép thêm host Higgsfield (upload, cloudfront). Upload ảnh: `media_upload` → `curl -X PUT` → `media_confirm` rồi mới dùng `media_id`.
-- Commit kết thúc bằng 2 dòng `Co-Authored-By` và `Claude-Session` theo chỉ dẫn hệ thống hiện tại. Không tạo PR nếu chưa được yêu cầu.
-
-## 6. Việc mở (theo thứ tự gợi ý)
-1. Hỏi user: còn muốn gen gì trước 20/11 (kỵ binh nón trận, cận mắt, 1080p)?
-2. Nhận bóng chân công trình từ user và tích hợp.
-3. Cập nhật `docs/GDD.md` phần nền pixel / nút bật tắt / chân dung rồi publish lại.
-4. Gameplay còn dở: AI chưa dùng thuyền và chưa chủ động đánh trại; cố thủ vs âm binh quá dễ; chiến dịch (lưu squad tinh nhuệ qua màn) chưa làm.
-5. Quyết định chưa chốt: bộ binh người dùng trường kiếm hay trường đao; mọi bản đồ có sông hay không.
+- Commit kết thúc bằng 2 dòng `Co-Authored-By` và `Claude-Session` theo chỉ dẫn hệ thống. Không tạo PR nếu chưa được yêu cầu.
