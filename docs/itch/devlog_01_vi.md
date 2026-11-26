@@ -21,7 +21,7 @@ Phe âm binh ban đầu khá "hiền", necromancer chỉ đứng sau bắn phép
 - Quân người ngã xuống để lại một nấm mộ ở chỗ nó chết.
 - Nếu mộ nằm trong **7 ô** quanh necromancer, sau **2 lượt** nó sẽ trỗi dậy thành âm binh cùng loại quân, với nửa quân số.
 - Âm binh đã chết thì tan hẳn, không dựng lại được lần hai.
-- Để chặn, bạn có thể dành lượt của một squad đứng cạnh mộ để **an táng tử sĩ**: chôn cất, cầu siêu, linh hồn siêu thoát, necromancer không gọi dậy được nữa.
+- Để chặn, bạn có thể dành lượt của một squad đứng cạnh mộ để **cầu siêu tử sĩ**: làm lễ cho linh hồn siêu thoát, necromancer không gọi dậy được nữa.
 
 Lúc thiết kế, bán kính ban đầu được đề xuất là 15–20 ô. Nghe thì có vẻ "giới hạn", nhưng bản đồ nhỏ chỉ rộng 16×20, nên vùng 15 ô phủ gần hết chiến trường. Bán kính 7 phủ vừa khu giao tranh, và buộc necromancer phải tiến lên gần trận, nơi hắn cũng dễ bị săn hơn. Mỗi trận vì thế có thêm một câu hỏi: chạy lên đánh tiếp, hay lùi lại chôn đồng đội?
 

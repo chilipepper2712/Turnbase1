@@ -720,7 +720,7 @@ function raiseGraves(s, f, events) {
   s.graves = keep;
 }
 
-// An táng tử sĩ: squad phe sống đứng trên hoặc cạnh mộ, chưa ra đòn trong lượt (đi rồi vẫn được),
+// Cầu siêu tử sĩ: squad phe sống đứng trên hoặc cạnh mộ, chưa ra đòn trong lượt (đi rồi vẫn được),
 // bỏ lượt đó để chôn cất, làm lễ cầu siêu: mộ mất, necromancer không triệu hồi được nữa.
 const graveNear = (s, u) => (s.graves || [])
   .filter((g) => dist(g, u) <= 1)

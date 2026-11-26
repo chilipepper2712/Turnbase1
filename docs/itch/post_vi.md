@@ -11,7 +11,7 @@ Không có may rủi. Trước mỗi đòn đánh, game cho xem chính xác sát
 Mỗi phe chơi một kiểu:
 - **Người** mạnh nhờ công trình: làng, tháp, thành; có thủy binh tự đóng thuyền vượt sông.
 - **Orc** mạnh nhờ thiên nhiên: rừng, đồi; goblin ẩn trong rừng phục kích.
-- **Âm binh** không biết sợ, không bao giờ bỏ chạy. Quân ta ngã xuống sẽ để lại mộ, và nếu nằm gần necromancer, sau 2 lượt mộ sẽ trỗi dậy thành âm binh. Muốn chặn thì phải dành lượt để an táng tử sĩ. Hạ được necromancer là cả đạo quân đổ sụp.
+- **Âm binh** không biết sợ, không bao giờ bỏ chạy. Quân ta ngã xuống sẽ để lại mộ, và cả chiến trường bị ếm: mộ nào không được cầu siêu rồi cũng trỗi dậy thành âm binh, gần necromancer thì chỉ sau 2 lượt. Muốn chặn thì phải dành lượt của một squad để cầu siêu tử sĩ. Hạ được necromancer là cả đạo quân đổ sụp.
 
 Đây là **bản chơi thử**. Mình rất cần góp ý: chỗ nào khó hiểu, chỗ nào quá dễ hay quá khó, chỗ nào lỗi. Cứ để lại bình luận bên dưới.
 

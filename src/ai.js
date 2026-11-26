@@ -200,7 +200,7 @@ function unitOptions(s, u, level, ctx) {
     }
   }
   if (level === 'tactical' && s.graves && s.graves.length && u.faction !== 'undead' && !u.static && u.role !== 'goblin' && !u.afloat) {
-    // an táng tử sĩ: chặn xác đồng đội trỗi dậy thành âm binh (necromancer còn sống thì cả bản đồ bị ếm).
+    // cầu siêu tử sĩ: chặn xác đồng đội trỗi dậy thành âm binh (necromancer còn sống thì cả bản đồ bị ếm).
     const necros = s.units.filter((n) => n.role === 'necromancer');
     // cả bản đồ bị ếm: mộ nào cũng sẽ dậy, mộ sắp dậy đáng chôn trước
     const live = necros.length ? s.graves : [];

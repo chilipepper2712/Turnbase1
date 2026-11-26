@@ -11,7 +11,7 @@ There is no luck involved. Before every attack you see exactly how much damage y
 Each faction plays differently:
 - **Humans** draw strength from structures: villages, towers, strongholds. Their marines cut timber and build boats to cross rivers.
 - **Orcs** draw strength from the wild: forests and hills. Goblins hide in the woods and spring ambushes.
-- **The Undead** know no fear and never flee. Your fallen leave graves, and any grave near the necromancer rises as undead after 2 turns. Spend a squad's turn to bury the fallen and deny them. Kill the necromancer and the whole host collapses.
+- **The Undead** know no fear and never flee. Your fallen leave graves, and the whole battlefield is cursed: every grave not laid to rest rises as undead, in just 2 turns near the necromancer. Spend a squad's turn to bury the fallen and deny them. Kill the necromancer and the whole host collapses.
 
 This is a **playtest build**. Feedback is very welcome: what is confusing, what is too easy or too hard, what is broken. Leave a comment below.
 
