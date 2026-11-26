@@ -120,8 +120,9 @@ export const UNDEAD = {
   // Mộ tử sĩ: quân phe sống bị tiêu diệt để lại mộ. Mộ trong bán kính của necromancer, đủ số lượt chờ
   // và ô trống thì tự trỗi dậy thành âm binh (cùng loại quân, gốc là phe đã chết) với một phần quân số.
   // Âm binh chết là tan hẳn, không để lại mộ. Phe sống "an táng tử sĩ" (mất lượt của squad) để chặn.
-  raiseRadius: 7,           // Manhattan, tính từ necromancer lúc đầu lượt âm binh
+  raiseRadius: 12,          // Manhattan, tính từ necromancer: trong vùng này mộ dậy nhanh (raiseDelay)
   raiseDelay: 2,            // mộ đào ở lượt T thì trỗi dậy sớm nhất đầu lượt âm binh của lượt T + 2
+  raiseDelayFar: 4,         // ngoài vùng ếm của necromancer: cả bản đồ bị ếm, mộ chậm hơn (T + 4)
   raiseStrength: 0.5,       // phần quân số khi trỗi dậy (của maxStrength)
 };
 export const FORMATION_MAX = 3;

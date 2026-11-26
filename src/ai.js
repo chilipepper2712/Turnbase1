@@ -200,10 +200,10 @@ function unitOptions(s, u, level, ctx) {
     }
   }
   if (level === 'tactical' && s.graves && s.graves.length && u.faction !== 'undead' && !u.static && u.role !== 'goblin' && !u.afloat) {
-    // an táng tử sĩ: chặn necromancer triệu hồi xác đồng đội thành âm binh. Chỉ đáng khi necromancer với tới mộ.
+    // an táng tử sĩ: chặn xác đồng đội trỗi dậy thành âm binh (necromancer còn sống thì cả bản đồ bị ếm).
     const necros = s.units.filter((n) => n.role === 'necromancer');
-    const reachN = (g) => necros.some((n) => Math.abs(n.x - g.x) + Math.abs(n.y - g.y) <= UNDEAD.raiseRadius + statsOf(n).move);
-    const live = s.graves.filter(reachN);
+    // cả bản đồ bị ếm: mộ nào cũng sẽ dậy, mộ sắp dậy đáng chôn trước
+    const live = necros.length ? s.graves : [];
     if (live.length) {
       for (const node of reach.tiles.values()) {
         let best = 0;

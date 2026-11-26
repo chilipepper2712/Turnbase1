@@ -697,8 +697,9 @@ function digGrave(s, u, events) {
   events.push({ type: 'grave', ...g });
 }
 
-// Số lượt còn lại trước khi mộ trỗi dậy được (0 = đầu lượt âm binh tới là dậy, nếu trong tầm necromancer)
-export const graveWait = (s, g) => Math.max(0, g.turn + UNDEAD.raiseDelay - s.turn);
+// Số lượt còn lại trước khi mộ trỗi dậy (0 = đầu lượt âm binh tới là dậy). Cả bản đồ bị ếm khi necromancer
+// còn sống; trong vùng ếm của nó thì nhanh (raiseDelay), ngoài vùng thì chậm (raiseDelayFar). Tính theo vị trí hiện tại.
+export const graveWait = (s, g) => Math.max(0, g.turn + (graveInRange(s, g) ? UNDEAD.raiseDelay : UNDEAD.raiseDelayFar) - s.turn);
 // Mộ đang nằm trong tầm triệu hồi của necromancer nào đó
 export function graveInRange(s, g) {
   return s.units.some((n) => n.role === 'necromancer' && dist(n, g) <= UNDEAD.raiseRadius);
@@ -710,7 +711,7 @@ function raiseGraves(s, f, events) {
   if (!necros.length || !(s.graves || []).length) return;
   const keep = [];
   for (const g of s.graves) {
-    const ready = graveWait(s, g) === 0 && necros.some((n) => dist(n, g) <= UNDEAD.raiseRadius) && !unitAt(s, g.x, g.y);
+    const ready = graveWait(s, g) === 0 && !unitAt(s, g.x, g.y);
     if (!ready) { keep.push(g); continue; }
     const u = addUnit(s, f, g.role, g.x, g.y, Math.max(1, Math.round(CONFIG.maxStrength * UNDEAD.raiseStrength)));
     u.origin = g.faction;

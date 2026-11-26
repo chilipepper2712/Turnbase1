@@ -765,31 +765,35 @@ test('mộ tử sĩ: quân phe sống chết thì để lại mộ; âm binh ch�
   assert.equal((o.graves || []).length, 0, 'không có âm binh thì không có mộ');
 });
 
-test('mộ tử sĩ: đủ 2 lượt, trong bán kính 7 của necromancer, ô trống thì trỗi dậy thành âm binh 50% quân', () => {
+test('mộ tử sĩ: trong vùng ếm của necromancer dậy sau raiseDelay lượt, ngoài vùng sau raiseDelayFar lượt, ô trống mới dậy', () => {
   const s = graveMap();
+  const R = UNDEAD.raiseRadius, yIn = 1 + R, yOut = 2 + R;
   addUnit(s, 'undead', 'necromancer', 6, 1);
   addUnit(s, 'human', 'militia', 0, 15);                     // còn quân người để ván chưa kết thúc
-  s.graves.push({ x: 6, y: 8, faction: 'human', role: 'cavalry', turn: 1 });                  // cách necromancer 7 ô
-  s.graves.push({ x: 6, y: 9, faction: 'human', role: 'infantry', turn: 1 });                 // 8 ô: ngoài tầm
-  s.graves.push({ x: 3, y: 4, faction: 'human', role: 'archer', turn: 1 });                   // trong tầm nhưng bị chặn
+  s.graves.push({ x: 6, y: yIn, faction: 'human', role: 'cavalry', turn: 1 });                // đúng mép vùng ếm
+  s.graves.push({ x: 6, y: yOut, faction: 'human', role: 'infantry', turn: 1 });              // ngoài vùng: chậm hơn
+  s.graves.push({ x: 3, y: 4, faction: 'human', role: 'archer', turn: 1 });                   // trong vùng nhưng bị chặn
   const blocker = addUnit(s, 'undead', 'militia', 3, 4); blocker.origin = 'orc';
   toUndeadTurn(s, 2);
-  assert.equal(s.units.filter((u) => u.x === 6 && u.y === 8).length, 0, 'chưa đủ 2 lượt thì chưa dậy');
-  assert.equal(graveWait(s, graveAt(s, 6, 8)), 1);
+  assert.equal(s.units.filter((u) => u.x === 6 && u.y === yIn).length, 0, 'chưa đủ lượt thì chưa dậy');
+  assert.equal(graveWait(s, graveAt(s, 6, yIn)), UNDEAD.raiseDelay - 1);
+  assert.equal(graveWait(s, graveAt(s, 6, yOut)), UNDEAD.raiseDelayFar - 1);
   endTurn(s); const ev = endTurn(s);                         // sang đầu lượt âm binh của lượt 3
   assert.equal(s.current, 'undead'); assert.equal(s.turn, 3);
-  const r = s.units.find((u) => u.x === 6 && u.y === 8);
+  const r = s.units.find((u) => u.x === 6 && u.y === yIn);
   assert.ok(r, 'trỗi dậy');
   assert.equal(r.faction, 'undead'); assert.equal(r.role, 'cavalry'); assert.equal(r.origin, 'human');
   assert.equal(r.strength, Math.round(CONFIG.maxStrength * UNDEAD.raiseStrength));
   assert.ok(ev.some((e) => e.type === 'rise' && e.unit === r.id));
   assert.ok(!r.acted && !r.moved, 'trỗi dậy đầu lượt thì hành động được ngay');
-  assert.ok(!graveAt(s, 6, 8), 'mộ đã dậy thì mất');
-  assert.ok(graveAt(s, 6, 9), 'ngoài tầm: mộ còn đó, chờ necromancer tới');
+  assert.ok(!graveAt(s, 6, yIn), 'mộ đã dậy thì mất');
+  assert.ok(graveAt(s, 6, yOut), 'ngoài vùng ếm: chưa tới lượt');
   assert.ok(graveAt(s, 3, 4), 'ô có quân đứng: chưa dậy');
   blocker.x = 0; blocker.y = 0;
   endTurn(s); endTurn(s);
   assert.ok(s.units.some((u) => u.x === 3 && u.y === 4 && u.faction === 'undead' && u.role === 'archer'), 'ô trống lại thì dậy');
+  while (s.turn < 1 + UNDEAD.raiseDelayFar) { endTurn(s); endTurn(s); }
+  assert.ok(s.units.some((u) => u.x === 6 && u.y === yOut && u.faction === 'undead'), 'ngoài vùng ếm vẫn dậy, chậm hơn');
 });
 
 test('mộ tử sĩ: an táng mất lượt của squad, được làm sau khi đi, chặn trỗi dậy; âm binh không an táng', () => {

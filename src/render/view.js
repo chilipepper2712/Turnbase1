@@ -740,13 +740,13 @@ export class GameView {
     const live = graveInRange(s, g);
     const d = new PIXI.Graphics();
     if (live) d.ellipse(0, 2, 30, 14).fill({ color: 0x8be07a, alpha: 0.3 }).stroke({ width: 2.6, color: 0xc8ffb0, alpha: 0.95 });
-    const px = this.tileStyle === 'pixel' && this.assets.pixelDeco(g.faction === 'orc' ? 'graveo' : 'graveh', Math.floor(hash2(g.x * 7 + 1, g.y * 13 + 5, 3) * 4));
+    const px = this.tileStyle === 'pixel' && this.assets.pixelDeco(g.faction === 'orc' ? 'graveo' : 'graveh', Math.floor(hash2(g.x * 7 + 1, g.y * 13 + 5, 3) * 4), false);   // mộ thấp: không đổ bóng, viền ụ đất hoà vào cỏ
     if (px) {
       // nền pixel: sprite mộ vẽ bằng AI (Seedream) hạ về mật độ pixel của quân
       box.addChild(d);
       const sp = new PIXI.Sprite(px.texture);
       sp.anchor.set(px.anchor[0], px.anchor[1]); sp.scale.set(1 / px.up);
-      sp.position.set(0, 10);
+      sp.position.set(0, 8);
       box.addChild(sp);
     } else d.ellipse(0, 2, 20, 8).fill(0x6b4a2a).stroke({ width: 1.6, color: 0x1b1b1b });          // ụ đất
     if (px) { /* đã có sprite */ } else if (g.faction === 'orc') {
@@ -762,9 +762,10 @@ export class GameView {
       d.moveTo(-4.5, -21).lineTo(4.5, -21).moveTo(-4.5, -16).lineTo(4.5, -16).stroke({ width: 1.4, color: 0x4a4f55 });
     }
     if (!px) box.addChild(d);
-    if (live) {
+    if (s.units.some((n) => n.role === 'necromancer')) {
+      // đếm lùi tới lúc thành thây ma: trong vùng ếm chữ xanh ma trơi, ngoài vùng chữ xám (chậm hơn)
       const n = graveWait(s, g);
-      const tx = new PIXI.Text({ text: n > 0 ? String(n) : '!', style: { fontFamily: FONT, fontSize: 15, fill: 0xd8ffcf, fontWeight: 'bold', stroke: { color: 0x1b1b1b, width: 4 } } });
+      const tx = new PIXI.Text({ text: n > 0 ? String(n) : '!', style: { fontFamily: FONT, fontSize: 15, fill: live ? 0xd8ffcf : 0xd0d0c8, fontWeight: 'bold', stroke: { color: 0x1b1b1b, width: 4 } } });
       tx.anchor.set(0.5, 1); tx.position.set(14, -24);
       box.addChild(tx);
     }
