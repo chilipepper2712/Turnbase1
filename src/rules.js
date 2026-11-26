@@ -1,9 +1,10 @@
 // Luật chơi thuần logic (không đụng DOM/Pixi). Mọi hàm đổi state đều trả về mảng sự kiện
 // để lớp hiển thị diễn lại bằng animation.
 import {
-  CONFIG, TERRAIN, FACTIONS, FORMATION_MAX, STATS, MATCHUP, ROSTER, FORTIFY, LEVEL, MORALE, GOBLIN, UNDEAD, MARINE,
+  CONFIG, TERRAIN, FACTIONS, FORMATION_MAX, STATS, MATCHUP, ROSTER, FORTIFY, LEVEL, MORALE, GOBLIN, UNDEAD, MARINE, FIRE,
 } from './config.js';
 import { stepWeather } from './weather.js';
+import { stepFire, startFire, fireAt, rainingAt } from './fire.js';
 
 export const key = (x, y) => x + ',' + y;
 export const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
@@ -16,7 +17,7 @@ export const foeOf = (s, f) => (s.sides[0] === f ? s.sides[1] : s.sides[0]);
 export function createState(map) {
   const sides = ['human', Object.keys(map.spawns).find((f) => f !== 'human') || 'orc'];
   const state = {
-    map, sides, units: [], boats: [], graves: [], current: 'human', turn: 1, nextId: 1,
+    map, sides, units: [], boats: [], graves: [], fires: [], current: 'human', turn: 1, nextId: 1,
     capture: { human: 0, orc: 0 }, winner: null, winReason: null,
     mission: { type: 'skirmish' },
   };
@@ -115,6 +116,7 @@ export function cloneState(s) {
     capture: { ...s.capture },
     boats: (s.boats || []).map((b) => ({ ...b })),
     graves: (s.graves || []).map((g) => ({ ...g })),
+    fires: (s.fires || []).map((f) => ({ ...f })),
     weather: s.weather && { ...s.weather, clouds: s.weather.clouds.map((c) => ({ ...c })), wet: s.weather.wet.map((p) => ({ ...p })) },
     mission: { ...s.mission, waves: s.mission.waves && s.mission.waves.map((w) => ({ ...w, spot: w.spot && { ...w.spot } })) },
   };
@@ -179,6 +181,7 @@ export function moveCostFor(tid, faction, role) {
 
 // Chi phí vào một ô cho một unit
 export function moveCost(s, u, x, y) {
+  if (s.fires && s.fires.length && fireAt(s, x, y)) return Infinity;        // ô đang cháy: không ai bước vào
   if (u.role === 'marine') {
     if (u.afloat) {
       if (isWater(s, x, y)) return boatAt(s, x, y) ? Infinity : 1;          // đi trên sông hồ như bộ binh trên cạn; cầu chặn
@@ -598,6 +601,44 @@ export function chopTree(s, u) {
   return [{ type: 'chop', unit: u.id, x: p.x, y: p.y }, { type: 'terrain', x: p.x, y: p.y, to: 'plain' }];
 }
 
+// ---------- Hỏa công ----------
+// Lửa táp một squad: mất quân (và sĩ khí), quân ẩn bị lộ, có thể tháo chạy hoặc chết
+function burnUnit(s, u, events) {
+  if (u.static) return;
+  if (u.hidden) { u.hidden = false; events.push({ type: 'reveal', unit: u.id, x: u.x, y: u.y }); }
+  damageUnit(s, u, FIRE.damage, events);
+  events[events.length - 1].fire = true;
+  if (!removeIfDead(s, u, events)) checkRout(u, events);
+}
+
+// Ô rừng cung thủ đốt được từ chỗ đang đứng: trong tầm bắn (kể cả ô kề), chưa cháy, không đang mưa
+export function igniteTiles(s, u, fx = u.x, fy = u.y) {
+  if (u.faction !== 'human' || u.role !== 'archer' || u.acted || u.status !== 'ok' || u.afloat) return [];
+  const mx = rangeAt(s, u, fx, fy)[1], out = [];
+  for (let y = fy - mx; y <= fy + mx; y++) for (let x = fx - mx; x <= fx + mx; x++) {
+    const d = Math.abs(x - fx) + Math.abs(y - fy);
+    if (d < 1 || d > mx || !inBounds(s, x, y) || terrainId(s, x, y) !== 'forest') continue;
+    if (fireAt(s, x, y) || rainingAt(s, x, y)) continue;
+    out.push({ x, y });
+  }
+  return out;
+}
+export const canIgnite = (s, u) => igniteTiles(s, u).length > 0;
+
+// Bắn tên lửa vào ô rừng: ô bén lửa ngay, quân trong đó mất quân. Hết lượt của cung thủ.
+export function igniteForest(s, u, x, y) {
+  if (!igniteTiles(s, u).some((p) => p.x === x && p.y === y)) return null;
+  const events = [{ type: 'ignite', unit: u.id, x, y }];
+  if (u.hidden) { u.hidden = false; events.push({ type: 'reveal', unit: u.id, x: u.x, y: u.y }); }
+  startFire(s, x, y);
+  events.push({ type: 'fire', x, y });
+  u.acted = true; u.moved = true;
+  const v = unitAt(s, x, y);
+  if (v) burnUnit(s, v, events);
+  checkVictory(s);
+  return events;
+}
+
 // Đóng thuyền, hạ thủy (1 lượt): có gỗ, đứng sát ô nước trống; xuống thuyền luôn ở ô nước đó
 export function canLaunch(s, u) {
   return u.role === 'marine' && !u.afloat && !!u.timber && readyToAct(u) && freeWaterNear(s, u).length > 0;
@@ -889,12 +930,22 @@ export function endTurn(s) {
     g.hidden = true;
     events.push({ type: 'hide', unit: g.id });
   }
+  // quân còn đứng trong ô cháy cuối lượt của mình: mất quân
+  if (s.fires && s.fires.length) {
+    for (const u of alliesOf(s, s.current).filter((q) => fireAt(s, q.x, q.y))) burnUnit(s, u, events);
+  }
+  if (s.winner) return events;
   const next = foeOf(s, s.current);
   s.current = next;
   if (next === 'human') s.turn++;
   events.push({ type: 'turn', faction: next, turn: s.turn });
   // thời tiết: gió, mây trôi, mưa, đầm lầy tạm thời
   for (const e of stepWeather(s)) events.push(e);
+  // lửa rừng: mưa dập, lan theo gió, tàn thành rừng cháy
+  const fr = stepFire(s);
+  for (const e of fr.events) events.push(e);
+  for (const p of fr.ignited) { const v = unitAt(s, p.x, p.y); if (v) burnUnit(s, v, events); }
+  if (s.winner) return events;
   // đợt tiếp viện: xuất hiện đầu lượt của phe được tiếp viện, quanh thành nhà
   for (const w of s.mission.waves || []) {
     if (w.done || w.faction !== next || s.turn < w.at) continue;

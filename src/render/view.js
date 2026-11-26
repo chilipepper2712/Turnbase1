@@ -124,7 +124,106 @@ export class GameView {
     this.decoAt = new Map();
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) this.placeDecoAt(x, y);
     this.drawGoal();
+    this.fireFx = new Map();
+    this.syncFires(false);
     this.startAmbient();
+  }
+
+  // ---------- Lửa rừng ----------
+  // Nền pixel: thay cây của ô bằng sprite cây đang cháy (4 khung, chạy vòng). Nền giấy: giữ cây, vẽ ngọn lửa nét mực lên trên.
+  hasFire() { return !!this.fireFx && this.fireFx.size > 0; }
+
+  makeFire(x, y) {
+    const c = tileToWorld(x, y), k = y * this.state.map.w + x;
+    const fx = { x, y, k, deco: this.decoAt.get(k) || [], root: new PIXI.Container() };
+    const pixel = this.tileStyle === 'pixel' && this.assets.pixelDeco('fire', 0);
+    if (pixel) {
+      for (const sp of fx.deco) sp.visible = false;           // cây thường được thay bằng cây đang cháy
+      fx.frames = [0, 1, 2, 3].map((i) => this.assets.pixelDeco('fire', i));
+      fx.sprite = new PIXI.Sprite(fx.frames[0].texture);
+      fx.sprite.anchor.set(fx.frames[0].anchor[0], fx.frames[0].anchor[1]);
+      fx.sprite.scale.set(1 / fx.frames[0].up);
+      fx.root.addChild(fx.sprite);
+      fx.root.position.set(c.x, c.y + 8);
+    } else {
+      fx.g = new PIXI.Graphics();
+      fx.root.addChild(fx.g);
+      fx.root.position.set(c.x, c.y + 10);
+      fx.root.scale.set(1.35);
+      for (const sp of fx.deco) sp.tint = 0x8a6a58;          // cây bén lửa sạm lại
+    }
+    fx.root.zIndex = c.y + (fx.sprite ? 9 : 24);           // lửa vẽ tay nằm trước cây trong ô
+    fx.seed = (x * 73856093) ^ (y * 19349663);
+    this.objects.addChild(fx.root);
+    return fx;
+  }
+
+  dropFire(fx) {
+    for (const sp of fx.deco) if (!sp.destroyed) { sp.visible = true; sp.tint = 0xffffff; }
+    fx.root.destroy({ children: true });
+  }
+
+  // khớp hiệu ứng lửa với s.fires; fade = cho hiện / tắt dần
+  async syncFires(fade = true) {
+    const fires = this.state.fires || [], W = this.state.map.w;
+    const want = new Set(fires.map((f) => f.y * W + f.x));
+    const born = [], gone = [];
+    for (const f of fires) {
+      const k = f.y * W + f.x;
+      if (!this.fireFx.has(k)) { const fx = this.makeFire(f.x, f.y); this.fireFx.set(k, fx); born.push(fx); }
+    }
+    for (const [k, fx] of this.fireFx) if (!want.has(k)) { gone.push(fx); this.fireFx.delete(k); }
+    this.updateFires();
+    if (fade && (born.length || gone.length)) {
+      for (const fx of born) fx.root.alpha = 0;
+      await this.tween(450, (e) => { for (const fx of born) fx.root.alpha = e; for (const fx of gone) fx.root.alpha = 1 - e; this.updateFires(); });
+    }
+    for (const fx of gone) this.dropFire(fx);
+    this.startAmbient();
+    this.requestRender();
+  }
+
+  updateFires() {
+    if (!this.hasFire()) return;
+    const t = performance.now();
+    for (const fx of this.fireFx.values()) {
+      if (fx.sprite) {
+        const fr = fx.frames[(Math.floor(t / 140) + (fx.seed & 3)) % 4];
+        if (fx.sprite.texture !== fr.texture) fx.sprite.texture = fr.texture;
+        continue;
+      }
+      // ngọn lửa vẽ tay: 3 lưỡi lửa giọt nước, cao thấp theo thời gian
+      const g = fx.g.clear();
+      const rng = makeRng(fx.seed + Math.floor(t / 120));
+      for (const [ox, oy, sz] of [[-14, -2, 1], [10, 2, 0.85], [-2, 6, 1.15]]) {
+        const h = (26 + rng() * 12) * sz, wd = 9 * sz, x = ox + (rng() - 0.5) * 3, y = oy;
+        const lean = (rng() - 0.5) * 6;
+        const flame = (hh, ww) => [x - ww, y, x - ww * 0.7, y - hh * 0.45, x + lean, y - hh, x + ww * 0.7, y - hh * 0.45, x + ww, y, x, y + ww * 0.35];
+        g.poly(flame(h, wd), true).fill({ color: 0xf07a22 }).stroke({ width: 1.8, color: 0x1b1b1b, join: 'round' });
+        g.poly(flame(h * 0.55, wd * 0.5), true).fill({ color: 0xffd23c });
+      }
+      g.circle(-6 + rng() * 12, -40 - rng() * 14, 5 + rng() * 4).fill({ color: 0x6a6a6a, alpha: 0.35 });
+    }
+  }
+
+  // cung thủ bắn tên lửa vào ô rừng
+  async fireArrow(aId, x, y) {
+    const a = this.sprites.get(aId);
+    if (!a) return;
+    const c = tileToWorld(x, y);
+    this.face(a, c.x - a.root.x);
+    const g = new PIXI.Graphics();
+    this.fx.addChild(g);
+    const ax = a.root.x, ay = a.root.y - 34, bx = c.x, by = c.y - 14;
+    const arc = Math.hypot(bx - ax, by - ay) * 0.25;
+    await this.tween(380, (k) => {
+      const px = ax + (bx - ax) * k, py = ay + (by - ay) * k - Math.sin(k * Math.PI) * arc;
+      const k2 = Math.max(0, k - 0.06);
+      const x0 = ax + (bx - ax) * k2, y0 = ay + (by - ay) * k2 - Math.sin(k2 * Math.PI) * arc;
+      g.clear().moveTo(x0, y0).lineTo(px, py).stroke({ width: 3, color: 0x1b1b1b, cap: 'round' });
+      g.circle(px, py, 4).fill({ color: 0xffa030 }).circle(px, py, 2).fill({ color: 0xfff0a0 });
+    });
+    g.destroy();
   }
 
   // Ô đích của nhiệm vụ hộ tống: ô vàng nhạt + cờ cắm giữa ô
@@ -289,6 +388,21 @@ export class GameView {
           this.place(this.mk(A.deco('tree', rng.int(4)), 0.78 + rng() * 0.2), px, py + 8);
         }
       }
+    } else if (t === 'burnt') {
+      // rừng cháy (nền giấy): cây cụt tô than, nhỏ và thấp
+      const n = 1 + rng.int(2);
+      for (let i = 0; i < n; i++) {
+        const [px, py] = uv((rng() - 0.5) * 0.5, (rng() - 0.5) * 0.5);
+        // thân cây cụt cháy đen: nét mực đậm, vài cành gãy
+        const g = new PIXI.Graphics(), hgt = 22 + rng() * 14;
+        g.poly([-3, 0, -2, -hgt, 0, -hgt - 4, 2, -hgt + 2, 3, 0], true).fill(0x3a3734).stroke({ width: 1.8, color: 0x1b1b1b, join: 'round' });
+        for (let b = 0; b < 2; b++) {
+          const yb = -hgt * (0.45 + b * 0.25), dir = b % 2 ? 1 : -1;
+          g.moveTo(0, yb).lineTo(dir * (6 + rng() * 4), yb - 5 - rng() * 3).stroke({ width: 1.8, color: 0x1b1b1b, cap: 'round' });
+        }
+        g.ellipse(0, 1, 9, 3).fill({ color: 0x2a2826, alpha: 0.25 });
+        this.place(g, px, py + 7);
+      }
     } else if (t === 'hill') {
       // đúng một nấm đồi nằm gọn giữa ô
       this.place(this.mk(A.deco('hill', rng.int(3)), 0.72), c.x, c.y + 12, c.y + 2, { x, y });
@@ -380,6 +494,12 @@ export class GameView {
       case 'field':
         if (rng() < 0.15) mk('tuft', 0.667, 0.8);
         return true;
+      case 'burnt': {
+        const n = 1 + (rng() < 0.6 ? 1 : 0);
+        for (let i = 0; i < n; i++) mk('burnt', 1, 0.6);
+        if (rng() < 0.4) mk('tuft', 0.667, 0.8);
+        return true;
+      }
       case 'forest': {
         const n = 1 + (rng() < 0.67 ? 1 : 0);
         for (let i = 0; i < n; i++) mk('pine', 1, 0.6);
@@ -694,6 +814,7 @@ export class GameView {
     paint(o.raise, 0x8a5ad0, 0.3);                           // vùng triệu hồi của necromancer (màu phe âm binh)
     paint(o.move, 0xf2c200, 0.38);
     paint(o.split, 0x3a78d8, 0.38);
+    paint(o.ignite, 0xf07a22, 0.45);                         // ô rừng cung thủ đốt được
     paint(o.merge, 0x3aa86a, 0.42);
     paint(o.attack, 0xd8402f, 0.42);
     for (const p of o.range || []) {
@@ -732,7 +853,7 @@ export class GameView {
 
   startAmbient() {
     clearTimeout(this._ambT);
-    const any = () => this.idleOn || this.cloudsOn || this.hasWater() || this.hasRain();
+    const any = () => this.idleOn || this.cloudsOn || this.hasWater() || this.hasRain() || this.hasFire();
     if (!any()) return;
     const tick = () => {
       if (!any()) return;
@@ -742,6 +863,7 @@ export class GameView {
         if (this.cloudsOn) { this.updateClouds(); dirty = true; }
         if (this.hasWater() && this.updateWater()) dirty = true;
         if (this.hasRain()) { this.placeStorm(); dirty = true; }
+        if (this.hasFire()) { this.updateFires(); dirty = true; }
         if (dirty) this.app.render();
       }
       this._ambT = setTimeout(tick, 100);
@@ -991,6 +1113,7 @@ export class GameView {
     for (const tw of done) { this.tweens.splice(this.tweens.indexOf(tw), 1); tw.resolve(); }
     if (this.cloudsOn) this.updateClouds();
     if (this.hasWater()) this.updateWater();
+    if (this.hasFire()) this.updateFires();
     this.app.render();
     if (this.tweens.length) this.requestRender();
   }
@@ -1242,6 +1365,7 @@ export class GameView {
       case 'rout': this.snd('rout'); break;
       case 'escape': this.snd('rout'); break;
       case 'reveal': if (ev.ambush) this.snd('rout'); break;
+      case 'ignite': this.snd('bow_shoot'); break;
       case 'heal': case 'bury': this.snd('heal'); break;
       case 'rise': this.snd('rout'); break;
       case 'merge': this.snd('merge'); break;
@@ -1261,7 +1385,9 @@ export class GameView {
         case 'turn': break;
         case 'clouds': await this.moveStorm(ev); break;
         case 'rain': case 'rainstop': this.syncRain(); break;
-        case 'terrain': await this.retile(ev.changes || [{ x: ev.x, y: ev.y }]); break;   // mưa, khô, chặt cây, cháy rừng
+        case 'terrain': await this.retile(ev.changes || [{ x: ev.x, y: ev.y }]); break;
+        case 'ignite': await this.fireArrow(ev.unit, ev.x, ev.y); break;
+        case 'fire': case 'fireout': await this.syncFires(); break;   // mưa, khô, chặt cây, cháy rừng
         case 'move': {
           const us = this.sprites.get(ev.unit);
           if (!us) break;

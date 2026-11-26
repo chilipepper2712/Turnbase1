@@ -1,13 +1,16 @@
 // AI hai mức. planNextAction trả về MỘT hành động cho lượt hiện tại (hoặc null khi xong),
 // để lớp hiển thị chạy animation giữa các hành động.
 //   action = { unit, to:{x,y}, target?:unit, merge?:unit }
-import { CONFIG, UNIT_VALUE, FACTIONS, UNDEAD } from './config.js';
+import { CONFIG, UNIT_VALUE, FACTIONS, UNDEAD, FIRE } from './config.js';
+import { fireAt } from './fire.js';
 import {
   key, dist, reachable, targetsFrom, previewAttack, calcDamage, defensePct, statsOf,
   enemiesOf, alliesOf, moveCost, inBounds, DIRS, unitAt, terrainAt,
   canFortify, fortifyBonus, terrainDefense, canCapture, moraleState, terrainId, foeOf,
-  graveAt, graveWait,
+  graveAt, graveWait, igniteTiles,
 } from './rules.js';
+// hỏa công: coi như gây ~1.5 quân (1 ngay + có thể 1 nữa) và tước chỗ thủ rừng của địch
+const FIRE_AI_DMG = 1.5, FIRE_AI_DENY = 4;
 
 // ----- trường khoảng cách tới mục tiêu (Dijkstra nhiều nguồn) -----
 function goalField(s, u) {
@@ -88,6 +91,8 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
   let score = 0;
   const x = node.x, y = node.y;
   let killed = false;
+  // đứng lại trong ô đang cháy: mất quân cuối lượt, ở lại thì mất tiếp
+  if (s.fires && s.fires.length && fireAt(s, x, y)) score -= (FIRE.damage / CONFIG.maxStrength) * UNIT_VALUE[u.role] * 10 * 2 + 1;
   // sĩ khí đổi hành vi của AI: hăng hái thì xông lên, dao động thì dè chừng (người chơi chỉ bị đổi chỉ số)
   const ms = moraleState(u);
   let advMul = ms === 'eager' ? 1.1 : ms === 'wavering' ? 0.8 : 1;
@@ -202,6 +207,21 @@ function unitOptions(s, u, level, ctx) {
         const base = scoreOption(s, u, node, null, w, field, ctx.ownHold, ctx.enemyHold, ctx.danger, ctx);
         out.push({ unit: u, to: { x: node.x, y: node.y }, bury: true, score: base + best });
       }
+    }
+  }
+  if (level === 'tactical' && u.faction === 'human' && u.role === 'archer' && u.status === 'ok' && !u.acted) {
+    // hỏa công: đốt ô rừng có địch đứng (mất quân ngay, đứng lại mất tiếp, mất chỗ ẩn nấp). Không đốt ô có quân mình.
+    for (const node of reach.tiles.values()) {
+      let best = 0, tile = null;
+      for (const p of igniteTiles(s, u, node.x, node.y)) {
+        const v = unitAt(s, p.x, p.y);
+        if (!v || v.faction === u.faction || v.static || v.hidden) continue;
+        const val = (FIRE_AI_DMG / CONFIG.maxStrength) * UNIT_VALUE[v.role] * 10 * w.dmg + (terrainDefense(s, v.faction, p.x, p.y) / 100) * FIRE_AI_DENY;
+        if (val > best) { best = val; tile = p; }
+      }
+      if (!tile) continue;
+      const base = scoreOption(s, u, node, null, w, field, ctx.ownHold, ctx.enemyHold, ctx.danger, ctx);
+      out.push({ unit: u, to: { x: node.x, y: node.y }, ignite: tile, score: base + best + 1 });
     }
   }
   if (level === 'tactical') {

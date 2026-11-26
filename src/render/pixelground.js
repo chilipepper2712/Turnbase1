@@ -8,7 +8,7 @@ const H = (a, b, c = 0) => hash2(0x51f15e + c * 977, a, b);
 
 export const PIXEL_GROUND = {
   plain: [121, 170, 84], field: [158, 176, 86], forest: [84, 136, 66], hill: [140, 168, 88],
-  mountain: [140, 128, 112], peak: [124, 118, 114], swamp: [96, 112, 70],
+  mountain: [140, 128, 112], peak: [124, 118, 114], swamp: [96, 112, 70], burnt: [92, 88, 70],
   river: [86, 140, 176], bridge: [86, 140, 176],
   village: [176, 160, 120], mine: [140, 128, 112], fort: [150, 142, 124], stronghold: [150, 140, 120],
 };
@@ -68,6 +68,10 @@ export function paintPixelGround(ctx, o) {
           // luống cày chạy dọc trục x của ô
           const s = ((fy + 0.5) * 7) % 1;
           if (s < 0.28) col = [col[0] - 26, col[1] - 20, col[2] - 12];
+        } else if (terr === 'burnt') {
+          // rừng cháy: đất tro loang lổ, vài đốm than đen và mầm cỏ mới
+          const n = H(Math.floor(gx / 2), Math.floor(gy / 2), 8);
+          if (n < 0.18) col = [58, 54, 48]; else if (n > 0.9) col = [116, 150, 78];
         } else if (terr === 'swamp') {
           swamp = true;     // vẽ từng điểm 1px bên dưới
         } else if (isWater(terr)) {

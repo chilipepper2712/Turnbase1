@@ -22,6 +22,7 @@ export function snapshot(state, meta = {}) {
       turn: state.turn, current: state.current, nextId: state.nextId, capture: state.capture,
       mission: state.mission, units: state.units, escaped: state.escaped || [], sides: state.sides, boats: state.boats || [], graves: state.graves || [],
       weather: state.weather || null,
+      fires: state.fires || [],
     }),
   };
 }
@@ -65,6 +66,8 @@ export function restoreState(snap) {
   // mộ tử sĩ (bản lưu cũ không có): chỉ nhận mộ hợp lệ
   st.graves = (Array.isArray(s.graves) ? s.graves : []).filter((g) => g && isNum(g.x) && isNum(g.y) && isNum(g.turn)
     && g.x >= 0 && g.y >= 0 && g.x < map.w && g.y < map.h && ['human', 'orc'].includes(g.faction) && ['militia', 'infantry', 'archer', 'cavalry'].includes(g.role));
+  st.fires = (Array.isArray(s.fires) ? s.fires : []).filter((f) => f && isNum(f.x) && isNum(f.y) && isNum(f.until)
+    && f.x >= 0 && f.y >= 0 && f.x < map.w && f.y < map.h && map.tiles[f.y * map.w + f.x] === 'forest');
   // thời tiết (bản lưu cũ không có thì trận đó trời quang)
   const W = s.weather;
   if (W && Number.isInteger(W.wind) && Array.isArray(W.clouds) && Array.isArray(W.wet)) {

@@ -170,7 +170,7 @@ export function drawMine(seed, S = 2) {
 // ---------- Nền ô (bake vào chunk) ----------
 export const GROUND = {
   plain: '#f5f4ee', field: '#f1f0e6', forest: '#efeee7', hill: '#f0efe8', mountain: '#ecebe4',
-  peak: '#ecebe4', swamp: '#e2e7dc', river: '#dfe2e3', bridge: '#dfe2e3', village: '#f2f0e6', mine: '#efeee7', fort: '#f1f0e8', stronghold: '#eeeadf',
+  peak: '#ecebe4', swamp: '#e2e7dc', burnt: '#dedad1', river: '#dfe2e3', bridge: '#dfe2e3', village: '#f2f0e6', mine: '#efeee7', fort: '#f1f0e8', stronghold: '#eeeadf',
 };
 
 function diamond(ctx, cx, cy, TW, TH) {
@@ -221,6 +221,15 @@ export function drawGroundTile(ctx, cx, cy, tid, ctxInfo) {
       const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 - 3];
       inkLine(ctx, [a, m, b], { rng, width: 1.2, color: '#7b8083', amp: 0.3, step: 5 });
     }
+  } else if (tid === 'burnt') {
+    // rừng cháy: vệt tro chì than lem nhem + gốc cây cụt
+    ctx.save(); diamond(ctx, cx, cy, TW * 0.9, TH * 0.9); ctx.clip();
+    for (let i = 0; i < 14; i++) {
+      const px = cx + (rng() - 0.5) * TW * 0.7, py = cy + (rng() - 0.5) * TH * 0.7;
+      ctx.fillStyle = `rgba(40,38,34,${0.12 + rng() * 0.2})`;
+      ctx.beginPath(); ctx.ellipse(px, py, 4 + rng() * 6, 2 + rng() * 3, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
   } else if (tid === 'swamp') {
     // đầm lầy: gợn nước ngắn + bụi lau
     for (let i = 0; i < 4; i++) {

@@ -5,7 +5,7 @@ import {
   createState, reachable, targetsFrom, previewAttack, moveUnit, attackUnit, waitUnit, mergeUnits,
   splitUnit, splitTiles, canSplit, endTurn, unitAt, key, pathTo, defensePct, statsOf, terrainId,
   alliesOf, rangeAt, inEnemyZoc, terrainFacts, tilesInRange, threatTiles, moveCostFor, canFortify, fortifyUnit, fortifyBonus, levelOf, nextLevelXp, fleePlan, moraleState,
-  canChop, chopTree, canLaunch, launchBoat, canBury, buryGrave, graveAt, graveWait, graveInRange, dist,
+  canChop, chopTree, canLaunch, launchBoat, canBury, buryGrave, canIgnite, igniteTiles, igniteForest, graveAt, graveWait, graveInRange, dist,
 } from './rules.js';
 import { planNextAction } from './ai.js';
 import { executeAction } from './actions.js';
@@ -83,7 +83,7 @@ export class Game {
     this.lessonIndex = i;
     this.seed = 0;
     this.busy = false; this.confirmEnd = false; this.moveTarget = null;
-    this.sel = null; this.pending = null; this.origin = null; this.splitting = false; this.mode = 'idle';
+    this.sel = null; this.pending = null; this.origin = null; this.splitting = false; this.igniting = false; this.mode = 'idle';
     this.view.speed = this.speed;
     this.view.reset(tut.state);
     this.tutorial = tut;
@@ -268,7 +268,7 @@ export class Game {
     this.snd('ui_cancel');
     if (this.moveTarget) { this.moveTarget = null; this.refreshOverlay(); return; }
     if (this.pending) { this.pending = null; this.hidePreview(); this.refreshOverlay(); return; }
-    if (this.splitting) { this.splitting = false; this.select(this.sel); return; }
+    if (this.splitting || this.igniting) { this.splitting = false; this.igniting = false; this.select(this.sel); return; }
     this.deselect();
   }
 
@@ -276,7 +276,7 @@ export class Game {
     const s = this.state;
     if (u.faction === s.current && this.tutBlock('select', u)) return;
     this.snd('ui_select');
-    this.sel = u; this.pending = null; this.splitting = false;
+    this.sel = u; this.pending = null; this.splitting = false; this.igniting = false;
     this.clearInfo();
     const own = u.faction === s.current && !u.acted && u.status === 'ok';
     if (!own) {
@@ -326,11 +326,13 @@ export class Game {
       o.selected = { x: u.x, y: u.y };
       if (this.splitting) {
         o.split = splitTiles(s, u);
+      } else if (this.igniting) {
+        o.ignite = igniteTiles(s, u);
       } else if (this.mode === 'selected') {
         o.move = [...this.reach.tiles.values()].filter((n) => !(n.x === u.x && n.y === u.y));
         o.merge = [...this.reach.merges.keys()].map((id) => s.units.find((x) => x.id === id)).filter(Boolean).map((x) => ({ x: x.x, y: x.y }));
       }
-      if (this.attackOpts && !this.splitting) o.attack = [...this.attackOpts.values()].map((a) => ({ x: a.target.x, y: a.target.y }));
+      if (this.attackOpts && !this.splitting && !this.igniting) o.attack = [...this.attackOpts.values()].map((a) => ({ x: a.target.x, y: a.target.y }));
       if (this.pending) {
         const n = this.pending.node;
         if (n.x !== u.x || n.y !== u.y) { o.dest = { x: n.x, y: n.y }; o.path = pathTo(this.reach.tiles.get(key(n.x, n.y))); }
@@ -395,6 +397,10 @@ export class Game {
       if (ok) return this.doSplit(tile);
       return this.cancel();
     }
+    if (this.igniting) {
+      if (igniteTiles(s, sel).some((p) => p.x === tile.x && p.y === tile.y)) return this.doIgnite(tile);
+      return this.cancel();
+    }
 
     if (this.pending) {
       if (u && u.id === this.pending.target.id) return this.confirmAttack();
@@ -425,6 +431,7 @@ export class Game {
     const s = this.state, u = this.sel;
     if (!u || this.busy || s.winner || this.mode === 'view') return false;
     if (this.splitting) return splitTiles(s, u).some((p) => p.x === tile.x && p.y === tile.y);
+    if (this.igniting) return igniteTiles(s, u).some((p) => p.x === tile.x && p.y === tile.y);
     const at = this.seenAt(s, tile.x, tile.y);
     if (at) {
       if (this.attackOpts?.has(at.id)) return true;
@@ -545,6 +552,24 @@ export class Game {
     this.toast(t('ui.toast.pickSplit'));
   }
 
+  // Hỏa công: chọn ô rừng trong tầm để bắn tên lửa
+  startIgnite() {
+    const u = this.sel;
+    if (!u || !canIgnite(this.state, u)) { this.snd('ui_deny'); return; }
+    this.igniting = true;
+    this.pending = null; this.moveTarget = null;
+    this.refreshOverlay(); this.refreshActions(); this.hidePreview();
+    this.toast(t('ui.toast.pickFire'));
+  }
+
+  async doIgnite(tile) {
+    const s = this.state, u = this.sel;
+    this.busy = true; this.igniting = false; this.view.setOverlay({});
+    const ev = igniteForest(s, u, tile.x, tile.y);
+    if (ev) await this.view.playEvents(ev); else this.snd('ui_deny');
+    this.afterAction();
+  }
+
   async doSplit(tile) {
     const s = this.state, u = this.sel;
     this.busy = true; this.view.setOverlay({});
@@ -593,7 +618,7 @@ export class Game {
 
   afterAction() {
     this.busy = false;
-    this.sel = null; this.pending = null; this.attackOpts = null; this.reach = null; this.origin = null; this.splitting = false;
+    this.sel = null; this.pending = null; this.attackOpts = null; this.reach = null; this.origin = null; this.splitting = false; this.igniting = false;
     this.mode = 'idle';
     if (this.state.winner) { this.refreshAll(); return this.gameOver(); }
     this.refreshAll();
@@ -641,11 +666,12 @@ export class Game {
     // ic: tên icon (nút chỉ có icon thì cần aria để đọc được bằng trình đọc màn hình)
     const btn = (act, label, cls = '', ic = '', aria = '') => `<button data-act="${act}" class="${cls}"${aria ? ` aria-label="${esc(aria)}" title="${esc(aria)}"` : ''}>${ic ? icon(ic) : ''}${label ? esc(label) : ''}</button>`;
     let h = '';
-    if (this.splitting) h = btn('cancel', '', 'x', 'x', t('ui.cancel'));
+    if (this.splitting || this.igniting) h = btn('cancel', '', 'x', 'x', t('ui.cancel'));
     else {
       h += btn('wait', t('ui.wait'), this.mode === 'moved' ? 'primary' : '');
       if (canFortify(s, u)) h += btn('fortify', t('ui.fortify'), '', 'tent');
       if (canChop(s, u)) h += btn('chop', t('ui.chop'));
+      if (canIgnite(s, u)) h += btn('fire', t('ui.fire'), '', 'fire');
       if (canLaunch(s, u)) h += btn('launch', t('ui.launch'), 'primary');
       if (canBury(s, u)) h += btn('bury', t('ui.bury'), '', 'grave');
       if (canSplit(s, u)) h += btn('split', t('ui.split'));
@@ -702,7 +728,14 @@ export class Game {
     }
     const waves = (s.mission.waves || []).filter((w) => w.spot && !w.done && w.spot.x === tile.x && w.spot.y === tile.y);
     const wv = waves.map((w) => `<div class="note">${icon('flag')} ${esc(t('mission.flank', { turn: w.at, n: w.n, side: t('faction.name.' + w.faction) }))}</div>`).join('');
-    return `<h3>${esc(t('terrain.' + tid))}</h3><ul class="fx">${L}</ul>${you}${note === nk ? '' : `<div class="note">${esc(note)}</div>`}${wv}${this.wetCard(tile)}${this.graveCard(tile)}`;
+    return `<h3>${esc(t('terrain.' + tid))}</h3><ul class="fx">${L}</ul>${you}${note === nk ? '' : `<div class="note">${esc(note)}</div>`}${wv}${this.wetCard(tile)}${this.fireCard(tile)}${this.graveCard(tile)}`;
+  }
+
+  // Ô rừng đang cháy
+  fireCard(tile) {
+    const f = (this.state.fires || []).find((q) => q.x === tile.x && q.y === tile.y);
+    if (!f) return '';
+    return `<div class="note">${icon('fire')} ${esc(t('fire.burning', { n: Math.max(1, f.until - this.state.turn) }))}</div>`;
   }
 
   // Đầm lầy do mưa: còn bao lâu thì khô lại thành đồng bằng
@@ -849,6 +882,7 @@ export class Game {
     else if (a === 'split') this.startSplit();
     else if (a === 'fortify') this.doFortify();
     else if (a === 'chop') this.doRule(chopTree);
+    else if (a === 'fire') this.startIgnite();
     else if (a === 'launch') this.doRule(launchBoat);
     else if (a === 'bury') this.doRule(buryGrave);
     else if (a === 'undo') this.doUndo();
@@ -944,7 +978,7 @@ export class Game {
     this.settings.mission = st.mission.type;
     if (snap.meta?.difficulty) this.settings.difficulty = snap.meta.difficulty;
     this.busy = false; this.confirmEnd = false; this.moveTarget = null;
-    this.sel = null; this.pending = null; this.origin = null; this.splitting = false; this.mode = 'idle';
+    this.sel = null; this.pending = null; this.origin = null; this.splitting = false; this.igniting = false; this.mode = 'idle';
     this.view.speed = this.speed;
     this.view.reset(st);
     this.refreshAll();

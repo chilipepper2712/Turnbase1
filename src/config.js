@@ -42,6 +42,7 @@ export const TERRAIN = {
   hill:       { cost: 2, nat: 20, str: 0, atk: 8, rangeBonus: 1 },
   mountain:   { cost: 3, nat: 30, str: 0, atk: 12, noCavalry: true },   // núi thấp: đi được
   peak:       { cost: Infinity, nat: 0, str: 0 },                       // núi cao: không leo, không vượt, phải đi vòng
+  burnt:      { cost: 1, nat: 0,  str: 0 },  // rừng cháy: như đồng bằng
   swamp:      { cost: 3, nat: 0,  str: 0, mod: -10, atk: -10, cavExtra: 1 },  // đầm lầy: bất lợi cho mọi phe; kỵ binh sa lầy, đi chậm hơn nữa
   river:      { cost: Infinity, nat: 0, str: 0 },
   bridge:     { cost: 1, nat: 0,  str: 0 },
@@ -228,4 +229,11 @@ export const WEATHER = {
   rainStart: 0.35, rainStop: 0.35,    // mây lớn bắt đầu / tạnh mưa mỗi bước
   swampChance: 0.15,        // mỗi ô đồng bằng dưới mưa: khả năng thành đầm lầy
   swampTurns: 2,            // đầm lầy do mưa giữ bao nhiêu lượt rồi khô lại
+};
+
+// Hỏa công: chỉ cung thủ quân người, đốt ô rừng trong tầm bắn
+export const FIRE = {
+  burnTurns: 2,     // cháy bao nhiêu lượt rồi tàn thành rừng cháy (= đồng bằng)
+  spread: 0.12,     // mỗi lượt, khả năng bén sang ô rừng kề theo chiều gió
+  damage: 1,        // quân mất mỗi lượt khi đứng trong ô cháy (và lúc ô vừa bén lửa)
 };
