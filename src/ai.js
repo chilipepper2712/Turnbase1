@@ -28,10 +28,18 @@ function goalField(s, u) {
       seed(m.goal.x, m.goal.y, 3);
     } else {
       for (const e of seenEnemies(s, f)) seed(e.x, e.y, e.vip ? 0 : 2);   // săn: nhắm tướng trước
+      if (s.fog && !seenEnemies(s, f).some((e) => e.vip)) seed(m.goal.x, m.goal.y, 1);   // chưa thấy tướng: chặn đầu ở đích
     }
   } else {
-    for (const e of seenEnemies(s, f)) seed(e.x, e.y, 0);
-    if (canCapture(s, f)) { const eh = s.map.strongholds[foeOf(s, f)]; seed(eh.x, eh.y, 3); }
+    const seen = seenEnemies(s, f);
+    for (const e of seen) seed(e.x, e.y, 0);
+    const eh = s.map.strongholds[foeOf(s, f)];
+    if (canCapture(s, f)) seed(eh.x, eh.y, 3);
+    else if (s.fog && !seen.length) {
+      // sương mù, chưa thấy ai: bên giữ thành thì ở nhà chờ, còn lại tiến về phía thành địch mà dò
+      const home = m.type === 'hold' && m.defender === f ? s.map.strongholds[f] : eh;
+      seed(home.x, home.y, 0);
+    }
   }
   while (open.length) {
     open.sort((a, b) => a.c - b.c);
@@ -51,7 +59,7 @@ function goalField(s, u) {
 }
 
 // AI chỉ biết những gì người chơi bên đó thấy: quân địch đang ẩn không có trong tính toán
-const seenEnemies = (s, f) => enemiesOf(s, f).filter((e) => !e.hidden);
+const seenEnemies = (s, f) => enemiesOf(s, f).filter((e) => !e.hidden && !e.fogged);
 
 const valueOf = (u) => UNIT_VALUE[u.role] * (0.3 + 0.7 * (u.strength / CONFIG.maxStrength));
 
@@ -216,7 +224,7 @@ function unitOptions(s, u, level, ctx) {
       let best = -Infinity, tile = null;
       for (const p of igniteTiles(s, u, node.x, node.y)) {
         const v = unitAt(s, p.x, p.y);
-        if (!v || v.faction === u.faction || v.static || v.hidden) continue;
+        if (!v || v.faction === u.faction || v.static || v.hidden || v.fogged) continue;
         const val = scoreOption(s, u, node, v, w, field, ctx.ownHold, ctx.enemyHold, ctx.danger, ctx) + 2
           + (FIRE_AI_DMG / CONFIG.maxStrength) * UNIT_VALUE[v.role] * 10 * w.dmg + (terrainDefense(s, v.faction, p.x, p.y) / 100) * FIRE_AI_DENY - FIRE_AI_SAVE;
         if (val > best) { best = val; tile = p; }

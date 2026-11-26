@@ -5,6 +5,7 @@ import {
 } from './config.js';
 import { stepWeather } from './weather.js';
 import { stepFire, startFire, fireAt, rainingAt } from './fire.js';
+import { updateFog } from './fog.js';
 
 export const key = (x, y) => x + ',' + y;
 export const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
@@ -148,8 +149,8 @@ export const boatAt = (s, x, y) => (s.boats || []).find((b) => b.x === x && b.y 
 const isWater = (s, x, y) => terrainId(s, x, y) === 'river';
 // Quân phụ: không tính vào việc quét sạch, không chiếm thành (trại tĩnh, toán goblin)
 export const isAux = (u) => !!u.static || u.role === 'goblin';
-// Quân ẩn chỉ phe mình thấy
-export const hiddenFrom = (u, f) => !!u.hidden && u.faction !== f;
+// Quân ẩn (goblin) hoặc khuất trong sương mù: phe kia không thấy
+export const hiddenFrom = (u, f) => (!!u.hidden || !!u.fogged) && u.faction !== f;
 
 export function enemiesOf(s, f) { return s.units.filter((u) => u.faction !== f); }
 export function alliesOf(s, f) { return s.units.filter((u) => u.faction === f); }
@@ -164,7 +165,7 @@ export function adjacentUnits(s, x, y) {
 }
 
 export function inEnemyZoc(s, f, x, y) {
-  return adjacentUnits(s, x, y).some((u) => u.faction !== f && !u.static && !u.hidden);
+  return adjacentUnits(s, x, y).some((u) => u.faction !== f && !u.static && !u.hidden && !u.fogged);
 }
 
 // Chi phí vào một loại địa hình theo phe + vai trò (không cần state)
@@ -298,7 +299,7 @@ export function reachable(s, u) {
       const nx = cur.x + dx, ny = cur.y + dy;
       if (!inBounds(s, nx, ny)) continue;
       const occ = unitAt(s, nx, ny);
-      if (occ && occ.faction !== f && !occ.hidden) continue;     // quân địch đang ẩn: người đi không biết, nên vẫn tính đường
+      if (occ && occ.faction !== f && !occ.hidden && !occ.fogged) continue;     // quân địch đang ẩn / khuất sương: người đi không biết, nên vẫn tính đường
       const c = moveCost(s, u, nx, ny);
       if (!isFinite(c)) continue;
       const total = cur.cost + c;
@@ -348,7 +349,7 @@ export function targetsFrom(s, u, x, y) {
   const [mn, mx] = rangeAt(s, u, x, y);
   const out = [];
   for (const e of s.units) {
-    if (e.faction === u.faction || e.hidden) continue;
+    if (e.faction === u.faction || e.hidden || e.fogged) continue;
     const d = Math.abs(e.x - x) + Math.abs(e.y - y);
     if (d >= mn && d <= mx) out.push(e);
   }
@@ -493,6 +494,9 @@ function checkTimeLimit(s) {
 export function attackUnit(s, atk, def, surprise = false) {
   const events = [];
   if (atk.hidden) { atk.hidden = false; events.push({ type: 'reveal', unit: atk.id, x: atk.x, y: atk.y }); }   // ra đòn thì lộ diện
+  expose(atk, events); expose(def, events);
+  if (atk.fogged) events.push({ type: 'spotted', unit: atk.id, x: atk.x, y: atk.y });
+  atk.spotted = true; atk.fogged = false;      // ra đòn: bị định vị dù đứng trong sương
   const pv = previewAttack(s, atk, def);
   if (surprise) { pv.counter = 0; pv.atkLeft = atk.strength; pv.counterKills = false; }
   events.push({ type: 'attack', attacker: atk.id, defender: def.id, attackerRole: atk.role, preview: pv, surprise });
@@ -521,6 +525,7 @@ export function attackUnit(s, atk, def, surprise = false) {
     // bị bỏ chạy trong lúc ra đòn: hết lượt
   }
   checkVictory(s);
+  updateFog(s);
   return events;
 }
 
@@ -529,13 +534,18 @@ export function attackUnit(s, atk, def, surprise = false) {
 // Ghi sự kiện 'move' cho đoạn đã đi. Trả về { cost, ambushers }.
 function walkPath(s, u, path, events, routed = false) {
   const f = u.faction;
-  let stop = path.length - 1, ambushers = [];
+  let stop = path.length - 1, ambushers = [], bumped = null;
   for (let i = 1; i < path.length; i++) {
     const p = path[i];
     const occ = unitAt(s, p.x, p.y);
-    if (occ && hiddenFrom(occ, f)) { stop = i - 1; ambushers = [occ]; break; }
-    const adj = adjacentUnits(s, p.x, p.y).filter((a) => hiddenFrom(a, f));
+    if (occ && occ.faction !== f && occ.hidden) { stop = i - 1; ambushers = [occ]; break; }
+    // khuất trong sương mù: đâm sầm vào thì dừng ngay trước nó (không bị đánh úp)
+    if (occ && occ.faction !== f && occ.fogged) { stop = i - 1; bumped = occ; break; }
+    const adj = adjacentUnits(s, p.x, p.y).filter((a) => a.faction !== f && a.hidden);
     if (adj.length) { stop = i; ambushers = adj.sort((a, b) => a.id - b.id); break; }
+    // bước tới cạnh quân địch vừa hiện ra khỏi sương: vùng khống chế, dừng lại
+    const near = i < path.length - 1 && adjacentUnits(s, p.x, p.y).find((a) => a.faction !== f && a.fogged && !a.static);
+    if (near) { stop = i; bumped = near; break; }
   }
   const walked = path.slice(0, stop + 1);
   let cost = 0;
@@ -544,10 +554,18 @@ function walkPath(s, u, path, events, routed = false) {
     events.push(routed ? { type: 'move', unit: u.id, path: walked, routed: true } : { type: 'move', unit: u.id, path: walked });
     const end = walked[walked.length - 1];
     u.x = end.x; u.y = end.y;
+    expose(u, events);
   }
+  if (bumped) events.push({ type: 'bump', unit: u.id, by: bumped.id, x: bumped.x, y: bumped.y });
   // quân ẩn tự đi ra khỏi rừng thì lộ diện
   if (u.hidden && terrainId(s, u.x, u.y) !== 'forest') { u.hidden = false; events.push({ type: 'reveal', unit: u.id, x: u.x, y: u.y }); }
-  return { cost, ambushers };
+  return { cost, ambushers, bumped };
+}
+
+// Quân lộ ra (đi / đánh / bị đánh): phe kia thấy rõ nó cho tới đầu lượt sau của chính phe nó
+function expose(u, events) {
+  if (u.veiled) events.push({ type: 'unveil', unit: u.id, x: u.x, y: u.y });
+  u.exposed = true; u.veiled = false;
 }
 
 // Các toán ẩn kề bên lộ diện và lần lượt đánh vào quân vừa đi tới (bị đánh trả như thường)
@@ -645,6 +663,7 @@ export function igniteForest(s, u, x, y) {
   } else if (v && !s.winner) burnUnit(s, v, events);
   u.acted = true; u.moved = true;
   checkVictory(s);
+  updateFog(s);
   return events;
 }
 
@@ -658,6 +677,7 @@ export function launchBoat(s, u) {
   const p = freeWaterNear(s, u).sort((a, b) => dist(a, foe) - dist(b, foe) || a.y - b.y || a.x - b.x)[0];
   const from = { x: u.x, y: u.y };
   u.x = p.x; u.y = p.y; u.afloat = true; u.timber = false; u.moved = true; u.acted = true; u.fort = 0;
+  updateFog(s);
   return [{ type: 'move', unit: u.id, path: [from, { x: p.x, y: p.y }] }, { type: 'embark', unit: u.id, x: p.x, y: p.y, launch: true }];
 }
 
@@ -729,6 +749,7 @@ export function moveUnit(s, u, x, y) {
   u.moved = true; u.movedDist = res.cost; u.fort = 0;
   if (res.ambushers.length) ambush(s, res.ambushers, u, events);
   checkVictory(s);
+  updateFog(s);
   return events;
 }
 
@@ -741,10 +762,11 @@ export function mergeUnits(s, u, tgt) {
   const via = m.via;
   if (via.x !== u.x || via.y !== u.y) {
     const res = walkPath(s, u, pathTo(via), events);
-    if (res.ambushers.length) {                      // bị phục kích giữa đường: không gộp được nữa
+    if (res.ambushers.length || res.bumped) {        // bị phục kích / đâm vào quân khuất sương giữa đường: không gộp được nữa
       u.moved = true; u.movedDist = res.cost; u.fort = 0;
-      ambush(s, res.ambushers, u, events);
+      if (res.ambushers.length) ambush(s, res.ambushers, u, events);
       checkVictory(s);
+      updateFog(s);
       return events;
     }
   }
@@ -766,6 +788,7 @@ export function mergeUnits(s, u, tgt) {
   } else {
     u.moved = true; u.acted = true;
   }
+  updateFog(s);
   return events;
 }
 
@@ -804,6 +827,7 @@ export function splitUnit(s, u, x, y) {
   const n = addUnit(s, u.faction, u.role, x, y, give);
   n.morale = u.morale; n.xp = 0; n.moved = true; n.acted = true;
   u.moved = true; u.acted = true; u.fort = 0;
+  updateFog(s);
   return [{ type: 'split', unit: u.id, newUnit: n.id, x, y }];
 }
 
@@ -947,6 +971,7 @@ export function endTurn(s) {
   const next = foeOf(s, s.current);
   s.current = next;
   if (next === 'human') s.turn++;
+  for (const u of s.units) if (u.faction === next) { u.exposed = false; u.spotted = false; }      // đầu lượt: quân phe này hết lộ
   events.push({ type: 'turn', faction: next, turn: s.turn });
   // thời tiết: gió, mây trôi, mưa, đầm lầy tạm thời
   for (const e of stepWeather(s)) events.push(e);
@@ -1015,6 +1040,7 @@ export function endTurn(s) {
   }
   checkVictory(s);
   checkTimeLimit(s);
+  updateFog(s);
   return events;
 }
 

@@ -238,3 +238,12 @@ export const FIRE = {
   damage: 1,        // quân mất mỗi lượt khi đứng trong ô cháy (và lúc ô vừa bén lửa)
   cooldown: 3,      // cung thủ đã dùng hỏa công phải chờ bao nhiêu lượt mới dùng lại
 };
+
+// Sương mù chiến tranh: tầm nhìn (ô, khoảng cách Manhattan)
+export const FOG = {
+  vision: 3,                // bộ binh, kỵ binh, dân quân...
+  archer: 1,                // cung thủ nhìn xa hơn
+  terrain: { hill: 1, fort: 1, mountain: 2 },   // đứng trên đồi / tháp canh / núi thấp
+  campVision: 2,            // trại (nhiệm vụ phá trại)
+  holdVision: 2,            // thành nhà
+};

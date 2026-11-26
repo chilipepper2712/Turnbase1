@@ -18,7 +18,7 @@ const wins = { human: 0, [enemy]: 0, draw: 0 }, how = {};
 let turns = 0, risen = 0, buried = 0, graves = 0, ignites = 0, spreads = 0, burns = 0, swamps = 0;
 const t0 = Date.now();
 for (let seed = 1; seed <= N; seed++) {
-  const s = createMissionState(generateMap(seed, size.w, size.h), mission, 'human', enemy, { weather: !process.env.NOWEATHER });
+  const s = createMissionState(generateMap(seed, size.w, size.h), mission, 'human', enemy, { weather: !process.env.NOWEATHER, fog: !process.env.NOFOG });
   let guard = 0;
   const count = (ev) => {
     for (const e of ev || []) {

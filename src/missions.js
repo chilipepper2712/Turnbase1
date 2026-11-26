@@ -8,6 +8,7 @@ import { MISSIONS, LEVEL } from './config.js';
 import { createState, addUnit, unitAt, spawnSquads, foeOf } from './rules.js';
 import { costField } from './mapgen.js';
 import { initWeather } from './weather.js';
+import { updateFog } from './fog.js';
 
 export const MISSION_TYPES = Object.keys(MISSIONS);
 
@@ -58,6 +59,7 @@ export function createMissionState(map, type = 'skirmish', actor = 'human', enem
   setEnemy(map, enemy);
   const s = createState(map);
   if (opts.weather !== false) initWeather(s);
+  s.fog = opts.fog !== false;
   const cfg = { ...(MISSIONS[type] || {}) };
   if (cfg.turns) cfg.turns = Math.round(cfg.turns * Math.pow(map.h / 20, 0.6));   // bản đồ dài hơn thì cần nhiều lượt hơn
   const foe = foeOf(s, actor);
@@ -103,5 +105,6 @@ export function createMissionState(map, type = 'skirmish', actor = 'human', enem
     vip.xp = LEVEL.xp[0];                       // tướng đã là cựu binh
     s.mission = { type, escort: actor, hunter: foe, vipId: vip.id, goal };
   }
+  updateFog(s);
   return s;
 }

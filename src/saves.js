@@ -4,6 +4,7 @@
 //   2. SaveStore: nơi lưu. Ưu tiên `db` của nền tảng Artifact (phía máy chủ, riêng từng người, sống qua republish),
 //      luôn ghi thêm localStorage làm bản sao nhanh. Không có db thì chỉ còn localStorage (có thể mất khi xoá dữ liệu trang).
 import { createState } from './rules.js';
+import { updateFog } from './fog.js';
 
 export const SAVE_VERSION = 1;
 export const SLOTS = ['auto', 's1', 's2', 's3'];       // chữ cái đầu để thứ tự khoá không bị JS xếp lại
@@ -23,6 +24,7 @@ export function snapshot(state, meta = {}) {
       mission: state.mission, units: state.units, escaped: state.escaped || [], sides: state.sides, boats: state.boats || [], graves: state.graves || [],
       weather: state.weather || null,
       fires: state.fires || [],
+      fog: !!state.fog,
     }),
   };
 }
@@ -78,6 +80,8 @@ export function restoreState(snap) {
     };
   }
   if (Array.isArray(s.sides) && s.sides.length === 2) st.sides = s.sides;
+  st.fog = !!s.fog;
+  updateFog(st);
   st.winner = null; st.winReason = null;
   return st;
 }
