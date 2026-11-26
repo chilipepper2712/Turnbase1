@@ -42,7 +42,7 @@ export const TERRAIN = {
   hill:       { cost: 2, nat: 20, str: 0, atk: 8, rangeBonus: 1 },
   mountain:   { cost: 3, nat: 30, str: 0, atk: 12, noCavalry: true },   // núi thấp: đi được
   peak:       { cost: Infinity, nat: 0, str: 0 },                       // núi cao: không leo, không vượt, phải đi vòng
-  swamp:      { cost: 3, nat: 0,  str: 0, mod: -10, atk: -10, noCavalry: true },  // đầm lầy: bất lợi cho mọi phe
+  swamp:      { cost: 3, nat: 0,  str: 0, mod: -10, atk: -10, cavExtra: 1 },  // đầm lầy: bất lợi cho mọi phe; kỵ binh sa lầy, đi chậm hơn nữa
   river:      { cost: Infinity, nat: 0, str: 0 },
   bridge:     { cost: 1, nat: 0,  str: 0 },
   village:    { cost: 1, nat: 0,  str: 15, heal: true },
@@ -215,3 +215,17 @@ export const MISSIONS = {
 };
 
 export const ROSTER = ['infantry', 'infantry', 'archer', 'archer', 'militia', 'militia', 'cavalry'];
+
+// Thời tiết (mỗi lần đổi phe là một bước). Ngẫu nhiên nhưng gieo theo seed + lượt nên tái lập được.
+export const WEATHER = {
+  windChange: 0.04,         // xác suất gió xoay 45° mỗi bước
+  tilesPerBigCloud: 110,    // mật độ mây đen lớn (bản nhỏ 320 ô ~ 3 đám)
+  smallPerBig: 1,           // số mây nhỏ so với mây lớn
+  bigRadius: 2.2, smallRadius: 1.2,   // bán kính phủ (ô)
+  bigSpeed: 1, smallSpeed: 1.4,       // ô mỗi bước
+  margin: 3,                // mây xuất hiện / tan ngoài mép bản đồ bao nhiêu ô
+  spawnChance: 0.5,         // thiếu mây thì mỗi bước có chừng này khả năng có đám mới từ mép đầu gió
+  rainStart: 0.35, rainStop: 0.35,    // mây lớn bắt đầu / tạnh mưa mỗi bước
+  swampChance: 0.15,        // mỗi ô đồng bằng dưới mưa: khả năng thành đầm lầy
+  swampTurns: 2,            // đầm lầy do mưa giữ bao nhiêu lượt rồi khô lại
+};

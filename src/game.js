@@ -702,7 +702,14 @@ export class Game {
     }
     const waves = (s.mission.waves || []).filter((w) => w.spot && !w.done && w.spot.x === tile.x && w.spot.y === tile.y);
     const wv = waves.map((w) => `<div class="note">${icon('flag')} ${esc(t('mission.flank', { turn: w.at, n: w.n, side: t('faction.name.' + w.faction) }))}</div>`).join('');
-    return `<h3>${esc(t('terrain.' + tid))}</h3><ul class="fx">${L}</ul>${you}${note === nk ? '' : `<div class="note">${esc(note)}</div>`}${wv}${this.graveCard(tile)}`;
+    return `<h3>${esc(t('terrain.' + tid))}</h3><ul class="fx">${L}</ul>${you}${note === nk ? '' : `<div class="note">${esc(note)}</div>`}${wv}${this.wetCard(tile)}${this.graveCard(tile)}`;
+  }
+
+  // Đầm lầy do mưa: còn bao lâu thì khô lại thành đồng bằng
+  wetCard(tile) {
+    const W = this.state.weather, p = W && W.wet.find((q) => q.x === tile.x && q.y === tile.y);
+    if (!p) return '';
+    return `<div class="note">${esc(t('weather.wet', { n: Math.max(1, p.until - this.state.turn) }))}</div>`;
   }
 
   // Mộ tử sĩ trên ô: ai nằm đây, bao giờ trỗi dậy, có trong tầm necromancer không, cách chặn

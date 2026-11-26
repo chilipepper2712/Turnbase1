@@ -7,6 +7,8 @@ import { RES, TERRAIN_DECO } from './assets.js';
 import { drawGroundTile, makeCanvas, drawCloud, INK } from './doodle.js';
 import { paintPixelGround } from './pixelground.js';
 import { makePixelCloud } from './pixelcloud.js';
+import { windVec } from '../weather.js';
+import { WEATHER } from '../config.js';
 
 export const TW = 96, TH = 48;
 const CHUNK = 8;
@@ -65,7 +67,9 @@ export class GameView {
     this.cloudShadow = new PIXI.Container();   // bóng mây đổ lên nền: dưới ô tô màu và quân
     this.cloudLayer = new PIXI.Container();    // mây: trên cùng
     this.waterFx = new PIXI.Graphics();          // đốm nước lấp lánh (chỉ nền pixel), nằm trên nền, dưới quân
-    this.world.addChild(this.ground, this.waterFx, this.cloudShadow, this.hl, this.objects, this.fx, this.cloudLayer);
+    this.stormShadow = new PIXI.Container();   // bóng mây đen (thời tiết thật): luôn hiện, không theo nút tắt mây
+    this.storm = new PIXI.Container();         // mây đen + vệt mưa
+    this.world.addChild(this.ground, this.waterFx, this.cloudShadow, this.stormShadow, this.hl, this.objects, this.fx, this.cloudLayer, this.storm);
     app.stage.addChild(this.world);
     this.zoom = 1;
     this.buildMap();
@@ -107,6 +111,7 @@ export class GameView {
     this.features = [];
     this.holdLabel = null;
     this.boatSprites = new Map();
+    this.chunkMap = new Map();
     for (let j = 0; j < h; j += CHUNK) {
       for (let i = 0; i < w; i += CHUNK) this.bakeChunk(i, j);
     }
@@ -116,7 +121,8 @@ export class GameView {
     this.buildClouds();
     // trang trí đối tượng
     this.deco = [];
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) this.placeDeco(x, y);
+    this.decoAt = new Map();
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) this.placeDecoAt(x, y);
     this.drawGoal();
     this.startAmbient();
   }
@@ -172,7 +178,41 @@ export class GameView {
     const sp = new PIXI.Sprite(tex);
     sp.position.set(minX, minY);
     sp.scale.set(1 / RES);
-    this.ground.addChild(sp);
+    const key = i0 + ',' + j0, old = this.chunkMap && this.chunkMap.get(key);
+    if (old && old.parent === this.ground) this.ground.addChildAt(sp, this.ground.getChildIndex(old) + 1);
+    else this.ground.addChild(sp);
+    if (this.chunkMap) this.chunkMap.set(key, sp);
+    return { sp, old };
+  }
+
+  // Địa hình đổi giữa trận (mưa thành đầm lầy, đầm lầy khô lại, rừng cháy): vẽ lại các mảng nền liên quan
+  // (cả mảng kề vì mép ô hoà vào ô bên cạnh), mảng mới hiện dần đè lên mảng cũ rồi bỏ mảng cũ.
+  async retile(changes) {
+    const keys = new Set();
+    for (const p of changes) for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const x = p.x + dx, y = p.y + dy;
+      if (x < 0 || y < 0 || x >= this.state.map.w || y >= this.state.map.h) continue;
+      keys.add(Math.floor(x / CHUNK) * CHUNK + ',' + Math.floor(y / CHUNK) * CHUNK);
+    }
+    const pairs = [...keys].map((k) => { const [i, j] = k.split(',').map(Number); return this.bakeChunk(i, j); });
+    // trang trí của ô đổi: cái cũ mờ đi, cái mới hiện dần
+    const W = this.state.map.w, oldDeco = [], newDeco = [];
+    for (const p of changes) {
+      const k = p.y * W + p.x;
+      for (const sp of this.decoAt.get(k) || []) { oldDeco.push(sp); this.features = this.features.filter((f) => f.sprite !== sp); }
+      newDeco.push(...this.placeDecoAt(p.x, p.y));
+    }
+    for (const { sp } of pairs) sp.alpha = 0;
+    for (const sp of newDeco) sp.alpha = 0;
+    await this.tween(700, (k) => {
+      for (const { sp } of pairs) sp.alpha = k;
+      for (const sp of newDeco) sp.alpha = k;
+      for (const sp of oldDeco) sp.alpha = 1 - k;
+    });
+    for (const { old } of pairs) if (old) old.destroy({ texture: true, textureSource: true });
+    for (const sp of oldDeco) sp.destroy({ children: true });
+    this.drawOverlay();
+    this.requestRender();
   }
 
   drawBorder() {
@@ -202,10 +242,20 @@ export class GameView {
     };
   }
 
+  // vật trang trí của một ô (cây, nhà, đá...): nhớ theo ô để vẽ lại riêng ô đó khi địa hình đổi
+  placeDecoAt(x, y) {
+    const k = y * this.state.map.w + x, list = [];
+    this._decoList = list;
+    try { this.placeDeco(x, y); } finally { this._decoList = null; }
+    this.decoAt.set(k, list);
+    return list;
+  }
+
   place(sprite, wx, wy, z, tile) {
     sprite.position.set(wx, wy);
     sprite.zIndex = z ?? wy;
     this.objects.addChild(sprite);
+    if (this._decoList) this._decoList.push(sprite);
     // sprite cao hơn ô (lâu đài, tháp, núi...): nhớ lại để chạm vào hình thì trúng đúng ô của nó
     if (tile) this.features.push({ sprite, x: tile.x, y: tile.y });
     return sprite;
@@ -682,14 +732,16 @@ export class GameView {
 
   startAmbient() {
     clearTimeout(this._ambT);
-    if (!this.idleOn && !this.cloudsOn && !this.hasWater()) return;
+    const any = () => this.idleOn || this.cloudsOn || this.hasWater() || this.hasRain();
+    if (!any()) return;
     const tick = () => {
-      if (!this.idleOn && !this.cloudsOn && !this.hasWater()) return;
+      if (!any()) return;
       if (!document.hidden && this.app && !this.tweens.length) {
         let dirty = false;
         if (this.idleOn) { this.updateIdle(); dirty = true; }
         if (this.cloudsOn) { this.updateClouds(); dirty = true; }
         if (this.hasWater() && this.updateWater()) dirty = true;
+        if (this.hasRain()) { this.placeStorm(); dirty = true; }
         if (dirty) this.app.render();
       }
       this._ambT = setTimeout(tick, 100);
@@ -793,7 +845,8 @@ export class GameView {
     gr.addColorStop(0, 'rgba(42,44,48,1)'); gr.addColorStop(0.5, 'rgba(42,44,48,0.85)'); gr.addColorStop(1, 'rgba(42,44,48,0)');
     octx.fillStyle = gr; octx.beginPath(); octx.arc(0, 0, 126, 0, Math.PI * 2); octx.fill();
     const ovalTex = PIXI.Texture.from(oc);
-    this.windLen = w + 8;
+    this.cloudTex = tex; this.ovalTex = ovalTex; this.pixelClouds = pixelClouds;
+    this.windLen = Math.hypot(w, h) + 10;
     for (let i = 0; i < n; i++) {
       const v = tex[rng.int(tex.length)], width = 150 + rng() * 120;     // bề ngang mây trong thế giới (ô rộng 96)
       const cloud = new PIXI.Sprite(v.cloud); cloud.anchor.set(0.5); cloud.scale.set(width / v.w);
@@ -801,18 +854,115 @@ export class GameView {
       if (pixelClouds) shadow.scale.set((width / v.w) * 0.8, (width / v.w) * 0.4);   // bóng phẳng, ép dẹt theo phối cảnh
       else { shadow.width = width * 0.68; shadow.height = width * 0.68 * 0.5; }      // nhỏ hơn 15% so với trước (0.8)
       this.cloudShadow.addChild(shadow); this.cloudLayer.addChild(cloud);
-      this.clouds.push({ cloud, shadow, phase: rng() * this.windLen, speed: 0.22 + rng() * 0.18, lane: rng() * (h + 6) - 3, drift: 0.22 + rng() * 0.1 });
+      this.clouds.push({ cloud, shadow, phase: rng() * this.windLen, speed: 0.22 + rng() * 0.18, lane: (rng() - 0.5) * this.windLen });
     }
     this.cloudLayer.visible = this.cloudShadow.visible = this.cloudsOn !== false;
     this.updateClouds();
+    this.buildStorm();
+  }
+
+  // ---------- Thời tiết: mây đen theo trạng thái trận (vị trí thật, che ô thật), mưa ----------
+  stormSprite(c) {
+    const tex = this.cloudTex, v = tex[c.id % tex.length];
+    const r = c.size === 'big' ? WEATHER.bigRadius : WEATHER.smallRadius;
+    const ew = 2 * r * TW / Math.SQRT2;                        // bề ngang vùng phủ trên nền isometric
+    const width = ew * 1.15;
+    const root = new PIXI.Container();
+    const shadow = new PIXI.Sprite(this.ovalTex); shadow.anchor.set(0.5);
+    shadow.width = ew * 1.05; shadow.height = ew * 0.525;
+    const cloud = new PIXI.Container();
+    // mây đen: 2-3 cụm mây thường tô xám chì chồng lên nhau cho dày và nặng
+    const parts = c.size === 'big' ? [[0, 0, 1], [-0.28, 0.1, 0.7], [0.3, 0.08, 0.72]] : [[0, 0, 1], [0.22, 0.08, 0.6]];
+    for (const [ox, oy, k] of parts) {
+      const sp = new PIXI.Sprite(v.cloud); sp.anchor.set(0.5);
+      sp.scale.set((width * k) / v.w); sp.position.set(ox * width, oy * width * 0.35);
+      sp.tint = c.size === 'big' ? 0x5a5e68 : 0x7a7e88;
+      cloud.addChild(sp);
+    }
+    const rain = new PIXI.Graphics();
+    this.stormShadow.addChild(shadow); this.storm.addChild(rain, cloud);
+    return { id: c.id, shadow, cloud, rain, ew, tx: c.x, ty: c.y, fade: 1, raining: c.raining };
+  }
+
+  buildStorm() {
+    for (const c of [this.stormShadow, this.storm]) c.removeChildren().forEach((x) => x.destroy({ children: true }));
+    this.storms = new Map();
+    const W = this.state.weather;
+    if (!W || !this.cloudTex) return;
+    for (const c of W.clouds) this.storms.set(c.id, this.stormSprite(c));
+    this.placeStorm();
+  }
+
+  hasRain() { return !!this.storms && [...this.storms.values()].some((st) => st.raining); }
+
+  // đặt mây đen theo toạ độ ô (liên tục) hiện tại; mây ra ngoài mép thì mờ dần
+  placeStorm() {
+    if (!this.storms) return;
+    const { w, h } = this.state.map, now = performance.now();
+    for (const st of this.storms.values()) {
+      const p = tileToWorld(st.tx, st.ty);
+      const out = Math.max(-st.tx, st.tx - (w - 1), -st.ty, st.ty - (h - 1), 0);
+      const k = Math.max(0, 1 - out / 3) * st.fade;
+      st.shadow.position.set(p.x, p.y); st.cloud.position.set(p.x, p.y - 120);
+      st.shadow.alpha = (st.raining ? 0.62 : 0.45) * k; st.cloud.alpha = 0.8 * k;
+      st.rain.clear();
+      if (st.raining && k > 0.05) {
+        // vệt mưa xiên theo gió, rơi từ đáy mây xuống vùng bóng; vị trí đổi theo thời gian nên trông như đang rơi
+        const v = windVec(this.state.weather.wind), slant = (v.x - v.y) * 10;
+        const n = Math.round(st.ew / 2.5), rng = makeRng(st.id * 977 + Math.floor(now / 90));
+        for (let i = 0; i < n; i++) {
+          const a = rng() * Math.PI * 2, rr = Math.sqrt(rng());
+          const gx = p.x + Math.cos(a) * rr * st.ew * 0.5, gy = p.y + Math.sin(a) * rr * st.ew * 0.25;
+          const top = p.y - 100, f = rng();
+          const y0 = top + (gy - top) * f, y1 = Math.min(gy, y0 + 22);
+          const x0 = gx - slant * (1 - f) * 3;
+          st.rain.moveTo(x0, y0).lineTo(x0 + slant * 0.4, y1);
+        }
+        st.rain.stroke({ width: 1.8, color: this.tileStyle === 'pixel' ? 0xe4eef8 : 0x5f7f9f, alpha: 0.85 * k });
+      }
+    }
+  }
+
+  // sự kiện 'clouds': mây đen trôi một bước theo gió; mây mới mọc ra thì hiện dần, mây tan thì mờ đi
+  async moveStorm(ev) {
+    const W = this.state.weather;
+    if (!W || !this.cloudTex) return;
+    const ids = new Set(W.clouds.map((c) => c.id));
+    const born = [];
+    for (const c of W.clouds) if (!this.storms.has(c.id)) { const st = this.stormSprite(c); st.fade = 0; this.storms.set(c.id, st); born.push(st); }
+    const gone = [...this.storms.values()].filter((st) => !ids.has(st.id));
+    const mv = new Map(ev.moves.map((m) => [m.id, m]));
+    for (const st of this.storms.values()) { const c = W.clouds.find((q) => q.id === st.id); if (c) st.raining = c.raining; }
+    await this.tween(1100, (k) => {
+      const e = k * k * (3 - 2 * k);
+      for (const st of this.storms.values()) {
+        const m = mv.get(st.id);
+        if (m) { st.tx = m.from.x + (m.to.x - m.from.x) * e; st.ty = m.from.y + (m.to.y - m.from.y) * e; }
+      }
+      for (const st of born) st.fade = e;
+      for (const st of gone) st.fade = 1 - e;
+      this.placeStorm();
+    });
+    for (const st of gone) { st.shadow.destroy(); st.cloud.destroy({ children: true }); st.rain.destroy(); this.storms.delete(st.id); }
+    this.startAmbient();
+  }
+
+  syncRain() {
+    const W = this.state.weather;
+    if (!W || !this.storms) return;
+    for (const c of W.clouds) { const st = this.storms.get(c.id); if (st) st.raining = c.raining; }
+    this.placeStorm(); this.requestRender(); this.startAmbient();
   }
 
   updateClouds() {
     if (!this.clouds) return;
-    const { w, h } = this.state.map, t = performance.now() / 1000, M = 4;
+    const { w, h } = this.state.map, t = performance.now() / 1000;
     for (const c of this.clouds) {
       const s = (c.phase + t * c.speed) % this.windLen;
-      const tx = s - M, ty = c.lane + c.drift * s;               // tọa độ ô (liên tục), gió thổi theo +x và hơi +y
+      // tọa độ ô (liên tục): đi dọc hướng gió của trận (không có thời tiết thì gió thổi theo +x)
+      const v = this.state.weather ? windVec(this.state.weather.wind) : { x: 1, y: 0.25 };
+      const d = s - this.windLen / 2;
+      const tx = (w - 1) / 2 + v.x * d - v.y * c.lane, ty = (h - 1) / 2 + v.y * d + v.x * c.lane;
       const p = tileToWorld(tx, ty);
       // mờ dần theo khoảng cách ra ngoài mép bản đồ
       const out = Math.max(-tx, tx - (w - 1), -ty, ty - (h - 1), 0);
@@ -1109,6 +1259,9 @@ export class GameView {
       this.soundFor(ev);
       switch (ev.type) {
         case 'turn': break;
+        case 'clouds': await this.moveStorm(ev); break;
+        case 'rain': case 'rainstop': this.syncRain(); break;
+        case 'terrain': await this.retile(ev.changes || [{ x: ev.x, y: ev.y }]); break;   // mưa, khô, chặt cây, cháy rừng
         case 'move': {
           const us = this.sprites.get(ev.unit);
           if (!us) break;
@@ -1277,10 +1430,6 @@ export class GameView {
         case 'chop': {
           const c = tileToWorld(ev.x, ev.y);
           await this.float(this.t('ui.chopped'), c.x, c.y - 40, 0x6b4a2a, 20);
-          break;
-        }
-        case 'terrain': {                             // địa hình đổi (chặt cây): dựng lại nền bản đồ
-          this.buildMap(); this.reconcile(); this.drawOverlay();
           break;
         }
         case 'collapse': {                           // âm binh đổ sụp khi necromancer chết

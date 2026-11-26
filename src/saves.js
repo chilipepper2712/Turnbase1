@@ -21,6 +21,7 @@ export function snapshot(state, meta = {}) {
     state: clone({
       turn: state.turn, current: state.current, nextId: state.nextId, capture: state.capture,
       mission: state.mission, units: state.units, escaped: state.escaped || [], sides: state.sides, boats: state.boats || [], graves: state.graves || [],
+      weather: state.weather || null,
     }),
   };
 }
@@ -64,6 +65,15 @@ export function restoreState(snap) {
   // mộ tử sĩ (bản lưu cũ không có): chỉ nhận mộ hợp lệ
   st.graves = (Array.isArray(s.graves) ? s.graves : []).filter((g) => g && isNum(g.x) && isNum(g.y) && isNum(g.turn)
     && g.x >= 0 && g.y >= 0 && g.x < map.w && g.y < map.h && ['human', 'orc'].includes(g.faction) && ['militia', 'infantry', 'archer', 'cavalry'].includes(g.role));
+  // thời tiết (bản lưu cũ không có thì trận đó trời quang)
+  const W = s.weather;
+  if (W && Number.isInteger(W.wind) && Array.isArray(W.clouds) && Array.isArray(W.wet)) {
+    st.weather = {
+      wind: ((W.wind % 8) + 8) % 8, nextId: isNum(W.nextId) ? W.nextId : 1,
+      clouds: W.clouds.filter((c) => c && isNum(c.x) && isNum(c.y) && ['big', 'small'].includes(c.size)).map((c) => ({ id: c.id, x: c.x, y: c.y, size: c.size, raining: !!c.raining })),
+      wet: W.wet.filter((p) => p && isNum(p.x) && isNum(p.y) && isNum(p.until) && map.tiles[p.y * map.w + p.x] === 'swamp'),
+    };
+  }
   if (Array.isArray(s.sides) && s.sides.length === 2) st.sides = s.sides;
   st.winner = null; st.winReason = null;
   return st;

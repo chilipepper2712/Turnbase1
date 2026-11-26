@@ -7,6 +7,7 @@
 import { MISSIONS, LEVEL } from './config.js';
 import { createState, addUnit, unitAt, spawnSquads, foeOf } from './rules.js';
 import { costField } from './mapgen.js';
+import { initWeather } from './weather.js';
 
 export const MISSION_TYPES = Object.keys(MISSIONS);
 
@@ -53,9 +54,10 @@ export function flankSpot(map, s, hold, cfg, used = []) {
   return best && { x: best.x, y: best.y };
 }
 
-export function createMissionState(map, type = 'skirmish', actor = 'human', enemy = 'orc') {
+export function createMissionState(map, type = 'skirmish', actor = 'human', enemy = 'orc', opts = {}) {
   setEnemy(map, enemy);
   const s = createState(map);
+  if (opts.weather !== false) initWeather(s);
   const cfg = { ...(MISSIONS[type] || {}) };
   if (cfg.turns) cfg.turns = Math.round(cfg.turns * Math.pow(map.h / 20, 0.6));   // bản đồ dài hơn thì cần nhiều lượt hơn
   const foe = foeOf(s, actor);
@@ -94,7 +96,7 @@ export function createMissionState(map, type = 'skirmish', actor = 'human', enem
     const to = map.strongholds[foe];
     const total = from[to.y * map.w + to.x];
     const goal = pickTile(map, s, from, total * 0.7, total * 0.9, total * 0.8);
-    if (!vip || !goal) return createMissionState(map, 'skirmish', actor, enemy);
+    if (!vip || !goal) return createMissionState(map, 'skirmish', actor, enemy, opts);
     // không có thành: ô thành thành đất trống, quân đã xuất hiện sẵn giữa map
     for (const f of s.sides) { const h = map.strongholds[f]; map.tiles[h.y * map.w + h.x] = 'plain'; }
     vip.vip = true;

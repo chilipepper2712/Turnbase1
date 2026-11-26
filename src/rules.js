@@ -3,6 +3,7 @@
 import {
   CONFIG, TERRAIN, FACTIONS, FORMATION_MAX, STATS, MATCHUP, ROSTER, FORTIFY, LEVEL, MORALE, GOBLIN, UNDEAD, MARINE,
 } from './config.js';
+import { stepWeather } from './weather.js';
 
 export const key = (x, y) => x + ',' + y;
 export const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
@@ -114,6 +115,7 @@ export function cloneState(s) {
     capture: { ...s.capture },
     boats: (s.boats || []).map((b) => ({ ...b })),
     graves: (s.graves || []).map((g) => ({ ...g })),
+    weather: s.weather && { ...s.weather, clouds: s.weather.clouds.map((c) => ({ ...c })), wet: s.weather.wet.map((p) => ({ ...p })) },
     mission: { ...s.mission, waves: s.mission.waves && s.mission.waves.map((w) => ({ ...w, spot: w.spot && { ...w.spot } })) },
   };
 }
@@ -171,6 +173,7 @@ export function moveCostFor(tid, faction, role) {
   let c = t.cost;
   if (t.nat > 0) c = Math.max(1, c - FACTIONS[faction].natMoveDiscount);
   if (role === 'cavalry' && tid === 'forest') c += 1;
+  if (role === 'cavalry' && t.cavExtra) c += t.cavExtra;
   return c;
 }
 
@@ -890,6 +893,8 @@ export function endTurn(s) {
   s.current = next;
   if (next === 'human') s.turn++;
   events.push({ type: 'turn', faction: next, turn: s.turn });
+  // thời tiết: gió, mây trôi, mưa, đầm lầy tạm thời
+  for (const e of stepWeather(s)) events.push(e);
   // đợt tiếp viện: xuất hiện đầu lượt của phe được tiếp viện, quanh thành nhà
   for (const w of s.mission.waves || []) {
     if (w.done || w.faction !== next || s.turn < w.at) continue;
