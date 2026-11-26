@@ -740,8 +740,16 @@ export class GameView {
     const live = graveInRange(s, g);
     const d = new PIXI.Graphics();
     if (live) d.ellipse(0, 2, 30, 14).fill({ color: 0x8be07a, alpha: 0.3 }).stroke({ width: 2.6, color: 0xc8ffb0, alpha: 0.95 });
-    d.ellipse(0, 2, 20, 8).fill(0x6b4a2a).stroke({ width: 1.6, color: 0x1b1b1b });          // ụ đất
-    if (g.faction === 'orc') {
+    const px = this.tileStyle === 'pixel' && this.assets.pixelDeco(g.faction === 'orc' ? 'graveo' : 'graveh', Math.floor(hash2(g.x * 7 + 1, g.y * 13 + 5, 3) * 4));
+    if (px) {
+      // nền pixel: sprite mộ vẽ bằng AI (Seedream) hạ về mật độ pixel của quân
+      box.addChild(d);
+      const sp = new PIXI.Sprite(px.texture);
+      sp.anchor.set(px.anchor[0], px.anchor[1]); sp.scale.set(1 / px.up);
+      sp.position.set(0, 10);
+      box.addChild(sp);
+    } else d.ellipse(0, 2, 20, 8).fill(0x6b4a2a).stroke({ width: 1.6, color: 0x1b1b1b });          // ụ đất
+    if (px) { /* đã có sprite */ } else if (g.faction === 'orc') {
       d.poly([-14, 1, -6, -7, 4, -8, 14, 0, 6, 5, -8, 5], true).fill(0x8a8378).stroke({ width: 1.4, color: 0x1b1b1b, join: 'round' });   // đống đá
       // đao cắm ngược: lưỡi rộng, sống thẳng, mũi vát, có khía; chuôi gỗ và chắn tay trên cùng
       d.poly([-1, -2, -1, -38, 11, -38, 11, -26, 8, -23, 11, -20, 11, -2], true).fill(0xb8bcc2).stroke({ width: 1.4, color: 0x1b1b1b, join: 'round' });
@@ -753,7 +761,7 @@ export class GameView {
         .fill(0x9aa0a6).stroke({ width: 1.8, color: 0x1b1b1b, join: 'round' });             // bia đá đầu tròn
       d.moveTo(-4.5, -21).lineTo(4.5, -21).moveTo(-4.5, -16).lineTo(4.5, -16).stroke({ width: 1.4, color: 0x4a4f55 });
     }
-    box.addChild(d);
+    if (!px) box.addChild(d);
     if (live) {
       const n = graveWait(s, g);
       const tx = new PIXI.Text({ text: n > 0 ? String(n) : '!', style: { fontFamily: FONT, fontSize: 15, fill: 0xd8ffcf, fontWeight: 'bold', stroke: { color: 0x1b1b1b, width: 4 } } });

@@ -8,7 +8,7 @@ import { FACTIONS } from '../config.js';
 import { makeCanvas, drawTree, drawHill, drawMountain, drawMine, drawFallbackUnit, drawFallbackBuilding, INK } from './doodle.js';
 
 // Sprite địa hình pixel art (assets/terrain/<nhóm>_<n>.png, tools/prep_decor.py): số biến thể mỗi nhóm
-export const TERRAIN_DECO = { pine: 8, tuft: 6, bush: 4, tiny: 3, boulder: 5, mound: 3, reed: 4, shrub: 3, hill: 1, fire: 4, burnt: 4, house: 8, tower: 5, mine: 1, castle: 3, camp: 3 };
+export const TERRAIN_DECO = { pine: 8, tuft: 6, bush: 4, tiny: 3, boulder: 5, mound: 3, reed: 4, shrub: 3, hill: 1, fire: 4, burnt: 4, graveh: 4, graveo: 4, house: 8, tower: 5, mine: 1, castle: 3, camp: 3 };
 // Nhóm công trình: bóng chân là vệt phẳng rộng hoà vào nền (hoặc file <nhóm>_<n>_shadow.png vẽ tay nếu có)
 const BUILDING_GROUPS = new Set(['house', 'tower', 'mine', 'castle', 'camp']);
 // Chân dung lấy từ character sheet trailer (tools/prep_portraits.py): assets/portraits/<tên>.png

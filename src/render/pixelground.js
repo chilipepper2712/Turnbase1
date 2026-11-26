@@ -48,7 +48,7 @@ export function paintPixelGround(ctx, o) {
       const nt = ax >= ay ? tid(cx + (fx > 0 ? 1 : -1), cy) : tid(cx, cy + (fy > 0 ? 1 : -1));
       let terr = t;
       let col = null;
-      let swamp = false;
+      let swamp = false, fine = null;
 
       if (nt && nt !== t) {
         if (isWater(t) !== isWater(nt)) {
@@ -74,6 +74,8 @@ export function paintPixelGround(ctx, o) {
           if (n < 0.18) col = [58, 54, 48]; else if (n > 0.9) col = [116, 150, 78];
         } else if (terr === 'swamp') {
           swamp = true;     // vẽ từng điểm 1px bên dưới
+        } else if (terr === 'plain') {
+          fine = col;       // cỏ đồng bằng: hạt nhuyễn hơn, vẽ từng điểm 1 đơn vị thế giới bên dưới
         } else if (isWater(terr)) {
           if (H(Math.floor(gx / 2), gy, 4) < 0.05) col = WAVE;
         }
@@ -105,6 +107,31 @@ export function paintPixelGround(ctx, o) {
               if (colx < 0 || colx >= cw) continue;
               const k = (row * cw + colx) * 4;
               d[k] = c3[0]; d[k + 1] = c3[1]; d[k + 2] = c3[2]; d[k + 3] = 255;
+            }
+          }
+        }
+        continue;
+      }
+      if (fine) {
+        // đồng bằng: nền theo khối như cũ + hạt cỏ 1 đơn vị (mịn gấp đôi), thỉnh thoảng một chấm sáng / tối
+        const sub = RES;
+        for (let sy = 0; sy < BLK; sy++) for (let sx = 0; sx < BLK; sx++) {
+          const sxw = gx * BLK + sx, syw = gy * BLK + sy;
+          const hv = H(sxw, syw, 11), fv = (hv - 0.5) * 9;
+          let c3 = [fine[0] + fv, fine[1] + fv, fine[2] + fv * 0.6];
+          const sp = H(sxw, syw, 12);
+          if (sp < 0.025) c3 = [fine[0] + 22, fine[1] + 24, fine[2] + 8];
+          else if (sp > 0.975) c3 = [fine[0] - 22, fine[1] - 18, fine[2] - 10];
+          const r = Math.max(0, Math.min(255, c3[0])), g = Math.max(0, Math.min(255, c3[1])), bl = Math.max(0, Math.min(255, c3[2]));
+          const ppx = Math.round((sxw - minX) * RES), ppy = Math.round((syw - minY) * RES);
+          for (let yy = 0; yy < sub; yy++) {
+            const row = ppy + yy;
+            if (row < 0 || row >= ch) continue;
+            for (let xx = 0; xx < sub; xx++) {
+              const colx = ppx + xx;
+              if (colx < 0 || colx >= cw) continue;
+              const k = (row * cw + colx) * 4;
+              d[k] = r; d[k + 1] = g; d[k + 2] = bl; d[k + 3] = 255;
             }
           }
         }
