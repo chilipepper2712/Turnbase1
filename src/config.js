@@ -226,7 +226,7 @@ export const WEATHER = {
   bigSpeed: 1, smallSpeed: 1.4,       // ô mỗi bước
   margin: 3,                // mây xuất hiện / tan ngoài mép bản đồ bao nhiêu ô
   spawnChance: 0.5,         // thiếu mây thì mỗi bước có chừng này khả năng có đám mới từ mép đầu gió
-  rainStart: 0.35, rainStop: 0.35,    // mây lớn bắt đầu / tạnh mưa mỗi bước
+  rainStart: 0.15, rainStop: 0.45,    // mây lớn bắt đầu / tạnh mưa mỗi bước (~1/4 số mây lớn đang mưa, mỗi trận ~1 lượt)
   swampChance: 0.15,        // mỗi ô đồng bằng dưới mưa: khả năng thành đầm lầy
   swampTurns: 2,            // đầm lầy do mưa giữ bao nhiêu lượt rồi khô lại
 };

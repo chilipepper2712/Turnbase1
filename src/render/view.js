@@ -8,6 +8,8 @@ import { drawGroundTile, makeCanvas, drawCloud, INK } from './doodle.js';
 import { paintPixelGround } from './pixelground.js';
 import { makePixelCloud } from './pixelcloud.js';
 import { windVec } from '../weather.js';
+// mây đen: tốc độ trôi (ô/giây, mây trắng ~0.2-0.4) và khoảng được trôi vượt trước vị trí luật
+const STORM_SPEED = 0.06, STORM_LEAD = 0.9;
 import { seenMask } from '../fog.js';
 import { WEATHER } from '../config.js';
 
@@ -895,7 +897,7 @@ export class GameView {
 
   startAmbient() {
     clearTimeout(this._ambT);
-    const any = () => this.idleOn || this.cloudsOn || this.hasWater() || this.hasRain() || this.hasFire();
+    const any = () => this.idleOn || this.cloudsOn || this.hasWater() || this.hasStorm() || this.hasFire();
     if (!any()) return;
     const tick = () => {
       if (!any()) return;
@@ -904,7 +906,7 @@ export class GameView {
         if (this.idleOn) { this.updateIdle(); dirty = true; }
         if (this.cloudsOn) { this.updateClouds(); dirty = true; }
         if (this.hasWater() && this.updateWater()) dirty = true;
-        if (this.hasRain()) { this.placeStorm(); dirty = true; }
+        if (this.hasStorm()) { this.driftStorm(); dirty = true; }
         if (this.hasFire()) { this.updateFires(); dirty = true; }
         if (dirty) this.app.render();
       }
@@ -1045,7 +1047,7 @@ export class GameView {
     }
     const rain = new PIXI.Graphics();
     this.stormShadow.addChild(shadow); this.storm.addChild(rain, cloud);
-    return { id: c.id, shadow, cloud, rain, ew, tx: c.x, ty: c.y, fade: 1, raining: c.raining };
+    return { id: c.id, shadow, cloud, rain, ew, tx: c.x, ty: c.y, gx: c.x, gy: c.y, fade: 1, raining: c.raining, big: c.size === 'big' };
   }
 
   buildStorm() {
@@ -1058,6 +1060,26 @@ export class GameView {
   }
 
   hasRain() { return !!this.storms && [...this.storms.values()].some((st) => st.raining); }
+  hasStorm() { return !!this.storms && this.storms.size > 0; }
+
+  // Mây đen trôi liên tục theo gió, chậm hơn mây trắng. Đi sau đích (vị trí luật) thì đuổi nhanh hơn chút;
+  // tới đích rồi vẫn trôi tiếp, vượt lên trước tối đa STORM_LEAD ô rồi mới chờ bước sau.
+  driftStorm() {
+    if (!this.hasStorm() || !this.state.weather) return;
+    const now = performance.now(), dt = Math.min(0.5, ((now - (this._stormT || now)) / 1000));
+    this._stormT = now;
+    const v = windVec(this.state.weather.wind);
+    for (const st of this.storms.values()) {
+      const ahead = (st.tx - st.gx) * v.x + (st.ty - st.gy) * v.y;     // đã vượt đích bao nhiêu ô theo chiều gió
+      const base = st.big ? STORM_SPEED : STORM_SPEED * 1.4;
+      const sp = ahead < -0.3 ? base * (1 + Math.min(6, -ahead * 4)) : ahead < STORM_LEAD ? base : 0;
+      // kéo dần về đường gió đi qua đích (khi gió đổi hướng thì không trôi lệch mãi)
+      const px = st.gx + v.x * ahead, py = st.gy + v.y * ahead;
+      st.tx += v.x * sp * dt + (px - st.tx) * Math.min(1, dt * 0.5);
+      st.ty += v.y * sp * dt + (py - st.ty) * Math.min(1, dt * 0.5);
+    }
+    this.placeStorm();
+  }
 
   // đặt mây đen theo toạ độ ô (liên tục) hiện tại; mây ra ngoài mép thì mờ dần
   placeStorm() {
@@ -1068,21 +1090,21 @@ export class GameView {
       const out = Math.max(-st.tx, st.tx - (w - 1), -st.ty, st.ty - (h - 1), 0);
       const k = Math.max(0, 1 - out / 3) * st.fade;
       st.shadow.position.set(p.x, p.y); st.cloud.position.set(p.x, p.y - 120);
-      st.shadow.alpha = (st.raining ? 0.62 : 0.45) * k; st.cloud.alpha = 0.8 * k;
+      st.shadow.alpha = (st.raining ? 0.55 : 0.4) * k; st.cloud.alpha = 0.5 * k;
       st.rain.clear();
       if (st.raining && k > 0.05) {
         // vệt mưa xiên theo gió, rơi từ đáy mây xuống vùng bóng; vị trí đổi theo thời gian nên trông như đang rơi
         const v = windVec(this.state.weather.wind), slant = (v.x - v.y) * 10;
-        const n = Math.round(st.ew / 2.5), rng = makeRng(st.id * 977 + Math.floor(now / 90));
+        const n = Math.round(st.ew / 7), rng = makeRng(st.id * 977 + Math.floor(now / 90));
         for (let i = 0; i < n; i++) {
           const a = rng() * Math.PI * 2, rr = Math.sqrt(rng());
           const gx = p.x + Math.cos(a) * rr * st.ew * 0.5, gy = p.y + Math.sin(a) * rr * st.ew * 0.25;
           const top = p.y - 100, f = rng();
-          const y0 = top + (gy - top) * f, y1 = Math.min(gy, y0 + 22);
+          const y0 = top + (gy - top) * f, y1 = Math.min(gy, y0 + 11);
           const x0 = gx - slant * (1 - f) * 3;
-          st.rain.moveTo(x0, y0).lineTo(x0 + slant * 0.4, y1);
+          st.rain.moveTo(x0, y0).lineTo(x0 + slant * 0.2, y1);
         }
-        st.rain.stroke({ width: 1.8, color: this.tileStyle === 'pixel' ? 0xe4eef8 : 0x5f7f9f, alpha: 0.85 * k });
+        st.rain.stroke({ width: 1, color: this.tileStyle === 'pixel' ? 0xdfe9f4 : 0x5f7f9f, alpha: 0.6 * k });
       }
     }
   }
@@ -1095,14 +1117,13 @@ export class GameView {
     const born = [];
     for (const c of W.clouds) if (!this.storms.has(c.id)) { const st = this.stormSprite(c); st.fade = 0; this.storms.set(c.id, st); born.push(st); }
     const gone = [...this.storms.values()].filter((st) => !ids.has(st.id));
-    const mv = new Map(ev.moves.map((m) => [m.id, m]));
-    for (const st of this.storms.values()) { const c = W.clouds.find((q) => q.id === st.id); if (c) st.raining = c.raining; }
-    await this.tween(1100, (k) => {
+    // vị trí luật mới chỉ là đích; hình mây tự trôi chậm, liên tục tới đó (driftStorm)
+    for (const st of this.storms.values()) {
+      const c = W.clouds.find((q) => q.id === st.id);
+      if (c) { st.raining = c.raining; st.gx = c.x; st.gy = c.y; } else { const v = windVec(W.wind); st.gx += v.x; st.gy += v.y; }
+    }
+    await this.tween(600, (k) => {
       const e = k * k * (3 - 2 * k);
-      for (const st of this.storms.values()) {
-        const m = mv.get(st.id);
-        if (m) { st.tx = m.from.x + (m.to.x - m.from.x) * e; st.ty = m.from.y + (m.to.y - m.from.y) * e; }
-      }
       for (const st of born) st.fade = e;
       for (const st of gone) st.fade = 1 - e;
       this.placeStorm();
@@ -1156,6 +1177,7 @@ export class GameView {
     if (this.cloudsOn) this.updateClouds();
     if (this.hasWater()) this.updateWater();
     if (this.hasFire()) this.updateFires();
+    if (this.hasStorm()) this.driftStorm();
     this.app.render();
     if (this.tweens.length) this.requestRender();
   }
