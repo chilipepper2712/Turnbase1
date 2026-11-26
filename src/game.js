@@ -52,7 +52,8 @@ export class Game {
 
   get state() { return this.view.state; }
   // quân ở ô này mà người chơi nhìn thấy (quân ẩn của địch coi như không có)
-  seenAt(s, x, y) { const u = unitAt(s, x, y); return u && !(u.hidden && u.faction !== 'human') ? u : null; }
+  // quân phe người chơi nhìn thấy được trên ô (goblin ẩn và quân khuất sương thì coi như không có)
+  seenAt(s, x, y) { const u = unitAt(s, x, y); return u && !((u.hidden || u.fogged) && u.faction !== 'human') ? u : null; }
   get speed() { return SPEEDS[this.settings.speed] || 1; }
 
   // ---------- Vòng đời ----------
@@ -66,7 +67,8 @@ export class Game {
     this.busy = false;
     this.sel = null; this.pending = null; this.origin = null;
     this.view.speed = this.speed;
-    const st = createMissionState(map, this.settings.mission || 'skirmish', 'human', this.settings.enemy || 'orc');
+    const st = createMissionState(map, this.settings.mission || 'skirmish', 'human', this.settings.enemy || 'orc',
+      { fog: this.settings.fog !== false, weather: this.settings.weather !== false });
     this.view.reset(st);
     this.refreshAll();
     if (!hold) { this.briefMission(); this.beginTurn(); }
@@ -206,7 +208,7 @@ export class Game {
     while (!s.winner && (a = planNextAction(s, level)) && guard++ < 80) {
       const u = s.units.find((x) => x.id === a.unit.id);
       if (!u) break;
-      if (!(u.hidden && u.faction !== 'human')) await this.view.ensureVisible(u.x, u.y);   // không lộ quân ẩn qua camera
+      if (!((u.hidden || u.fogged) && u.faction !== 'human')) await this.view.ensureVisible(u.x, u.y);   // không lộ quân ẩn qua camera
       const ev = executeAction(s, a);
       await this.view.playEvents(ev);
       await wait(140 / this.speed);
@@ -291,7 +293,7 @@ export class Game {
       if (statsOf(u).range[1] > 1) this.rangeTiles = tilesInRange(s, u, u.x, u.y);
     }
     // xem một đơn vị địch: hiện vùng nó có thể đánh tới ở lượt sau
-    if (u.faction !== s.current && !u.static) this.threat = threatTiles(s, u);
+    if (u.faction !== s.current && !u.static && !u.veiled) this.threat = threatTiles(s, u);
     this.refreshOverlay();
     this.refreshActions();
     this.hidePreview();
@@ -450,7 +452,7 @@ export class Game {
     } else {
       this.inspectTile = tile;
       const u = this.seenAt(s, tile.x, tile.y);
-      this.threat = u && u.faction !== s.current && !u.static ? threatTiles(s, u) : null;
+      this.threat = u && u.faction !== s.current && !u.static && !u.veiled ? threatTiles(s, u) : null;
     }
     this.pending = null; this.hidePreview();
     this.refreshOverlay();
@@ -764,6 +766,9 @@ export class Game {
 
   unitCard(u) {
     const s = this.state, st = statsOf(u), f = FACTIONS[u.faction];
+    if (u.veiled && u.faction !== 'human') {
+      return `<h3><span class="chip" style="background:#1b1b1b"></span>${esc(t('fog.unknown'))}</h3><div class="desc">${esc(t('fog.desc'))}</div>`;
+    }
     const tid = terrainId(s, u.x, u.y);
     const def = Math.round(defensePct(s, u, u.x, u.y));
     const lvl = levelOf(u.xp || 0);
@@ -812,6 +817,13 @@ export class Game {
     const el = $('preview');
     const d = pv.detail;
     const lines = [];
+    if (tgt.veiled) {
+      // bóng đen trong rừng: không biết là quân gì nên không tính trước được
+      el.innerHTML = `<h4>${esc(unitName(atk))} ${icon('arrow')} ${esc(t('fog.unknown'))}</h4><div>${esc(t('fog.preview'))}</div>`
+        + (withButtons ? `<div class="btns"><button data-act="confirm" class="primary">${esc(t('ui.attack'))}</button><button data-act="cancel" class="x" aria-label="${esc(t('ui.cancel'))}" title="${esc(t('ui.cancel'))}">${icon('x')}</button></div>` : '');
+      el.hidden = false;
+      return;
+    }
     lines.push(`<span class="good">${esc(t('ui.preview.deal', { n: pv.dmg }))}</span> (${tgt.strength} ${icon('arrow')} ${pv.defLeft})`);
     if (pv.kills) lines.push(`<span class="good">${esc(t('ui.preview.kill'))}</span>`);
     else if (pv.counter > 0) lines.push(`<span class="bad">${esc(t('ui.preview.take', { n: pv.counter }))}</span> (${atk.strength} ${icon('arrow')} ${pv.atkLeft})`);
@@ -907,6 +919,8 @@ export class Game {
           ${field('m-enemy', t('ui.enemy'), `<select id="m-enemy">${['orc', 'undead'].map((k) => opt(k, t('faction.name.' + k), this.settings.enemy || 'orc')).join('')}</select>`)}
           ${field('m-mission', t('ui.mission'), `<select id="m-mission">${MISSION_TYPES.map((k) => opt(k, t('mission.' + k), this.settings.mission || 'skirmish')).join('')}</select>`)}
           ${field('m-size', t('ui.mapSize'), `<select id="m-size">${Object.entries(MAP_SIZES).map(([k, v]) => opt(k, `${t('ui.size.' + k)} (${v.w}×${v.h})`, this.settings.mapSize || 'small')).join('')}</select>`)}
+          ${field('m-fog', t('ui.fog'), onoff('m-fog', this.settings.fog !== false))}
+          ${field('m-weather', t('ui.weather'), onoff('m-weather', this.settings.weather !== false))}
           ${field('m-seed', t('ui.seed'), `<input id="m-seed" type="number" min="0" value="${this.seed}">`)}
         </div>
         <div>
@@ -938,6 +952,8 @@ export class Game {
       this.settings.mapSize = $('m-size').value;
       this.settings.enemy = $('m-enemy').value;
       this.settings.mission = $('m-mission').value;
+      this.settings.fog = $('m-fog').value === '1';
+      this.settings.weather = $('m-weather').value === '1';
       this.view.setIdle(this.settings.idle);
       this.settings.clouds = $('m-clouds').value === '1';
       this.view.setClouds(this.settings.clouds);

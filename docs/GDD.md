@@ -272,13 +272,39 @@ Giống cách Civilization làm: quân tồn tại lâu thì lão luyện, bền
 - Giữ nguyên khi đứng yên. Mất khi di chuyển, tấn công, gộp/tách hoặc bỏ chạy.
 - Hiển thị bằng hàng rào (sprite Kenney) trước chân.
 
-### Biến đổi địa hình: định hướng (chưa làm)
+### Biến đổi địa hình: định hướng (đốt rừng đã làm, xem trên; bẫy và cầu chưa làm)
 
 Dân quân ngoài việc bổ sung quân còn có thể **đốt rừng, đặt bẫy, xây cầu**. **[CHỐT ý]** Hợp trụ cột "địa hình là vũ khí".
 
 - **[MỞ]** Bẫy **ẩn hay hiện**? Game chưa có sương mù nên bẫy ẩn nghĩa là AI phải biết hoặc bị coi là gian lận.
 - **[MỞ]** Tốn một hành động hay nhiều lượt, đốt rừng cháy lan theo gió (hướng mây trôi) hay chỉ một ô, cầu xây xong có phá được không.
 - **[MỞ]** Orc có làm được không? Tao khuyên bất đối xứng: người **xây** (cầu, bẫy, chướng ngại), orc **đốt**, hợp với hướng bất đối xứng ở cấp luật.
+
+### Thời tiết, hỏa công, sương mù chiến tranh **[CHỐT ý; số liệu MẶC ĐỊNH]**
+
+Ngẫu nhiên có chủ đích ("có may rủi thì thực hơn"), nhưng gieo theo seed + lượt nên tái lập được. Bật/tắt trong menu (mặc định bật; tutorial tắt).
+
+**Gió và mây** (`src/weather.js`, `WEATHER` trong config):
+- Gió 8 hướng, mỗi lần đổi phe 4% xoay 45°. Không có mũi tên chỉ gió: người chơi nhìn mây trôi mà đoán.
+- Mây đen lớn và nhỏ trôi theo gió (nhỏ nhanh hơn), tan ngoài mép, mọc lại từ mép đầu gió. Mây đen là trạng thái thật, luôn hiện; mây trắng chỉ để trang trí nhưng cũng trôi theo gió.
+- Chỉ mây lớn mưa; bắt đầu / tạnh 35% mỗi bước. Không báo trước chỗ sắp mưa.
+- Mưa: mỗi ô đồng bằng dưới mây có 15% thành đầm lầy, giữ 2 lượt rồi khô lại (thẻ địa hình báo còn mấy lượt).
+- Đầm lầy: giảm thủ, giảm sức đánh, đi chậm. Kỵ binh vào được nhưng tốn thêm 1 (chỉ voi chiến, nếu có sau này, mới không vào được).
+
+**Hỏa công** (`src/fire.js`, `FIRE`): chỉ cung thủ quân người.
+- Bắn tên lửa vào ô rừng trong tầm (kể cả ô kề, bắn mù cũng được). Có quân trong ô (kể cả goblin đang ẩn, sẽ lộ) thì ăn một mũi tên như bắn thường rồi bị lửa táp 1 quân. Hồi 3 lượt cho mỗi cung thủ.
+- Ô cháy 2 lượt: không ai bước vào được; quân còn đứng trong đó lúc hết lượt của mình mất 1 quân. Tàn thì thành rừng cháy (= đồng bằng, vĩnh viễn).
+- Lan: mỗi lượt 12% bén sang ô rừng kề xuôi gió. Mưa dập tắt (ô vẫn là rừng); ô đang mưa không đốt được.
+- Hình: nền pixel dùng sprite cây đang cháy 4 khung và cây cháy trụi (gen Seedream, hạ về đúng mật độ pixel cây thông gốc); nền giấy vẽ lửa bằng nét mực.
+
+**Sương mù chiến tranh** (`src/fog.js`, `FOG`):
+- Tầm nhìn 3 ô (Manhattan); cung thủ +1; đứng đồi / tháp canh +1, núi thấp +2; thành nhà nhìn 2; thành và trại hai phe luôn hiện. Ô ngoài tầm phủ tối; địa hình vẫn thấy, quân thì không.
+- Quân khuất sương: không nhắm bắn được, không có vùng khống chế. Đi đâm vào hoặc đi sát nó thì dừng lại ("Đụng địch!"), không bị đánh úp.
+- Orc (trừ goblin) trong rừng mà chưa lộ: chỉ thấy bóng đen chung một dáng + huy hiệu "?"; xem trước đòn đánh không ra số. Lộ khi đi, ra đòn hoặc bị đánh; hết lộ đầu lượt sau của nó. Goblin vẫn tàng hình hẳn: phục kích là đặc sản của goblin.
+- Ra đòn từ ngoài tầm nhìn của địch (vd cung thủ trên đồi) thì bị định vị tới đầu lượt sau của nó.
+- AI chơi công bằng: chỉ tính quân nó thấy; chưa thấy ai thì tiến về thành địch (bên giữ thành ở nhà, bên săn tướng chặn ở đích).
+
+Đo (AI chiến thuật đấu nhau, 30 ván/ô, bản nhỏ): thời tiết và hỏa công gần như trung tính (±1–2 ván). Sương mù làm **Cố thủ vs Orc** khó hẳn cho người giữ thành: người thắng 22/30 → 13/30. Thử tách: chỉ che quân Orc thì không đổi (23/30); chỉ che quân người thì 13/30, nghĩa là AI Orc đánh **tốt hơn** khi không thấy quân người, vì lao thẳng vào thành thay vì bị quân người dụ ra. **[MỞ]** AI bên tấn công thành nên ưu tiên thành hơn kể cả khi thấy địch.
 
 ## 10. Điều kiện thắng
 
@@ -467,3 +493,6 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 | Thủy binh | Phe người, chỉ có trên bản đồ có sông hồ; chặt cây (rừng thành đất trống) 1 lượt, hạ thủy 1 lượt thành cung thủ trên sông; lên bờ bỏ thuyền lại, đi vào thuyền để xuống lại; không qua gầm cầu | Mày đề xuất; mặc định chi tiết do dev đặt, mày duyệt |
 | Thứ tự roadmap | Mục tiêu đa dạng, rồi lưu/tải, rồi hệ trạng thái sĩ khí | Mày đồng ý |
 | Biến đổi địa hình | Dân quân đốt rừng, đặt bẫy, xây cầu | Mày đề xuất |
+| Thời tiết | Mây đen, mưa ngẫu nhiên, đồng bằng thành đầm lầy tạm; kỵ binh vào được đầm lầy | Mày đổi quan điểm: chấp nhận may rủi |
+| Hỏa công | Chỉ cung thủ người; tên lửa = phát bắn + lửa; hồi 3 lượt | Mày chọn (a) và đề xuất cooldown |
+| Sương mù | Bóng đen + "?" cho Orc trong rừng; goblin vẫn tàng hình | Mày đề xuất bóng đen; tách hai tầng để giữ phục kích |

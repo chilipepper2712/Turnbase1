@@ -8,6 +8,7 @@ import { drawGroundTile, makeCanvas, drawCloud, INK } from './doodle.js';
 import { paintPixelGround } from './pixelground.js';
 import { makePixelCloud } from './pixelcloud.js';
 import { windVec } from '../weather.js';
+import { seenMask } from '../fog.js';
 import { WEATHER } from '../config.js';
 
 export const TW = 96, TH = 48;
@@ -69,7 +70,8 @@ export class GameView {
     this.waterFx = new PIXI.Graphics();          // đốm nước lấp lánh (chỉ nền pixel), nằm trên nền, dưới quân
     this.stormShadow = new PIXI.Container();   // bóng mây đen (thời tiết thật): luôn hiện, không theo nút tắt mây
     this.storm = new PIXI.Container();         // mây đen + vệt mưa
-    this.world.addChild(this.ground, this.waterFx, this.cloudShadow, this.stormShadow, this.hl, this.objects, this.fx, this.cloudLayer, this.storm);
+    this.fogLayer = new PIXI.Graphics();       // sương mù chiến tranh: phủ tối các ô phe người chơi không thấy
+    this.world.addChild(this.ground, this.waterFx, this.cloudShadow, this.stormShadow, this.hl, this.objects, this.fogLayer, this.fx, this.cloudLayer, this.storm);
     app.stage.addChild(this.world);
     this.zoom = 1;
     this.buildMap();
@@ -588,6 +590,7 @@ export class GameView {
     txt.anchor.set(0.5);
     badge.addChild(bg, txt);
     badge.position.set(24, -8);
+    const badgeBg = bg;
     const fortG = new PIXI.Container();
     const stars = new PIXI.Graphics();          // quân hàm: các vạch ^ vẽ bằng code
     stars.position.set(24, -22);
@@ -605,9 +608,9 @@ export class GameView {
     const c = tileToWorld(u.x, u.y);
     root.position.set(c.x, c.y + 8);
     root.zIndex = c.y + 8 + 0.1;
-    root.visible = !(u.hidden && u.faction !== this.viewer);
+    root.visible = this.canSee(u);
     this.objects.addChild(root);
-    const us = { id: u.id, afloat: !!u.afloat, root, body, sprite, badge, txt, flag, fortG, stars, fort: -1, shown: u.strength, facing: u.static || u.faction === 'human' ? 1 : -1, bx: 0, by: 0 };
+    const us = { id: u.id, afloat: !!u.afloat, root, body, sprite, badge, txt, flag, fortG, stars, fort: -1, shown: u.strength, baseTex: res.texture, veil: false, badgeBg, facing: u.static || u.faction === 'human' ? 1 : -1, bx: 0, by: 0 };
     us.sprite.scale.x = Math.abs(us.sprite.scale.x) * (us.facing < 0 ? -1 : 1);
     this.sprites.set(u.id, us);
     return us;
@@ -654,7 +657,7 @@ export class GameView {
 
   setShown(us, n) {
     us.shown = n;
-    us.txt.text = String(Math.max(0, n));
+    us.txt.text = us.veil ? '?' : String(Math.max(0, n));
   }
 
   face(us, dx) {
@@ -778,7 +781,9 @@ export class GameView {
       us.root.zIndex = c.y + 8.1;
       us.body.position.set(0, 0);
       this.setShown(us, u.strength);
-      us.root.visible = !(u.hidden && u.faction !== this.viewer);   // quân ẩn: chỉ phe mình thấy
+      us.root.visible = this.canSee(u);                              // quân ẩn / khuất sương: chỉ phe mình thấy
+      this.setVeil(us, u.veiled && u.faction !== this.viewer);
+      if (us.veil) us.root.zIndex = c.y + 30;                      // bóng trong rừng: nổi lên trên tán cây cùng ô cho dễ thấy
       const mine = u.faction === s.current;
       us.body.alpha = mine && u.acted && u.status === 'ok' && !s.winner && !u.static ? 0.55 : 1;
       us.flag.text = u.status === 'routed' ? this.t('ui.routed') : '';
@@ -786,8 +791,45 @@ export class GameView {
       this.drawFort(us, u.fort || 0);
     }
     this.setHold(s);
+    this.drawFog();
     this.requestRender();
   }
+
+  // ---------- Sương mù chiến tranh ----------
+  canSee(u) { return u.faction === this.viewer || (!u.hidden && !u.fogged); }
+
+  // Orc nấp trong rừng: chỉ thấy một bóng đen chung (cùng một dáng cho mọi loại quân), không có số quân, không quân hàm
+  setVeil(us, on) {
+    if (us.veil === on) return;
+    us.veil = on;
+    if (on) {
+      const sh = this.assets.unit('infantry', 'orc');
+      us.sprite.texture = sh.texture; us.sprite.anchor.set(sh.anchor[0], sh.anchor[1]);
+      us.sprite.tint = 0x141414; us.sprite.alpha = 0.88;
+    } else {
+      us.sprite.texture = us.baseTex; us.sprite.tint = 0xffffff; us.sprite.alpha = 1;
+    }
+    // huy hiệu: dấu "?" nền xám thay số quân, để biết chắc ô đó có quân
+    us.stars.visible = !on;
+    us.txt.text = on ? '?' : String(us.shown);
+    us.badgeBg.tint = on ? 0x6a6a6a : 0xffffff;
+  }
+
+  drawFog() {
+    const g = this.fogLayer;
+    g.clear();
+    const s = this.state;
+    if (!s.fog) { this.fogMask = null; return; }
+    const m = this.fogMask = seenMask(s, this.viewer), { w, h } = s.map;
+    const col = this.tileStyle === 'pixel' ? 0x0c1220 : 0x4a463e, alpha = this.tileStyle === 'pixel' ? 0.4 : 0.3;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (m[y * w + x]) continue;
+      const c = tileToWorld(x, y);
+      g.poly([c.x, c.y - TH / 2 - 0.5, c.x + TW / 2 + 0.5, c.y, c.x, c.y + TH / 2 + 0.5, c.x - TW / 2 - 0.5, c.y], true);
+    }
+    g.fill({ color: col, alpha });
+  }
+  tileSeen(x, y) { return !this.fogMask || !!this.fogMask[y * this.state.map.w + x]; }
 
   // ---------- Overlay ----------
   setOverlay(o) {
@@ -1366,6 +1408,7 @@ export class GameView {
       case 'escape': this.snd('rout'); break;
       case 'reveal': if (ev.ambush) this.snd('rout'); break;
       case 'ignite': this.snd('bow_shoot'); break;
+      case 'bump': this.snd('ui_deny'); break;
       case 'heal': case 'bury': this.snd('heal'); break;
       case 'rise': this.snd('rout'); break;
       case 'merge': this.snd('merge'); break;
@@ -1392,11 +1435,16 @@ export class GameView {
           const us = this.sprites.get(ev.unit);
           if (!us) break;
           const mover = s.units.find((q) => q.id === ev.unit);
-          if (mover && mover.hidden && mover.faction !== this.viewer) {     // quân ẩn của địch đi: không vẽ, không lộ
+          const fogWalk = mover && mover.faction !== this.viewer && this.state.fog;
+          if (fogWalk && !ev.path.some((p) => this.tileSeen(p.x, p.y))) mover.__fogHide = true;
+          if (mover && ((mover.hidden && mover.faction !== this.viewer) || mover.__fogHide)) {     // quân ẩn / đi hoàn toàn trong sương: không vẽ, không lộ
+            delete mover.__fogHide;
+            us.root.visible = false;
             const end = tileToWorld(ev.path[ev.path.length - 1].x, ev.path[ev.path.length - 1].y);
             us.root.position.set(end.x, end.y + 8); us.root.zIndex = end.y + 8.1;
             break;
           }
+          if (fogWalk) this.setVeil(us, false);              // đi là lộ dạng (sự kiện 'unveil' tới sau)
           const pts = ev.path.map((p) => tileToWorld(p.x, p.y + 0));
           const per = Math.min(130, 700 / Math.max(1, pts.length - 1));
           const u = s.units.find((q) => q.id === ev.unit);
@@ -1407,6 +1455,7 @@ export class GameView {
             const a = pts[i - 1], b = pts[i];
             this.snd(u && u.role === 'cavalry' ? 'step_horse' : 'step_foot');
             this.face(us, b.x - a.x);
+            if (fogWalk) us.root.visible = this.tileSeen(ev.path[i - 1].x, ev.path[i - 1].y) || this.tileSeen(ev.path[i].x, ev.path[i].y);
             const bob = (k) => Math.abs(Math.sin(k * Math.PI)) * 5;
             await this.tween(per, (k) => {
               us.root.position.set(a.x + (b.x - a.x) * k, a.y + 8 + (b.y - a.y) * k);
@@ -1421,6 +1470,16 @@ export class GameView {
           }
           if (walk) us.sprite.texture = still;
           us.body.position.set(0, 0);
+          if (mover && mover.faction === this.viewer && this.state.fog) this.drawFog();   // quân mình đi: tầm nhìn đổi
+          break;
+        }
+        case 'unveil': { const us = this.sprites.get(ev.unit); if (us) this.setVeil(us, false); break; }
+        case 'spotted': { const us = this.sprites.get(ev.unit); if (us) us.root.visible = true; break; }
+        case 'bump': {
+          const us = this.sprites.get(ev.by);
+          if (us) us.root.visible = true;
+          const c = tileToWorld(ev.x, ev.y);
+          await this.float(this.t('fog.bump'), c.x, c.y - 56, 0xd8402f, 24);
           break;
         }
         case 'attack': {
