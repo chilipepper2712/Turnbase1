@@ -32,9 +32,12 @@ function goalField(s, u) {
     }
   } else {
     const seen = seenEnemies(s, f);
-    for (const e of seen) seed(e.x, e.y, 0);
     const eh = s.map.strongholds[foeOf(s, f)];
-    if (canCapture(s, f)) seed(eh.x, eh.y, 3);
+    // cố thủ, mình là bên đánh: thành là đích chính, quân địch chỉ là đích phụ (không để bị dụ đi xa)
+    const besieger = m.type === 'hold' && m.defender !== f;
+    for (const e of seen) seed(e.x, e.y, besieger ? HOLD_ENEMY_COST : 0);
+    if (besieger) seed(eh.x, eh.y, 0);
+    else if (canCapture(s, f)) seed(eh.x, eh.y, 3);
     else if (s.fog && !seen.length) {
       // sương mù, chưa thấy ai: bên giữ thành thì ở nhà chờ, còn lại tiến về phía thành địch mà dò
       const home = m.type === 'hold' && m.defender === f ? s.map.strongholds[f] : eh;
@@ -89,6 +92,11 @@ function adjacentAllies(s, u, x, y) {
 
 // hệ số tiến của necromancer khi phe âm binh là bên tấn công trong cố thủ (bình thường 0.3: đứng sau)
 const NECRO_PUSH = 1.0;
+// âm binh (trừ necromancer): xác không biết sợ, xông lên, gần như không ngại phản đòn
+const NECRO_GUARD = { huddle: 1.2, cover: 4, calm: 2 };   // calm: dưới mức đe doạ này (quân) thì chưa cần che
+const UNDEAD_AI = { adv: 1.7, threat: 0.3, counter: 0.5 };   // trước: 1.3 / 0.6 / 1 (quá hiền)
+// cố thủ: bên đánh coi quân địch xa hơn thực tế chừng này (ô) khi chọn đường, để bám thành
+const HOLD_ENEMY_COST = 3;
 
 const W = {
   tactical: { dmg: 1.0, kill: 0.9, counter: 1.0, threat: 0.45, terrain: 0.8, advance: 0.7, form: 0.2, capture: 8, guard: 0.6, rangedKeep: 0.5 },
@@ -107,7 +115,7 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
   let thrMul = ms === 'eager' ? 0.9 : ms === 'wavering' ? 1.2 : 1;
   // âm binh: xác không biết sợ, cứ lao lên; necromancer thì đứng sau, giữ mạng là trên hết
   const commander = u.vip || u.role === 'necromancer';
-  if (u.faction === 'undead' && !commander) { advMul = 1.3; thrMul = 0.6; }
+  if (u.faction === 'undead' && !commander) { advMul = UNDEAD_AI.adv; thrMul = UNDEAD_AI.threat; }
   // necromancer thường đứng sau; khi phe mình phải tấn công có hạn lượt (cố thủ, mình là bên đánh) thì tiến theo quân
   if (u.role === 'necromancer') { advMul = ctx.necroPush ? NECRO_PUSH : 0.3; }
   if (target) {
@@ -118,7 +126,7 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
     if (prize) score += pv.dmg * 1.5;
     if (pv.kills && target.role === 'necromancer') score += 40;
     if (target.static) score += pv.dmg * 3;               // thành mục tiêu: đánh vào là đang thắng
-    score -= (pv.counter / CONFIG.maxStrength) * UNIT_VALUE[u.role] * 10 * w.counter;
+    score -= (pv.counter / CONFIG.maxStrength) * UNIT_VALUE[u.role] * 10 * w.counter * (u.faction === 'undead' && !commander ? UNDEAD_AI.counter : 1);
   }
   if (w.terrain) score += (defensePct(s, u, x, y) / 100) * 10 * w.terrain * (target ? 0.6 : 1);
   if (w.threat) score -= (threatAt(s, u, x, y, killed ? target.id : null) / CONFIG.maxStrength) * UNIT_VALUE[u.role] * 10 * w.threat * (commander ? 2.2 : 1) * thrMul;
@@ -149,6 +157,14 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
     if (u.role === 'necromancer') {
       for (const g of s.graves) if (Math.abs(g.x - x) + Math.abs(g.y - y) <= UNDEAD.raiseRadius) score += UNIT_VALUE[g.role] * (graveWait(s, g) <= 1 ? 0.9 : 0.5);
     } else if (graveAt(s, x, y)) score -= 1.5;
+  }
+  // hộ vệ necromancer: nó đứng giữa quân mình; bị đe doạ thì quân âm binh quanh đó quay về che (chặn đường, vùng khống chế)
+  if (w.threat && u.faction === 'undead' && ctx.necro) {
+    if (u.role === 'necromancer') score += adjacentAllies(s, u, x, y) * NECRO_GUARD.huddle;
+    else if (ctx.necroDanger > 0) {
+      const d = Math.abs(x - ctx.necro.x) + Math.abs(y - ctx.necro.y);
+      if (d <= 1) score += NECRO_GUARD.cover * ctx.necroDanger; else if (d === 2) score += NECRO_GUARD.cover * 0.4 * ctx.necroDanger;
+    }
   }
   if (canCapture(s, u.faction) && x === enemyHold.x && y === enemyHold.y && u.status === 'ok') score += w.capture * 3;
   // phòng thủ thành nhà khi bị đe doạ
@@ -261,6 +277,7 @@ export function planNextAction(s, level = 'tactical') {
   const ctx = {
     ownHold, enemyHold, danger, defensive, guardPos,
     necroPush: m.type === 'hold' && m.defender !== f,
+    necro: null, necroDanger: 0,
     fieldFor: (u) => {
       const k = u.vip ? 'v' : u.role === 'cavalry' ? 'c' : 'f';   // (necromancer đi bộ, dùng chung trường 'f')
       return (fields[k] ||= goalField(s, u));
@@ -268,6 +285,9 @@ export function planNextAction(s, level = 'tactical') {
   };
   const ready = alliesOf(s, f).filter((u) => !u.acted && u.status === 'ok');
   if (!ready.length) return null;
+  // necromancer đang bị đe doạ tới đâu (0..1): quân địch thấy được có thể đánh tới nó ở lượt sau
+  ctx.necro = alliesOf(s, f).find((u) => u.role === 'necromancer') || null;
+  if (ctx.necro) ctx.necroDanger = Math.max(0, Math.min(1, (threatAt(s, ctx.necro, ctx.necro.x, ctx.necro.y, null) - NECRO_GUARD.calm) / 4));
 
   let best = null;
   if (level === 'easy') {

@@ -340,6 +340,14 @@ AI chiến thuật có áp lực tiến công tăng dần theo lượt để kh�
 
 **Cân bằng đo bằng AI chiến thuật đấu AI chiến thuật (30 ván):** cỡ nhỏ: Cố thủ ~90% bên giữ thắng, Phá trại ~40% người thắng (đối xứng nên ~50% là mong đợi; phần lớn ván AI vẫn kết thúc bằng quét sạch vì AI chưa ưu tiên phá trại), Hộ tống ~63% bên hộ tống thắng. Cỡ vừa: Cố thủ ~77%, Phá trại ~47%, Hộ tống ~37%. **Cố thủ đang nghiêng về bên giữ theo AI**, nhưng người chơi đánh khác AI nên chưa biết thực tế khó hay dễ; cần chơi thử rồi chỉnh số lượt / số quân. Cỡ lớn chưa đo lại sau đợt đổi luật.
 
+### AI âm binh hung hãn hơn, bên đánh thành bám thành (mày: "đánh với âm binh là tao thắng")
+
+- Âm binh (trừ necromancer): hệ số tiến 1.3 → **1.7**, sợ bị đánh 0.6 → **0.3**, ngại phản đòn còn **một nửa**. Xác không biết sợ thì phải lao vào.
+- **Hộ vệ necromancer:** necromancer đứng giữa quân mình (+điểm mỗi đồng đội kề); khi nó bị đe doạ (quân địch thấy được có thể gây > 2 quân lên nó ở lượt sau) thì âm binh quanh đó quay về đứng sát che.
+- **Cố thủ, bên đánh:** thành là đích chính; quân địch thấy được chỉ là đích phụ (coi như xa hơn 3 ô).
+- Đo (AI đấu AI, âm binh thắng, trước → sau): giao tranh nhỏ 57% → 72%, cố thủ nhỏ 17–20% → 35%, giao tranh vừa ~48% → 55%, cố thủ vừa → 27%. Bản vừa trước đó phần lớn trận người thắng là nhờ hạ necromancer (15/16); có hộ vệ thì giảm. Orc không đổi (chỉ phần bám thành áp cho cả hai).
+- **[MỞ]** AI đấu AI không đo được người chơi thật khai thác AI thế nào. Cần mày chơi thử lại.
+
 ## 12. Giao diện và điều khiển
 
 - **Chọn quân → ô vàng di chuyển → chạm ô để đánh dấu đích → bấm nút "✓ Tới đây" nổi trên ô đó thì quân mới đi** (tránh trượt tay trên cảm ứng). Chạm ô khác thì đổi đích; sau khi đi vẫn có nút "↶ Đi lại" để về chỗ cũ nếu chưa hành động. Nút hủy trong thanh hành động là ✕. **[CHỐT]**
