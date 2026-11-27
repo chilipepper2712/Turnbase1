@@ -8,7 +8,7 @@ import {
   key, dist, reachable, targetsFrom, previewAttack, calcDamage, defensePct, statsOf,
   enemiesOf, alliesOf, moveCost, inBounds, DIRS, unitAt, terrainAt,
   canFortify, fortifyBonus, terrainDefense, canCapture, moraleState, terrainId, foeOf,
-  graveAt, graveWait, igniteTiles, isWild, isAux, graveInRange,
+  graveAt, graveWait, igniteTiles, isWild, isAux, graveInRange, onMapEdge,
 } from './rules.js';
 // hỏa công: lửa coi như gây thêm ~1.5 quân (1 ngay + có thể 1 nữa), tước chỗ thủ rừng; trừ giá trị giữ lại vì phải chờ hồi
 const FIRE_AI_DMG = 1.5, FIRE_AI_DENY = 4, FIRE_AI_SAVE = 1.5;
@@ -125,6 +125,7 @@ const POSTURE = {
   unseenValue: 1.6,                // quân người không thấy, không nhớ: ước mỗi squad chừng này giá trị
   entrench: 1.5,                   // mỗi 10% phòng thủ vượt mức gốc (địa hình, trại, đội hình) làm quân đó nặng thêm 15%
   fleeUnits: 2,                    // còn chừng này squad (không kể necromancer) trở xuống thì necromancer bỏ thành mà chạy
+  fleeRaw: 0.5,                    // ... và quân số thuần chỉ còn dưới chừng này phần quân địch
 };
 const MIND = {
   probe: { adv: 0.5, scoutAdv: 2.2, scoutThreat: 0.2 },
@@ -133,7 +134,7 @@ const MIND = {
   graves: { adv: 1.0, near: 1.6, deny: 3 },
   guard: { adv: 0.15, ring: 2.5, necroThreat: 2 },
   standoff: { adv: 1.0, threat: 1.6, edge: 4, exposed: 3, dug: 30 },   // dug: % thủ vượt mức gốc coi là "thủ chắc hẳn"
-  flee: { away: 1.2, threat: 3 },
+  flee: { away: 1.2, threat: 3, edge: 1.5 },
   trade: 0.5,                      // giết quân người (để lại mộ dậy được) đáng thêm chừng này phần giá trị của nó
   wild: 0.3,                       // đánh goblin hoang: chẳng được gì, chỉ đánh khi tiện
 };
@@ -168,7 +169,9 @@ export function undeadMind(s, f) {
   // của nó mà chờ (standoff): ai bước ra đánh thì cả đạo đánh trả; ngồi cả hai thì thôi. Yếu thật về quân số thì
   // lùi giữ mộ / co cụm. Gần hết quân thì necromancer bỏ thành mà chạy (flee).
   let want;
-  if (necro && !mustAttack && mine.length <= POSTURE.fleeUnits) want = 'flee';
+  // gần hết quân, thua hẳn về quân số, không còn mộ nào sắp dậy trong vùng ếm: hết đường gỡ thì mới bỏ trốn
+  const hope = pending.some((g) => graveWait(s, g) <= 2 && graveInRange(s, g));
+  if (necro && !mustAttack && mine.length <= POSTURE.fleeUnits && raw < POSTURE.fleeRaw && !hope) want = 'flee';
   else if (necro && danger >= 0.95 && !strong) want = 'guard';
   else if (mustAttack || strong) want = fresh || !s.fog ? 'press' : 'probe';
   else if (weak) want = pending.length ? 'graves' : 'guard';
@@ -331,6 +334,9 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
     let near = Infinity;
     for (const e of foesSeen(s, u.faction)) if (!e.static) near = Math.min(near, Math.abs(e.x - x) + Math.abs(e.y - y));
     if (isFinite(near)) score += Math.min(near, 12) * MIND.flee.away;
+    // về mép bản đồ gần nhất để thoát khỏi trận
+    const edge = Math.min(x, y, s.map.w - 1 - x, s.map.h - 1 - y);
+    score -= edge * MIND.flee.edge;
   }
   // co cụm: necromancer lui về thành nhà (cả đạo co về theo nó)
   if (mind && u.role === 'necromancer' && mind.posture === 'guard' && ownHold) {
@@ -378,6 +384,13 @@ function unitOptions(s, u, level, ctx) {
       if (terrainDefense(s, u.faction, u.x, u.y) >= 10) gain += 0.8;
       if (ctx.danger && Math.abs(u.x - ctx.ownHold.x) + Math.abs(u.y - ctx.ownHold.y) <= 3) gain += 1.2;
       out.push({ unit: u, to: { x: u.x, y: u.y }, fortify: true, score: base + gain - 0.4 });
+    }
+  }
+  // necromancer bỏ trốn: tới được mép bản đồ thì rời trận luôn
+  if (ctx.mind && ctx.mind.posture === 'flee' && u.role === 'necromancer') {
+    for (const node of reach.tiles.values()) {
+      if (!onMapEdge(s, node)) continue;
+      out.push({ unit: u, to: { x: node.x, y: node.y }, escape: true, score: 100 - node.cost * 0.01 });
     }
   }
   if (level !== 'easy' && s.graves && s.graves.length && u.faction !== 'undead' && !u.static && u.role !== 'goblin' && !u.afloat) {

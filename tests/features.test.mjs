@@ -1038,3 +1038,40 @@ test('hướng dẫn bài 1: bộ binh lên đồi được, cung thủ đánh �
   }
   assert.equal(s.winner, 'human');
 });
+
+test('necromancer bỏ trốn: tới mép bản đồ thì rời trận, đạo âm binh đổ sụp, phe người thắng luôn', async () => {
+  const { necroEscape, canNecroEscape } = await import('../src/rules.js');
+  const { executeAction } = await import('../src/actions.js');
+  const s = graveMap();
+  const n = addUnit(s, 'undead', 'necromancer', 3, 3);
+  const z = addUnit(s, 'undead', 'infantry', 4, 4); z.origin = 'human';
+  addUnit(s, 'human', 'infantry', 6, 12);
+  assert.ok(!canNecroEscape(s, n), 'chưa ở mép thì chưa trốn được');
+  assert.equal(necroEscape(s, n), null);
+  s.current = 'undead';
+  const ev = executeAction(s, { unit: n, to: { x: 0, y: 3 }, escape: true });
+  assert.ok(ev.some((e) => e.type === 'escape' && e.unit === n.id));
+  assert.ok(ev.some((e) => e.type === 'collapse' && e.unit === z.id));
+  assert.equal(s.winner, 'human');
+  assert.equal(s.winReason, 'necro_fled');
+  assert.ok(!s.units.some((u) => u.faction === 'undead'));
+});
+
+test('necromancer bỏ trốn: AI còn ≤ 2 squad thì chạy về mép bản đồ và thoát (giao tranh)', async () => {
+  const { planNextAction, AI_FLAGS } = await import('../src/ai.js');
+  const { executeAction } = await import('../src/actions.js');
+  assert.ok(AI_FLAGS.undeadMind);
+  const s = graveMap();
+  s.mission = { type: 'skirmish' };
+  addUnit(s, 'undead', 'necromancer', 2, 2);
+  const z = addUnit(s, 'undead', 'infantry', 3, 3); z.origin = 'human';
+  for (const x of [4, 5, 6, 7]) addUnit(s, 'human', 'infantry', x, 9);
+  s.current = 'undead';
+  let a, g = 0;
+  for (let t = 0; t < 6 && !s.winner; t++) {
+    while (!s.winner && (a = planNextAction(s, 'tactical')) && g++ < 50) executeAction(s, a);
+    if (!s.winner) { endTurn(s); endTurn(s); }
+  }
+  assert.equal(s.aiMind.undead.posture, 'flee');
+  assert.equal(s.winReason, 'necro_fled');
+});

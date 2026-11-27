@@ -1,5 +1,5 @@
 // Thực thi một action của AI (composite: di chuyển rồi đánh/gộp/đứng yên) lên state.
-import { moveUnit, attackUnit, waitUnit, mergeUnits, fortifyUnit, buryGrave, igniteForest } from './rules.js';
+import { moveUnit, attackUnit, waitUnit, mergeUnits, fortifyUnit, buryGrave, igniteForest, necroEscape } from './rules.js';
 
 export function executeAction(s, a) {
   const u = s.units.find((x) => x.id === a.unit.id);
@@ -20,6 +20,7 @@ export function executeAction(s, a) {
   } else {
     u.moved = true;
   }
+  if (a.escape) return events.concat(necroEscape(s, u) || waitUnit(s, u));
   if (a.bury) return events.concat(buryGrave(s, u) || waitUnit(s, u));
   if (a.ignite) return events.concat(igniteForest(s, u, a.ignite.x, a.ignite.y) || waitUnit(s, u));
   if (a.target) {

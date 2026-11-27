@@ -931,6 +931,23 @@ function escapeUnit(s, u, events) {
   events.push({ type: 'escape', unit: u.id, x: u.x, y: u.y, faction: u.faction, role: u.role, levelBefore: before, levelAfter: levelOf(xp) });
 }
 
+// Necromancer bỏ trốn: đứng ở mép bản đồ, chưa ra đòn trong lượt (đi rồi vẫn được) thì rời trận.
+// Đạo âm binh mất người điều khiển, đổ sụp như khi necromancer chết; phe kia thắng luôn (user chốt: thắng sớm cho gọn).
+export const onMapEdge = (s, u) => u.x === 0 || u.y === 0 || u.x === s.map.w - 1 || u.y === s.map.h - 1;
+export function canNecroEscape(s, u) {
+  return u.role === 'necromancer' && !u.acted && onMapEdge(s, u) && s.units.includes(u) && !s.winner;
+}
+export function necroEscape(s, u) {
+  if (!canNecroEscape(s, u)) return null;
+  const events = [{ type: 'escape', unit: u.id, x: u.x, y: u.y, faction: u.faction, role: u.role, levelBefore: 0, levelAfter: 0 }];
+  s.units = s.units.filter((x) => x.id !== u.id);
+  for (const x of s.units.filter((q) => q.faction === u.faction && !q.static)) events.push({ type: 'collapse', unit: x.id, x: x.x, y: x.y });
+  s.units = s.units.filter((q) => q.faction !== u.faction || q.static);
+  win(s, foeOf(s, u.faction), 'necro_fled');
+  updateFog(s);
+  return events;
+}
+
 function runFlee(s, u, events) {
   const plan = fleePlan(s, u);
   if (plan.kind === 'none') return;

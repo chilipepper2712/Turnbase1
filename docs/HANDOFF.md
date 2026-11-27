@@ -6,9 +6,9 @@ Người dùng: dùng "mày - tao", peer-level. Nhận xét thẳng ý tưởng 
 ## 1. Game (code)
 - Game trình duyệt chiến thuật theo lượt, lưới vuông, isometric (Pixi). Người vs Orc hoặc Âm binh. Nhiệm vụ: giao tranh, cố thủ, phá trại, hộ tống. Sĩ khí / bỏ chạy, goblin phục kích, thủy binh, âm binh + necromancer + mộ tử sĩ, thời tiết, hỏa công, sương mù chiến tranh, tutorial bài 1, lưu / tải. Luật đầy đủ ở `docs/GDD.md`.
 - Logic thuần: `src/rules.js`, `ai.js`, `missions.js`, `mapgen.js`, `config.js`, `weather.js`, `fire.js`, `fog.js`, `tutorial.js`, `saves.js`. Render: `src/render/view.js` (+ `assets.js`, `pixelground.js`, `doodle.js`...). UI: `src/game.js`, `index.html`, `style.css`.
-- Test: `npm test` (108 qua). Build: `npm install` (không commit package-lock) rồi `node tools/build_single.mjs` → `dist/artifact.html` và `dist/standalone.html` (~13,2 MB).
+- Test: `npm test` (110 qua). Build: `npm install` (không commit package-lock) rồi `node tools/build_single.mjs` → `dist/artifact.html` và `dist/standalone.html` (~13,2 MB).
 - Đo cân bằng: `node tools/simulate.mjs N enemyLvl humanLvl size enemy mission` (env `NOFOG=1`, `NOWEATHER=1` để so; `MIND=0` tắt tư thế âm binh, `ATKMUL`, `EXTRA` thử số âm binh). `humanLvl = turtle`: bot người thủ chắc quanh thành (lối chơi rùa của user). In thêm số squad chết/ván, tư thế, goblin hoang đánh ai.
-- Artifact game: https://claude.ai/artifact/CSx81EnZweknsmJP2FXymS (v65). Publish lại bằng Artifact tool, `file_path=/home/user/Turnbase1/dist/artifact.html`, `url` trên.
+- Artifact game: https://claude.ai/artifact/CSx81EnZweknsmJP2FXymS (v66). Publish lại bằng Artifact tool, `file_path=/home/user/Turnbase1/dist/artifact.html`, `url` trên.
 - Chụp ảnh game thật: Playwright mở `file:///home/user/Turnbase1/dist/standalone.html?seed=5`, bấm `#splash-start`, đóng modal; `window.__game` là đối tượng game (`.state`, `.view`). Server http cục bộ bị chặn, dùng file build.
 
 ## 2. Làm trong đợt này (đã xong)
@@ -26,7 +26,7 @@ Người dùng: dùng "mày - tao", peer-level. Nhận xét thẳng ý tưởng 
 - **Tư thế âm binh** (`undeadMind`, `AI_FLAGS.undeadMind`): bật mặc định; sát thương âm binh 100%, đông hơn 1 squad. Sửa lỗi điểm AI NaN. GDD mục 11.
 
 ## 3. Việc mở (theo thứ tự)
-0. **Âm binh đã chốt và bật (v65):** sát thương 100%, đông hơn 1 squad, tư thế bật (hướng (a): đứng sát mép tầm, phạt quân ra khỏi thế thủ; ≤2 squad thì necromancer bỏ thành chạy). Chờ user đánh thử. **[MỞ]** necromancer chạy thì được gì (giao tranh: bỏ thành = người chiếm thành thắng). Số đo ở GDD mục 11.
+0. **Âm binh đã chốt và bật (v65):** sát thương 100%, đông hơn 1 squad, tư thế bật (hướng (a): đứng sát mép tầm, phạt quân ra khỏi thế thủ; ≤2 squad thì necromancer bỏ thành chạy). Necromancer hết đường gỡ thì trốn về mép bản đồ, thoát là người thắng luôn (v66). Chờ user đánh thử. Số đo ở GDD mục 11.
 1. **AI âm binh vs người chơi thật.** User thắng âm binh bằng cách *thủ chắc, để âm binh dồn lên rồi bắn cung*; thỉnh thoảng dùng kỵ binh vòng đường khác đánh necromancer. Lưu ý: bản hung hãn mới (v63) có thể còn dễ bị bẫy này hơn. Hướng đề xuất (chưa làm, chưa hỏi user): **đánh theo đợt**: âm binh dừng ngay ngoài tầm đe doạ của địch cho tới khi đủ quân cùng lao vào trong một lượt, thay vì từng con đi vào tầm cung; cung thủ âm binh bắn đáp trả vị trí thủ; necromancer dùng mộ để ép người chơi ra khỏi thế thủ.
 2. Đóng gói lại bản itch (`docs/itch/`: zip, ảnh chụp, bài đăng đã cập nhật luật mộ) + viết **devlog #2** (thời tiết, hỏa công, sương mù, mộ ếm toàn bản đồ, âm binh hung hơn).
 3. **Chế độ chinh chiến** (mang squad elite qua trận): user đang suy nghĩ, chưa làm. Đề xuất đã đưa: chuỗi trận bật riêng, thắng được mang tối đa 2 elite (giữ cấp, hồi đủ quân), AI mạnh dần mỗi trận, thua là hết chuỗi. Xem GDD mục 16.

@@ -283,6 +283,8 @@
   "ui.mstate.none": "None",
   "ui.win.necromancer": "The necromancer has fallen; the undead host collapses into lifeless corpses.",
   "ui.lose.necromancer": "Our necromancer has fallen; the whole host falls apart.",
+  "ui.win.necro_fled": "The necromancer fled the battlefield; without its master the undead host collapses into lifeless corpses.",
+  "ui.lose.necro_fled": "Our necromancer fled; the whole host falls apart.",
   "unit.human.marine": "River marine",
   "unit.human.marineboat": "River marine (boat)",
   "unit.desc.marine": "Moves 1 tile farther than militia. Next to a forest it can cut timber (1 turn); with timber, next to water it can launch (1 turn) and becomes an archer in a boat.",
