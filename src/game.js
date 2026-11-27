@@ -177,7 +177,7 @@ export class Game {
     const f = this.state.current;
     if (f === 'human' && !this.state.winner && !this.tutorial) this.autosave();          // đầu lượt người chơi: điểm lưu an toàn nhất
     this.snd(f === 'human' ? 'turn_player' : 'turn_enemy');
-    this.banner(t(f === 'human' ? 'ui.yourTurn' : 'ui.enemyTurn'), f);
+    this.banner(t(f === 'human' ? 'ui.yourTurn' : f === 'undead' ? 'ui.enemyTurn.undead' : 'ui.enemyTurn'), f);
     this.refreshAll();
     if (this.players[f].type === 'ai') await this.runAI(f);
   }

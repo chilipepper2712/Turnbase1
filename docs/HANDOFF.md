@@ -8,7 +8,7 @@ Người dùng: dùng "mày - tao", peer-level. Nhận xét thẳng ý tưởng 
 - Logic thuần: `src/rules.js`, `ai.js`, `missions.js`, `mapgen.js`, `config.js`, `weather.js`, `fire.js`, `fog.js`, `tutorial.js`, `saves.js`. Render: `src/render/view.js` (+ `assets.js`, `pixelground.js`, `doodle.js`...). UI: `src/game.js`, `index.html`, `style.css`.
 - Test: `npm test` (110 qua). Build: `npm install` (không commit package-lock) rồi `node tools/build_single.mjs` → `dist/artifact.html` và `dist/standalone.html` (~13,2 MB).
 - Đo cân bằng: `node tools/simulate.mjs N enemyLvl humanLvl size enemy mission` (env `NOFOG=1`, `NOWEATHER=1` để so; `MIND=0` tắt tư thế âm binh, `ATKMUL`, `EXTRA` thử số âm binh). `humanLvl = turtle`: bot người thủ chắc quanh thành (lối chơi rùa của user). In thêm số squad chết/ván, tư thế, goblin hoang đánh ai.
-- Artifact game: https://claude.ai/artifact/CSx81EnZweknsmJP2FXymS (v66). Publish lại bằng Artifact tool, `file_path=/home/user/Turnbase1/dist/artifact.html`, `url` trên.
+- Artifact game: https://claude.ai/artifact/CSx81EnZweknsmJP2FXymS (v67). Publish lại bằng Artifact tool, `file_path=/home/user/Turnbase1/dist/artifact.html`, `url` trên.
 - Chụp ảnh game thật: Playwright mở `file:///home/user/Turnbase1/dist/standalone.html?seed=5`, bấm `#splash-start`, đóng modal; `window.__game` là đối tượng game (`.state`, `.view`). Server http cục bộ bị chặn, dùng file build.
 
 ## 2. Làm trong đợt này (đã xong)
@@ -28,7 +28,7 @@ Người dùng: dùng "mày - tao", peer-level. Nhận xét thẳng ý tưởng 
 ## 3. Việc mở (theo thứ tự)
 0. **Âm binh đã chốt và bật (v65):** sát thương 100%, đông hơn 1 squad, tư thế bật (hướng (a): đứng sát mép tầm, phạt quân ra khỏi thế thủ; ≤2 squad thì necromancer bỏ thành chạy). Necromancer hết đường gỡ thì trốn về mép bản đồ, thoát là người thắng luôn (v66). Chờ user đánh thử. Số đo ở GDD mục 11.
 1. **AI âm binh vs người chơi thật.** User thắng âm binh bằng cách *thủ chắc, để âm binh dồn lên rồi bắn cung*; thỉnh thoảng dùng kỵ binh vòng đường khác đánh necromancer. Lưu ý: bản hung hãn mới (v63) có thể còn dễ bị bẫy này hơn. Hướng đề xuất (chưa làm, chưa hỏi user): **đánh theo đợt**: âm binh dừng ngay ngoài tầm đe doạ của địch cho tới khi đủ quân cùng lao vào trong một lượt, thay vì từng con đi vào tầm cung; cung thủ âm binh bắn đáp trả vị trí thủ; necromancer dùng mộ để ép người chơi ra khỏi thế thủ.
-2. Đóng gói lại bản itch (`docs/itch/`: zip, ảnh chụp, bài đăng đã cập nhật luật mộ) + viết **devlog #2** (thời tiết, hỏa công, sương mù, mộ ếm toàn bản đồ, âm binh hung hơn).
+2. Đóng gói lại bản itch (`docs/itch/`: zip, ảnh chụp, bài đăng). **Devlog #2 đã viết** (`docs/itch/devlog_02_{vi,en}.md`, ảnh 2560×1440 ở `docs/itch/devlog02/`); ảnh chụp bằng Playwright, route `http://game.local/` phục vụ thẳng file nguồn để `import('/src/rules.js')` dựng cảnh. Zip và post_*.md chưa cập nhật.
 3. **Chế độ chinh chiến** (mang squad elite qua trận): user đang suy nghĩ, chưa làm. Đề xuất đã đưa: chuỗi trận bật riêng, thắng được mang tối đa 2 elite (giữ cấp, hồi đủ quân), AI mạnh dần mỗi trận, thua là hết chuỗi. Xem GDD mục 16.
 4. Tutorial bài 2–4 (địa hình/sĩ khí, quân đặc biệt, âm binh/cầu siêu), chờ góp ý bài 1.
 5. Cố thủ vs Orc khi có sương mù: AI orc đánh tốt hơn khi không thấy quân người (GDD ghi [MỞ]).

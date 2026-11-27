@@ -7,6 +7,7 @@
   "ui.turn": "Turn {n}",
   "ui.yourTurn": "Your turn",
   "ui.enemyTurn": "The Orcs are moving…",
+  "ui.enemyTurn.undead": "The Undead are moving…",
   "ui.endTurn": "End turn",
   "ui.endTurnIdle": "{n} squads have not acted",
   "ui.wait": "Hold",

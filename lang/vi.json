@@ -7,6 +7,7 @@
   "ui.turn": "Lượt {n}",
   "ui.yourTurn": "Lượt của quân ta",
   "ui.enemyTurn": "Quân Orc đang hành động…",
+  "ui.enemyTurn.undead": "Âm binh đang hành động…",
   "ui.endTurn": "Kết thúc lượt",
   "ui.endTurnIdle": "Còn {n} đội chưa hành động",
   "ui.wait": "Đứng yên",
