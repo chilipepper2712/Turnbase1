@@ -279,7 +279,7 @@
   "unit.undead.necromancer": "Necromancer",
   "unit.undead.objective": "Camp",
   "unit.desc.necromancer": "Commander of the undead host; casts dark bolts 2–3 tiles away, frail body. Fallen enemies leave graves; graves within 7 tiles of the necromancer rise as undead at half strength after 2 turns. If the necromancer falls, the whole host collapses into lifeless corpses.",
-  "unit.desc.undead": "Undead: no morale, never flees; deals 18% less damage and moves 1 tile less than when alive. Collapses if the necromancer dies.",
+  "unit.desc.undead": "Undead: no morale, never flees; hits as hard as when alive but moves 1 tile less. Collapses if the necromancer dies.",
   "ui.mstate.none": "None",
   "ui.win.necromancer": "The necromancer has fallen; the undead host collapses into lifeless corpses.",
   "ui.lose.necromancer": "Our necromancer has fallen; the whole host falls apart.",

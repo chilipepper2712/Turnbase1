@@ -113,8 +113,8 @@ const UNDEAD_AI = { adv: 1.7, threat: 0.3, counter: 0.5 };   // trước: 1.3 / 
 //   graves (giữ mộ): không còn trội nhưng có mộ đang đếm lùi -> lùi về quanh mộ, chặn quân người cầu siêu, chờ mộ dậy
 //   guard  (co cụm): necromancer bị đe doạ, hoặc yếu thế mà hết mộ -> co về che necromancer
 // Chống đổi qua đổi lại: tư thế giữ ít nhất minTurns lượt (trừ khi necromancer lâm nguy); ngưỡng vào ép cao hơn ngưỡng giữ ép.
-// ĐANG THỬ, MẶC ĐỊNH TẮT: đo bằng `MIND=1 node tools/simulate.mjs ...` (đỡ được necromancer nhưng chưa thắng hơn, xem HANDOFF)
-export const AI_FLAGS = { undeadMind: false };
+// Bật mặc định (user chốt 2026-11-27). Tắt để so: `MIND=0 node tools/simulate.mjs ...`
+export const AI_FLAGS = { undeadMind: true };
 const POSTURE = {
   pressAt: 1.3, pressKeep: 1.1,    // tỉ lệ sức mạnh (âm binh / người) để bắt đầu ép / để tiếp tục ép
   weakAt: 0.85,                    // dưới mức này là yếu thế
@@ -160,8 +160,8 @@ export function undeadMind(s, f) {
   const pending = (s.graves || []).filter((g) => g.faction !== f);
   const danger = necro ? Math.max(0, Math.min(1, (threatAt(s, necro, necro.x, necro.y, null) - NECRO_GUARD.calm) / 4)) : 0;
   const fresh = known.some((e) => !e.ghost || e.age < 1);
-  // cố thủ, âm binh là bên đánh: có hạn lượt, không có đường lùi
-  const mustAttack = s.mission.type === 'hold' && s.mission.defender !== f;
+  // cố thủ, âm binh là bên đánh (có hạn lượt), hoặc săn tướng (tướng sẽ về đích): không có quyền ngồi chờ
+  const mustAttack = (s.mission.type === 'hold' && s.mission.defender !== f) || (s.mission.type === 'escort' && s.mission.hunter === f);
   const strong = ratio >= POSTURE.pressAt || (old && old.posture === 'press' && ratio >= POSTURE.pressKeep);
   const weak = raw < POSTURE.weakAt;
   // Thắng hoặc giữ mạng. Trội cả khi tính thế thủ của địch thì ép. Không trội vì địch thủ chắc thì đứng sát mép tầm

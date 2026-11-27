@@ -279,7 +279,7 @@
   "unit.undead.necromancer": "Necromancer",
   "unit.undead.objective": "Trại",
   "unit.desc.necromancer": "Chỉ huy của đạo âm binh, phóng tà thuật 2–3 ô, thân mỏng. Quân địch ngã xuống để lại mộ; mộ trong 7 ô quanh necromancer, sau 2 lượt, trỗi dậy thành âm binh với nửa quân số. Necromancer ngã xuống thì cả đạo âm binh đổ sụp thành xác vô hồn.",
-  "unit.desc.undead": "Âm binh: không có sĩ khí, không bao giờ bỏ chạy; sát thương kém 18% và chậm hơn 1 ô so với lúc còn sống. Necromancer chết thì tan rã.",
+  "unit.desc.undead": "Âm binh: không có sĩ khí, không bao giờ bỏ chạy; sát thương như lúc còn sống nhưng chậm hơn 1 ô. Necromancer chết thì tan rã.",
   "ui.mstate.none": "Không có",
   "ui.win.necromancer": "Necromancer đã ngã xuống, đạo âm binh đổ sụp thành xác vô hồn.",
   "ui.lose.necromancer": "Necromancer của ta đã ngã xuống, cả đạo quân tan rã.",

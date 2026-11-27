@@ -113,10 +113,10 @@ export const FACTIONS = {
 // Âm binh: chỉ số = chỉ số lúc còn sống của phe gốc (người / Orc), sát thương giảm, chậm hơn 1 ô.
 // Mỗi đạo âm binh có đúng một necromancer chỉ huy; necromancer chết thì cả đạo quân tan rã.
 export const UNDEAD = {
-  atkMul: 0.82,             // giảm 18% sát thương so với lúc sống
+  atkMul: 1,                // sát thương như lúc sống (trước 0.82; user chốt 2026-11-27: đã chậm hơn rồi)
   moveLoss: 1,
   origins: ['human', 'orc'],  // squad thứ i lấy gốc origins[i % 2]
-  extra: 2,                 // đạo âm binh đông hơn: thêm chừng này squad (xác thì không thiếu)
+  extra: 1,                 // đạo âm binh đông hơn: thêm chừng này squad (trước 2, giảm khi trả sát thương về 100%)
   // Mộ tử sĩ: quân phe sống bị tiêu diệt để lại mộ. Mộ trong bán kính của necromancer, đủ số lượt chờ
   // và ô trống thì tự trỗi dậy thành âm binh (cùng loại quân, gốc là phe đã chết) với một phần quân số.
   // Âm binh chết là tan hẳn, không để lại mộ. Phe sống "cầu siêu tử sĩ" (mất lượt của squad) để chặn.

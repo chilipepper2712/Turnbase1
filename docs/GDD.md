@@ -359,7 +359,7 @@ AI chiến thuật có áp lực tiến công tăng dần theo lượt để kh�
 - Đo (AI đấu AI, âm binh thắng, trước → sau): giao tranh nhỏ 57% → 72%, cố thủ nhỏ 17–20% → 35%, giao tranh vừa ~48% → 55%, cố thủ vừa → 27%. Bản vừa trước đó phần lớn trận người thắng là nhờ hạ necromancer (15/16); có hộ vệ thì giảm. Orc không đổi (chỉ phần bám thành áp cho cả hai).
 - **[MỞ]** AI đấu AI không đo được người chơi thật khai thác AI thế nào. Cần mày chơi thử lại.
 
-### Tư thế âm binh: ý chí của necromancer **[ĐANG THỬ, MẶC ĐỊNH TẮT]**
+### Tư thế âm binh: ý chí của necromancer **[CHỐT, bật mặc định từ 2026-11-27]**
 
 Mày: âm binh tuỳ cơ ứng biến theo người chơi (thăm dò, ép khi trội, lùi khi yếu, lùi giữ necromancer, chặn cầu siêu để farm lính), khác lối của Orc lẫn người. Âm binh như con rối, theo ý necromancer: thắng hoặc giữ mạng. Ít quân mà hết mộ thì co cụm giữ necromancer.
 
@@ -380,6 +380,8 @@ Mày: âm binh tuỳ cơ ứng biến theo người chơi (thăm dò, ép khi tr
 | 100% | 0 | bật | 13 | 16 |
 
   Sát thương là cần gạt độ khó chính; tư thế đổi *cách* đánh (necromancer chết ít hơn hẳn, ván dài hơn, bị chiếm thành nhiều hơn khi bỏ chạy) chứ không đổi tỉ lệ thắng.
+- **Mày chốt (2026-11-27): sát thương âm binh 100% (trước 82%), đông hơn 1 squad (trước 2), bật tư thế.** Bên săn tướng (hộ tống) cũng không được ngồi chờ như bên đánh thành trong cố thủ. Đo lại cỡ nhỏ 30 ván (âm binh thắng/người thắng): giao tranh 21/9, cố thủ 14/16, phá trại 20/10, hộ tống 14/16, đấu bot rùa 16/10 (+4 hoà). Cỡ vừa 20 ván: giao tranh 11/9, cố thủ 6/14.
+- **[MỞ]** Necromancer bỏ thành chạy thì trong giao tranh người chiếm thành là thắng: chạy chỉ đổi kiểu thua. Đã hỏi mày chạy thì được gì (hoà nếu thoát khỏi bản đồ? thành không còn là điều kiện thua khi necromancer sống?), chưa trả lời.
 - **Vấn đề gốc tìm ra:** âm binh chậm hơn người 1 ô, kỵ binh người đi xa nhất. Đứng ngoài tầm đe doạ của người thì cũng không với tới người trong một lượt, nên "gom rồi cùng lao" vẫn là bước vào tầm và bị đánh trước. Bot rùa thắng bằng cách dồn hai đòn hạ một squad mỗi lượt. Chưa giải được bằng chỉnh số; cần quyết định thiết kế (xem HANDOFF).
 
 ## 12. Giao diện và điều khiển
@@ -532,7 +534,7 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 | Cố thủ | Cả hai bên đều chiếm được thành đối phương để thắng; hạn 12 lượt; người cũng có 1 đợt tiếp viện | Mày chốt |
 | Lưu / tải ván | Lưu bản đồ đầy đủ trong bản lưu; chỗ lưu chính là db của tài khoản, dự phòng localStorage, và xuất/nhập file; 1 ô tự động đầu lượt + 3 ô thủ công | Dev quyết, mày duyệt khi chơi |
 | Goblin | Toán goblin phe Orc ẩn trong rừng, phục kích quân người đi vào sát (đòn bất ngờ, không bị đánh trả), tiếp quân cho Orc gần đó, đặt theo seed lúc sinh map | Mày đề xuất và chốt; chi tiết số liệu do dev đặt |
-| Âm binh | Phe đối thủ thứ hai thay Orc ở một số màn; xác người và Orc giữ đồng phục gốc; −18% sát thương, −1 di chuyển, không sĩ khí, không bỏ chạy; một necromancer chỉ huy, chết là cả đạo tan rã; đông hơn 2 squad để cân | Mày chốt ý; số liệu và phần bù do dev đo |
+| Âm binh | Phe đối thủ thứ hai thay Orc ở một số màn; xác người và Orc giữ đồng phục gốc; sát thương như lúc sống (trước −18%, mày đổi 2026-11-27), −1 di chuyển, không sĩ khí, không bỏ chạy; một necromancer chỉ huy, chết là cả đạo tan rã; đông hơn 1 squad (trước 2) | Mày chốt ý; số liệu và phần bù do dev đo |
 | Thủy binh | Phe người, chỉ có trên bản đồ có sông hồ; chặt cây (rừng thành đất trống) 1 lượt, hạ thủy 1 lượt thành cung thủ trên sông; lên bờ bỏ thuyền lại, đi vào thuyền để xuống lại; không qua gầm cầu | Mày đề xuất; mặc định chi tiết do dev đặt, mày duyệt |
 | Thứ tự roadmap | Mục tiêu đa dạng, rồi lưu/tải, rồi hệ trạng thái sĩ khí | Mày đồng ý |
 | Biến đổi địa hình | Dân quân đốt rừng, đặt bẫy, xây cầu | Mày đề xuất |

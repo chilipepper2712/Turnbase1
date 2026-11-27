@@ -676,7 +676,7 @@ test('âm binh: trận người đấu âm binh có đúng hai phe, một necrom
   assert.equal(und.length, human.length + UNDEAD.extra + 1, 'đông hơn: thêm squad + necromancer');
 });
 
-test('âm binh: chỉ số lấy từ phe gốc, sát thương giảm 18%, chậm hơn 1 ô', () => {
+test('âm binh: chỉ số lấy từ phe gốc, sát thương theo UNDEAD.atkMul, chậm hơn 1 ô', () => {
   const s = undeadGame();
   for (const o of ['human', 'orc']) {
     const u = s.units.find((x) => x.faction === 'undead' && x.origin === o && x.role === 'infantry')
