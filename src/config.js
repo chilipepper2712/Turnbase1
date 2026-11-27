@@ -186,6 +186,9 @@ export const GOBLIN = {
   minHoldDist: 5,           // không đặt gần thành của bất kỳ phe nào hơn số ô này
   healRadius: 2, heal: 1,   // squad Orc trong bán kính này hồi thêm quân mỗi lượt (không cộng dồn nhiều toán)
   hideRadius: 2,            // cuối lượt Orc: goblin đứng trong rừng và không có quân người trong tầm này thì ẩn lại
+  // Goblin hoang (trận không có Orc, vd. đấu âm binh): không có Orc sống để theo nên đánh bất kỳ ai vào rừng của nó.
+  // Như thú dữ: mỗi cụm rừng lớn có goblin với xác suất wildChance (gieo theo bản đồ). Lãnh địa = cụm rừng chứa hang.
+  wildChance: 0.4,
 };
 
 // Đội hình xuất phát (theo thứ tự các ô spawn do mapgen sinh ra)

@@ -4,7 +4,8 @@
 //     hold    -> actor là bên phòng thủ
 //     destroy -> actor là bên tấn công (phải phá công trình của phe kia)
 //     escort  -> actor là bên hộ tống tướng
-import { MISSIONS, LEVEL } from './config.js';
+import { MISSIONS, LEVEL, GOBLIN } from './config.js';
+import { hash2 } from './rng.js';
 import { createState, addUnit, unitAt, spawnSquads, foeOf } from './rules.js';
 import { costField } from './mapgen.js';
 import { initWeather } from './weather.js';
@@ -31,7 +32,8 @@ export function setEnemy(map, enemy) {
   if (enemy === 'orc' || !map.spawns.orc) return map;
   map.strongholds = { human: map.strongholds.human, [enemy]: map.strongholds.orc };
   map.spawns = { human: map.spawns.human, [enemy]: map.spawns.orc };
-  map.goblins = [];                                   // goblin chỉ đi theo Orc
+  // goblin chỉ là đồng minh của Orc sống; trận âm binh: thỉnh thoảng có toán goblin hoang giữ rừng (đánh cả hai phe)
+  map.goblins = enemy === 'undead' ? (map.goblins || []).filter((g) => hash2((map.seed ^ 0x6b1) >>> 0, g.x, g.y) < GOBLIN.wildChance) : [];
   return map;
 }
 

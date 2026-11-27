@@ -1,7 +1,7 @@
 // Luật chơi thuần logic (không đụng DOM/Pixi). Mọi hàm đổi state đều trả về mảng sự kiện
 // để lớp hiển thị diễn lại bằng animation.
 import {
-  CONFIG, TERRAIN, FACTIONS, FORMATION_MAX, STATS, MATCHUP, ROSTER, FORTIFY, LEVEL, MORALE, GOBLIN, UNDEAD, MARINE, FIRE,
+  CONFIG, TERRAIN, FACTIONS, FORMATION_MAX, STATS, MATCHUP, ROSTER, FORTIFY, LEVEL, MORALE, GOBLIN, UNDEAD, MARINE, FIRE, UNIT_VALUE,
 } from './config.js';
 import { stepWeather } from './weather.js';
 import { stepFire, startFire, fireAt, rainingAt } from './fire.js';
@@ -32,11 +32,12 @@ export function createState(map) {
     });
     if (f === 'undead') { placeNecromancer(state, f); spawnSquads(state, f, UNDEAD.extra); }
   }
-  // toán goblin ẩn trong rừng (phe Orc)
-  for (const g of sides.includes('orc') ? map.goblins || [] : []) {
+  // toán goblin ẩn trong rừng (phe Orc). Trận không có Orc: goblin hoang, giữ hang trong cụm rừng, không theo phe nào
+  for (const g of map.goblins || []) {
     if (state.units.some((u) => u.x === g.x && u.y === g.y)) continue;
     const u = addUnit(state, 'orc', 'goblin', g.x, g.y, GOBLIN.strength);
     u.hidden = true;
+    if (!sides.includes('orc')) u.lair = { x: g.x, y: g.y };
   }
   for (const u of state.units) { u.moved = false; u.acted = false; }
   return state;
@@ -149,6 +150,8 @@ export const boatAt = (s, x, y) => (s.boats || []).find((b) => b.x === x && b.y 
 const isWater = (s, x, y) => terrainId(s, x, y) === 'river';
 // Quân phụ: không tính vào việc quét sạch, không chiếm thành (trại tĩnh, toán goblin)
 export const isAux = (u) => !!u.static || u.role === 'goblin';
+// Goblin hoang: thuộc "phe" không có trong trận (không có Orc sống để theo), đánh bất kỳ ai vào rừng của nó
+export const isWild = (s, u) => u.role === 'goblin' && !s.sides.includes(u.faction);
 // Quân ẩn (goblin) hoặc khuất trong sương mù: phe kia không thấy
 export const hiddenFrom = (u, f) => (!!u.hidden || !!u.fogged) && u.faction !== f;
 
@@ -952,6 +955,75 @@ function runFlee(s, u, events) {
   if (plan.kind === 'exit' && u.y === plan.edgeY) escapeUnit(s, u, events);
 }
 
+// ---------- Goblin hoang ----------
+// Lãnh địa: cụm rừng (nối 4 hướng) chứa hang; hang bị đốt trụi thì lấy cụm rừng nó đang đứng.
+export function wildLand(s, g) {
+  const { w } = s.map, out = new Set();
+  const forest = (x, y) => inBounds(s, x, y) && terrainId(s, x, y) === 'forest';
+  const start = g.lair && forest(g.lair.x, g.lair.y) ? g.lair : forest(g.x, g.y) ? g : null;
+  if (!start) return out;
+  const q = [[start.x, start.y]]; out.add(start.y * w + start.x);
+  while (q.length) {
+    const [x, y] = q.pop();
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx, ny = y + dy;
+      if (forest(nx, ny) && !out.has(ny * w + nx)) { out.add(ny * w + nx); q.push([nx, ny]); }
+    }
+  }
+  return out;
+}
+
+// Cuối lượt của mỗi phe, từng toán goblin hoang đánh một quân của phe đó đang đứng trong rừng của nó (hoặc kề nó).
+// Goblin biết rõ rừng nhà (không bị sương mù che). Đang ẩn thì là đòn phục kích (không bị đánh trả). Chỉ đi trong rừng nhà.
+// Không ai trong rừng thì ẩn lại. Mỗi vòng chạy hai lần (sau lượt người, sau lượt âm binh) nên sĩ khí hồi nửa mức.
+function wildGoblinPhase(s, events) {
+  const side = s.current, { w } = s.map;
+  for (const g of s.units.filter((u) => isWild(s, u))) {
+    if (!s.units.includes(g) || s.winner) continue;
+    const engaged = adjacentUnits(s, g.x, g.y).some((a) => a.faction !== g.faction);
+    g.morale = Math.min(100, g.morale + (engaged ? CONFIG.moraleRecoverEngaged : CONFIG.moraleRecoverCalm) / 2);
+    if (g.status === 'routed' && g.morale > FACTIONS[g.faction].routAt + CONFIG.routRecoverMargin) {
+      g.status = 'ok';
+      events.push({ type: 'recover', unit: g.id });
+    }
+    g.moved = false; g.acted = false; g.movedDist = 0;
+    const land = wildLand(s, g);
+    if (g.status === 'ok') {
+      const intruders = s.units.filter((e) => e.faction === side && !e.static && !e.afloat && (land.has(e.y * w + e.x) || dist(e, g) <= 1));
+      let best = null;
+      if (intruders.length) {
+        const reach = reachable(s, g);
+        for (const n of reach.tiles.values()) {
+          if (!land.has(n.y * w + n.x) && (n.x !== g.x || n.y !== g.y)) continue;
+          if (n.prev && pathTo(n).some((p, i) => i > 0 && !land.has(p.y * w + p.x))) continue;   // không ra khỏi rừng nhà
+          for (const e of intruders) {
+            if (Math.abs(e.x - n.x) + Math.abs(e.y - n.y) !== 1) continue;
+            const pv = previewAttack(s, g, e, n.x, n.y, n.cost);
+            const sc = pv.dmg * UNIT_VALUE[e.role] - (g.hidden ? 0 : pv.counter) * UNIT_VALUE.goblin * 1.5 - n.cost * 0.01;
+            if (pv.dmg >= 1 && (!best || sc > best.sc)) best = { n, e, sc };
+          }
+        }
+      }
+      if (best && best.sc > 0) {
+        const { n, e } = best;
+        if (n.x !== g.x || n.y !== g.y) {
+          const ev = moveUnit(s, g, n.x, n.y);
+          if (ev) events.push(...ev);
+        }
+        if (s.units.includes(g) && s.units.includes(e) && dist(g, e) === 1) {
+          const surprise = !!g.hidden;
+          if (surprise) { g.hidden = false; events.push({ type: 'reveal', unit: g.id, x: g.x, y: g.y, ambush: true, target: e.id }); }
+          events.push(...attackUnit(s, g, e, surprise));
+        }
+      }
+    }
+    if (!s.units.includes(g) || g.hidden || terrainId(s, g.x, g.y) !== 'forest') continue;
+    if (s.units.some((e) => e.faction !== g.faction && !e.static && dist(e, g) <= GOBLIN.hideRadius)) continue;
+    g.hidden = true;
+    events.push({ type: 'hide', unit: g.id });
+  }
+}
+
 // ---------- Lượt ----------
 export function endTurn(s) {
   const events = [];
@@ -964,6 +1036,9 @@ export function endTurn(s) {
     g.hidden = true;
     events.push({ type: 'hide', unit: g.id });
   }
+  // goblin hoang: đánh quân của phe vừa đi xong đang đứng trong rừng của nó
+  wildGoblinPhase(s, events);
+  if (s.winner) return events;
   // quân còn đứng trong ô cháy cuối lượt của mình: mất quân
   if (s.fires && s.fires.length) {
     for (const u of alliesOf(s, s.current).filter((q) => fireAt(s, q.x, q.y))) burnUnit(s, u, events);

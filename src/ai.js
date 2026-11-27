@@ -7,7 +7,7 @@ import {
   key, dist, reachable, targetsFrom, previewAttack, calcDamage, defensePct, statsOf,
   enemiesOf, alliesOf, moveCost, inBounds, DIRS, unitAt, terrainAt,
   canFortify, fortifyBonus, terrainDefense, canCapture, moraleState, terrainId, foeOf,
-  graveAt, graveWait, igniteTiles,
+  graveAt, graveWait, igniteTiles, isWild,
 } from './rules.js';
 // hỏa công: lửa coi như gây thêm ~1.5 quân (1 ngay + có thể 1 nữa), tước chỗ thủ rừng; trừ giá trị giữ lại vì phải chờ hồi
 const FIRE_AI_DMG = 1.5, FIRE_AI_DENY = 4, FIRE_AI_SAVE = 1.5;
@@ -24,14 +24,14 @@ function goalField(s, u) {
     if (u.vip) {
       seed(m.goal.x, m.goal.y, 0);                       // tướng chỉ nhìn về đích
     } else if (f === m.escort) {
-      for (const e of seenEnemies(s, f)) seed(e.x, e.y, 1);   // hộ tống: vừa dọn đường vừa theo về đích
+      for (const e of foesSeen(s, f)) seed(e.x, e.y, 1);   // hộ tống: vừa dọn đường vừa theo về đích
       seed(m.goal.x, m.goal.y, 3);
     } else {
-      for (const e of seenEnemies(s, f)) seed(e.x, e.y, e.vip ? 0 : 2);   // săn: nhắm tướng trước
-      if (s.fog && !seenEnemies(s, f).some((e) => e.vip)) seed(m.goal.x, m.goal.y, 1);   // chưa thấy tướng: chặn đầu ở đích
+      for (const e of foesSeen(s, f)) seed(e.x, e.y, e.vip ? 0 : 2);   // săn: nhắm tướng trước
+      if (s.fog && !foesSeen(s, f).some((e) => e.vip)) seed(m.goal.x, m.goal.y, 1);   // chưa thấy tướng: chặn đầu ở đích
     }
   } else {
-    const seen = seenEnemies(s, f);
+    const seen = foesSeen(s, f);
     const eh = s.map.strongholds[foeOf(s, f)];
     // cố thủ, mình là bên đánh: thành là đích chính, quân địch chỉ là đích phụ (không để bị dụ đi xa)
     const besieger = m.type === 'hold' && m.defender !== f;
@@ -63,6 +63,8 @@ function goalField(s, u) {
 
 // AI chỉ biết những gì người chơi bên đó thấy: quân địch đang ẩn không có trong tính toán
 const seenEnemies = (s, f) => enemiesOf(s, f).filter((e) => !e.hidden && !e.fogged);
+// đối thủ thật để nhắm tới (goblin hoang chỉ là chướng ngại: đánh nó không được gì)
+const foesSeen = (s, f) => seenEnemies(s, f).filter((e) => !isWild(s, e));
 
 const valueOf = (u) => UNIT_VALUE[u.role] * (0.3 + 0.7 * (u.strength / CONFIG.maxStrength));
 

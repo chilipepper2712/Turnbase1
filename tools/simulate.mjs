@@ -15,6 +15,7 @@ const size = MAP_SIZES[process.argv[5] || 'small'];
 const MAX_TURNS = 60;
 
 const wins = { human: 0, [enemy]: 0, draw: 0 }, how = {};
+const gob = {};
 let turns = 0, risen = 0, buried = 0, graves = 0, ignites = 0, spreads = 0, burns = 0, swamps = 0;
 const t0 = Date.now();
 for (let seed = 1; seed <= N; seed++) {
@@ -22,6 +23,7 @@ for (let seed = 1; seed <= N; seed++) {
   let guard = 0;
   const count = (ev) => {
     for (const e of ev || []) {
+      if (e.type === 'attack' && e.attackerRole === 'goblin' && !s.sides.includes('orc')) { const d = s.units.find((u) => u.id === e.defender); const k = d ? d.faction : 'chết'; gob[k] = (gob[k] || 0) + 1; }
       if (e.type === 'rise') risen++;
       else if (e.type === 'bury') buried++;
       else if (e.type === 'grave') graves++;
@@ -40,6 +42,6 @@ for (let seed = 1; seed <= N; seed++) {
   turns += s.turn;
 }
 const wx = ` | hỏa công ${(ignites / N).toFixed(1)}/ván, lan ${(spreads / N).toFixed(1)}, quân cháy ${(burns / N).toFixed(1)}, ô ngập ${(swamps / N).toFixed(1)}`;
-const extra = (enemy === 'undead' ? ` mộ ${(graves / N).toFixed(1)}/ván, trỗi dậy ${(risen / N).toFixed(1)}, an táng ${(buried / N).toFixed(1)}` : '') + wx;
+const extra = (enemy === 'undead' ? ` goblin hoang đánh ${JSON.stringify(gob)} |` : '') + (enemy === 'undead' ? ` mộ ${(graves / N).toFixed(1)}/ván, trỗi dậy ${(risen / N).toFixed(1)}, an táng ${(buried / N).toFixed(1)}` : '') + wx;
 console.log(`${enemy} ${mission} levels ${enemy}=${levels[enemy]} human=${levels.human}`, wins, how,
   `avg turns ${(turns / N).toFixed(1)}`, `${((Date.now() - t0) / N).toFixed(0)}ms/ván${extra}`);

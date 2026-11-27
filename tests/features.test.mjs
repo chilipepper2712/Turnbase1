@@ -664,11 +664,11 @@ import { UNDEAD, STATS } from '../src/config.js';
 
 const undeadGame = (type = 'skirmish') => createMissionState(generateMap(7, 16, 20), type, 'human', 'undead');
 
-test('âm binh: trận người đấu âm binh có đúng hai phe, một necromancer, có cả gốc người và gốc Orc, không có goblin', () => {
+test('âm binh: trận người đấu âm binh có đúng hai phe, một necromancer, có cả gốc người và gốc Orc, không có Orc (chỉ goblin hoang)', () => {
   const s = undeadGame();
   assert.deepEqual(s.sides, ['human', 'undead']);
   assert.equal(foeOf(s, 'human'), 'undead');
-  assert.ok(!s.units.some((u) => u.faction === 'orc'), 'không còn Orc, không còn goblin');
+  assert.ok(s.units.filter((u) => u.faction === 'orc').every((u) => u.role === 'goblin' && u.lair), 'không còn Orc, chỉ còn goblin hoang có hang');
   const und = s.units.filter((u) => u.faction === 'undead');
   assert.equal(und.filter((u) => u.role === 'necromancer').length, 1);
   assert.ok(und.some((u) => u.origin === 'human') && und.some((u) => u.origin === 'orc'));
@@ -736,6 +736,67 @@ test('âm binh: mọi nhiệm vụ chạy được với âm binh, AI đánh t�
 import { graveAt, graveWait, canBury, buryGrave } from '../src/rules.js';
 
 // bản đồ phẳng người đấu âm binh, xoá quân mặc định để tự đặt
+// ---------- Goblin hoang (trận âm binh) ----------
+function wildMap() {
+  const w = 12, h = 16;
+  const tiles = new Array(w * h).fill('plain');
+  for (let y = 6; y <= 8; y++) for (let x = 3; x <= 6; x++) tiles[y * w + x] = 'forest';   // cụm rừng 4×3
+  const s = createState({ w, h, tiles, strongholds: { human: { x: 5, y: 15 }, undead: { x: 6, y: 0 } }, spawns: { human: [], undead: [] } });
+  s.units = [];
+  addUnit(s, 'undead', 'necromancer', 11, 0);
+  addUnit(s, 'human', 'infantry', 11, 15);
+  const g = addUnit(s, 'orc', 'goblin', 4, 7, GOBLIN.strength); g.hidden = true; g.lair = { x: 4, y: 7 };
+  return { s, g };
+}
+
+test('goblin hoang: tỉ lệ như thú dữ, ván có ván không; toán nào cũng có hang trong rừng', () => {
+  let none = 0, some = 0;
+  for (let seed = 1; seed <= 24; seed++) {
+    const s = createMissionState(generateMap(seed, 16, 20), 'skirmish', 'human', 'undead');
+    const g = s.units.filter((u) => u.role === 'goblin');
+    if (g.length) some++; else none++;
+    for (const u of g) assert.ok(u.hidden && u.lair && s.map.tiles[u.lair.y * s.map.w + u.lair.x] === 'forest');
+  }
+  assert.ok(none > 0 && some > 0, `có ván không gặp (${none}) và có ván gặp (${some})`);
+  const o = createMissionState(generateMap(3, 16, 20), 'skirmish', 'human', 'orc');
+  assert.ok(o.units.filter((u) => u.role === 'goblin').every((u) => !u.lair), 'trận Orc: goblin vẫn theo Orc');
+});
+
+test('goblin hoang: cuối lượt âm binh đánh úp xác đứng trong rừng của nó (không bị đánh trả)', () => {
+  const { s, g } = wildMap();
+  const z = addUnit(s, 'undead', 'infantry', 6, 6); z.origin = 'human';
+  s.current = 'undead';
+  const before = z.strength, gs = g.strength;
+  const ev = endTurn(s);
+  assert.ok(ev.some((e) => e.type === 'attack' && e.attacker === g.id && e.defender === z.id && e.surprise));
+  assert.ok(z.strength < before, 'âm binh mất quân');
+  assert.equal(g.strength, gs, 'đòn phục kích không bị đánh trả');
+  assert.ok(s.map.tiles[g.y * s.map.w + g.x] === 'forest', 'goblin vẫn trong rừng nhà');
+});
+
+test('goblin hoang: đánh cả quân người trong rừng; quân đứng ngoài rừng (không kề) thì yên', () => {
+  const { s, g } = wildMap();
+  const out = addUnit(s, 'human', 'archer', 8, 7);        // đồng bằng, cách rừng 2 ô
+  let ev = endTurn(s);                                     // hết lượt người
+  assert.ok(!ev.some((e) => e.type === 'attack' && e.attacker === g.id), 'không ra khỏi rừng để đánh');
+  assert.ok(g.hidden, 'vẫn ẩn');
+  endTurn(s);                                              // hết lượt âm binh
+  const inn = addUnit(s, 'human', 'archer', 3, 6);
+  ev = endTurn(s);
+  assert.ok(ev.some((e) => e.type === 'attack' && e.attacker === g.id && e.defender === inn.id), 'đánh quân người vào rừng');
+  assert.ok(!ev.some((e) => e.type === 'attack' && e.defender === out.id));
+});
+
+test('goblin hoang: không ai trong rừng thì ẩn lại; không bị tính là quân của phe nào', () => {
+  const { s, g } = wildMap();
+  g.hidden = false;
+  endTurn(s);
+  assert.ok(g.hidden, 'ẩn lại');
+  s.units = s.units.filter((u) => u.faction !== 'undead');
+  checkVictory(s);
+  assert.equal(s.winner, 'human', 'hết âm binh là thắng, goblin không giữ trận cho ai');
+});
+
 function graveMap() {
   const w = 12, h = 16;
   const s = createState({ w, h, tiles: new Array(w * h).fill('plain'), strongholds: { human: { x: 5, y: 15 }, undead: { x: 6, y: 0 } }, spawns: { human: [], undead: [] } });
