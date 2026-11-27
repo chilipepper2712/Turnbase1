@@ -46,7 +46,7 @@ export class Game {
       onLongPress: (tile) => this.inspect(tile),
     };
     this.bindChrome();
-    view.setIdle(settings.idle === true);
+    view.setIdle(settings.idle !== false);
     view.setClouds(settings.clouds !== false);
   }
 
@@ -931,7 +931,7 @@ export class Game {
           ${field('m-speed', t('ui.speed'), `<select id="m-speed">${Object.keys(SPEEDS).map((d) => opt(d, t('ui.speed.' + d), this.settings.speed)).join('')}</select>`)}
           ${field('m-clouds', t('ui.clouds'), onoff('m-clouds', this.settings.clouds !== false))}
           ${field('m-tiles', t('ui.tiles'), onoff('m-tiles', this.view.tileStyle === 'pixel'))}
-          ${field('m-idle', t('ui.idle'), onoff('m-idle', this.settings.idle === true))}
+          ${field('m-idle', t('ui.idle'), onoff('m-idle', this.settings.idle !== false))}
           ${field('m-lang', t('ui.language'), `<select id="m-lang">${LANGS.map((c) => opt(c, langName(c), getLang())).join('')}</select>`)}
         </div>
       </div></div>
