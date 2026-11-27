@@ -8,7 +8,7 @@ Người dùng: dùng "mày - tao", peer-level. Nhận xét thẳng ý tưởng 
 - Logic thuần: `src/rules.js`, `ai.js`, `missions.js`, `mapgen.js`, `config.js`, `weather.js`, `fire.js`, `fog.js`, `tutorial.js`, `saves.js`. Render: `src/render/view.js` (+ `assets.js`, `pixelground.js`, `doodle.js`...). UI: `src/game.js`, `index.html`, `style.css`.
 - Test: `npm test` (108 qua). Build: `npm install` (không commit package-lock) rồi `node tools/build_single.mjs` → `dist/artifact.html` và `dist/standalone.html` (~13,2 MB).
 - Đo cân bằng: `node tools/simulate.mjs N enemyLvl humanLvl size enemy mission` (env `NOFOG=1`, `NOWEATHER=1` để so; `MIND=1` bật tư thế âm binh). `humanLvl = turtle`: bot người thủ chắc quanh thành (lối chơi rùa của user). In thêm số squad chết/ván, tư thế, goblin hoang đánh ai.
-- Artifact game: https://claude.ai/artifact/CSx81EnZweknsmJP2FXymS (v63). Publish lại bằng Artifact tool, `file_path=/home/user/Turnbase1/dist/artifact.html`, `url` trên.
+- Artifact game: https://claude.ai/artifact/CSx81EnZweknsmJP2FXymS (v64). Publish lại bằng Artifact tool, `file_path=/home/user/Turnbase1/dist/artifact.html`, `url` trên.
 - Chụp ảnh game thật: Playwright mở `file:///home/user/Turnbase1/dist/standalone.html?seed=5`, bấm `#splash-start`, đóng modal; `window.__game` là đối tượng game (`.state`, `.view`). Server http cục bộ bị chặn, dùng file build.
 
 ## 2. Làm trong đợt này (đã xong)
