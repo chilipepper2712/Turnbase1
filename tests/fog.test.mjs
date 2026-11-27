@@ -107,3 +107,43 @@ test('đi ngang qua cạnh quân vừa hiện khỏi sương: dừng lại (vùn
   moveUnit(s, h, 9, 8);
   assert.ok(Math.abs(h.x - o.x) + Math.abs(h.y - o.y) === 1, 'dừng ở ô kề quân orc');
 });
+
+test('trí nhớ AI: quân địch khuất sương vẫn được nhớ chỗ thấy lần cuối; nhìn lại thấy trống thì quên; chết thì quên', async () => {
+  const { rememberedFoes } = await import('../src/fog.js');
+  const s = board();
+  addUnit(s, 'human', 'infantry', 2, 13);
+  const o = addUnit(s, 'orc', 'infantry', 8, 8);
+  const eye = addUnit(s, 'orc', 'infantry', 4, 11);        // Orc nhìn thấy quân người ở (2,13)
+  const h = addUnit(s, 'human', 'archer', 3, 12);
+  updateFog(s);
+  assert.equal(rememberedFoes(s, 'orc').length, 0, 'đang thấy thì không phải bóng ma');
+  // quân người lùi khỏi tầm nhìn của Orc: còn nhớ chỗ cũ
+  s.units = s.units.filter((u) => u.id !== eye.id);
+  updateFog(s);
+  let g = rememberedFoes(s, 'orc');
+  assert.ok(g.some((r) => r.id === h.id && r.x === 3 && r.y === 12 && r.ghost), 'nhớ cung thủ ở chỗ cũ');
+  // Orc nhìn lại chỗ cũ, không còn ai: quên
+  h.x = 1; h.y = 14;
+  s.units.push({ ...eye });
+  updateFog(s);
+  assert.ok(!rememberedFoes(s, 'orc').some((r) => r.id === h.id && r.x === 3 && r.y === 12), 'nhìn lại thấy trống thì quên');
+  // quá FOG.memoryTurns lượt: quên
+  s.units = s.units.filter((u) => u.id !== eye.id);
+  updateFog(s);
+  s.memory.orc[h.id] = { ...s.memory.orc[h.id], seen: s.turn - FOG.memoryTurns - 1, live: false };
+  updateFog(s);
+  assert.ok(!s.memory.orc[h.id], 'quá lâu thì quên');
+  assert.ok(o);
+});
+
+test('trí nhớ AI: lưu / tải giữ nguyên', () => {
+  const s = board();
+  const h = addUnit(s, 'human', 'archer', 3, 12);
+  const eye = addUnit(s, 'orc', 'infantry', 4, 11);
+  addUnit(s, 'orc', 'infantry', 14, 1);
+  updateFog(s);
+  s.units = s.units.filter((u) => u.id !== eye.id);
+  updateFog(s);
+  const r = restoreState(snapshot(s, {}));
+  assert.ok(r.memory.orc[h.id] && r.memory.orc[h.id].x === 3, 'bản lưu có trí nhớ');
+});

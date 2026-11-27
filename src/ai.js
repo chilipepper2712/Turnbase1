@@ -3,6 +3,7 @@
 //   action = { unit, to:{x,y}, target?:unit, merge?:unit }
 import { CONFIG, UNIT_VALUE, FACTIONS, UNDEAD, FIRE } from './config.js';
 import { fireAt } from './fire.js';
+import { rememberedFoes } from './fog.js';
 import {
   key, dist, reachable, targetsFrom, previewAttack, calcDamage, defensePct, statsOf,
   enemiesOf, alliesOf, moveCost, inBounds, DIRS, unitAt, terrainAt,
@@ -35,7 +36,7 @@ function goalField(s, u) {
     const eh = s.map.strongholds[foeOf(s, f)];
     // cố thủ, mình là bên đánh: thành là đích chính, quân địch chỉ là đích phụ (không để bị dụ đi xa)
     const besieger = m.type === 'hold' && m.defender !== f;
-    for (const e of seen) seed(e.x, e.y, besieger ? HOLD_ENEMY_COST : 0);
+    for (const e of seen) seed(e.x, e.y, (besieger ? HOLD_ENEMY_COST : 0) + (e.ghost ? 1 + e.age : 0));
     if (besieger) seed(eh.x, eh.y, 0);
     else if (canCapture(s, f)) seed(eh.x, eh.y, 3);
     else if (s.fog && !seen.length) {
@@ -63,8 +64,13 @@ function goalField(s, u) {
 
 // AI chỉ biết những gì người chơi bên đó thấy: quân địch đang ẩn không có trong tính toán
 const seenEnemies = (s, f) => enemiesOf(s, f).filter((e) => !e.hidden && !e.fogged);
+// Quân địch AI biết: đang thấy + còn nhớ chỗ thấy lần cuối (bóng ma, ghost: true, age = số lượt từ lúc thấy).
+// Dưới sương mù quân khuất đi không có nghĩa là biến mất, người chơi cũng nhớ được như vậy.
+const knownEnemies = (s, f) => (s.fog ? seenEnemies(s, f).concat(rememberedFoes(s, f)) : seenEnemies(s, f));
 // đối thủ thật để nhắm tới (goblin hoang chỉ là chướng ngại: đánh nó không được gì)
-const foesSeen = (s, f) => seenEnemies(s, f).filter((e) => !isWild(s, e));
+const foesSeen = (s, f) => knownEnemies(s, f).filter((e) => !isWild(s, e));
+// bóng ma càng cũ càng kém tin: dùng cho cả mức đe doạ lẫn sức hút khi chọn đường
+const ghostTrust = (e) => (e.ghost ? Math.max(0.25, 1 - 0.25 * e.age) : 1);
 
 const valueOf = (u) => UNIT_VALUE[u.role] * (0.3 + 0.7 * (u.strength / CONFIG.maxStrength));
 
@@ -73,12 +79,12 @@ function threatAt(s, u, x, y, ignoreId) {
   const ghost = { ...u, x, y };
   const view = { ...s, units: s.units.map((q) => (q.id === u.id ? ghost : q)) };
   let total = 0;
-  for (const e of seenEnemies(s, u.faction)) {
+  for (const e of knownEnemies(s, u.faction)) {
     if (e.id === ignoreId || e.status === 'routed') continue;
     const st = statsOf(e);
     const d = Math.abs(e.x - x) + Math.abs(e.y - y);
-    if (d > st.move + st.range[1]) continue;
-    total += calcDamage(view, e, ghost, e.x, e.y, 0).dmg * 0.7;
+    if (d > st.move + st.range[1] + (e.ghost ? Math.min(e.age, 1) : 0)) continue;   // bóng ma: có thể đã nhích lại gần
+    total += calcDamage(view, e, ghost, e.x, e.y, 0).dmg * 0.7 * ghostTrust(e);
   }
   return Math.min(total, u.strength);
 }

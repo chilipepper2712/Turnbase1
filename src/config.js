@@ -250,4 +250,5 @@ export const FOG = {
   terrain: { hill: 1, fort: 1, mountain: 2 },   // đứng trên đồi / tháp canh / núi thấp
   campVision: 2,            // trại (nhiệm vụ phá trại)
   holdVision: 2,            // thành nhà
+  memoryTurns: 3,           // AI nhớ chỗ quân địch thấy lần cuối trong chừng này lượt (người chơi cũng tự nhớ được)
 };

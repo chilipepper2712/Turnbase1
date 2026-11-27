@@ -25,6 +25,7 @@ export function snapshot(state, meta = {}) {
       weather: state.weather || null,
       fires: state.fires || [],
       fog: !!state.fog,
+      memory: state.memory || null,
     }),
   };
 }
@@ -81,6 +82,19 @@ export function restoreState(snap) {
   }
   if (Array.isArray(s.sides) && s.sides.length === 2) st.sides = s.sides;
   st.fog = !!s.fog;
+  // trí nhớ của AI dưới sương mù (bản lưu cũ không có thì bắt đầu trống)
+  st.memory = {};
+  if (s.memory && typeof s.memory === 'object') {
+    for (const f of st.sides) {
+      const mem = s.memory[f];
+      if (!mem || typeof mem !== 'object') continue;
+      st.memory[f] = {};
+      for (const r of Object.values(mem)) {
+        if (r && isNum(r.id) && isNum(r.x) && isNum(r.y) && isNum(r.seen) && isNum(r.strength) && typeof r.role === 'string'
+          && r.x >= 0 && r.y >= 0 && r.x < map.w && r.y < map.h) st.memory[f][r.id] = r;
+      }
+    }
+  }
   updateFog(st);
   st.winner = null; st.winReason = null;
   return st;

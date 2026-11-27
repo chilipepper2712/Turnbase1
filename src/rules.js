@@ -119,6 +119,7 @@ export function cloneState(s) {
     boats: (s.boats || []).map((b) => ({ ...b })),
     graves: (s.graves || []).map((g) => ({ ...g })),
     fires: (s.fires || []).map((f) => ({ ...f })),
+    memory: s.memory && Object.fromEntries(Object.entries(s.memory).map(([f, m]) => [f, Object.fromEntries(Object.entries(m).map(([k, r]) => [k, { ...r }]))])),
     weather: s.weather && { ...s.weather, clouds: s.weather.clouds.map((c) => ({ ...c })), wet: s.weather.wet.map((p) => ({ ...p })) },
     mission: { ...s.mission, waves: s.mission.waves && s.mission.waves.map((w) => ({ ...w, spot: w.spot && { ...w.spot } })) },
   };

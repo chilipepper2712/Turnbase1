@@ -34,9 +34,10 @@ export function seenMask(s, f) {
 }
 
 export function updateFog(s) {
-  if (!s.fog) { for (const u of s.units) { u.fogged = false; u.veiled = false; } return; }
+  if (!s.fog) { for (const u of s.units) { u.fogged = false; u.veiled = false; } s.memory = null; return; }
   const masks = {};
   for (const f of s.sides) masks[f] = seenMask(s, f);
+  remember(s, masks);
   for (const u of s.units) {
     const foe = s.sides[0] === u.faction ? s.sides[1] : s.sides[0];
     const m = masks[foe];
@@ -44,6 +45,35 @@ export function updateFog(s) {
     u.fogged = !u.spotted && !m[u.y * s.map.w + u.x];
     u.veiled = !u.fogged && !u.exposed && !u.hidden && u.faction === 'orc' && u.role !== 'goblin' && tid(s, u.x, u.y) === 'forest';
   }
+}
+
+// Trí nhớ của từng phe (để AI chơi công bằng dưới sương mù mà không "quên" ngay quân vừa khuất):
+// s.memory[f][id] = bản chụp quân địch lúc f thấy nó lần cuối (vị trí, loại, quân số), kèm lượt thấy (seen).
+// Xoá khi quân đó chết, khi f nhìn lại chỗ cũ mà không còn ai, hoặc khi quá FOG.memoryTurns lượt.
+function remember(s, masks) {
+  s.memory ||= {};
+  const w = s.map.w, alive = new Set(s.units.map((u) => u.id));
+  for (const f of s.sides) {
+    const mem = (s.memory[f] ||= {}), m = masks[f];
+    for (const r of Object.values(mem)) r.live = false;
+    for (const e of s.units) {
+      if (e.faction === f || e.static || e.hidden || !(e.spotted || m[e.y * w + e.x])) continue;
+      const { id, faction, role, origin, strength, x, y, status, morale, xp, fort, afloat, vip } = e;
+      mem[id] = { id, faction, role, origin, strength, x, y, status, morale, xp, fort, afloat, vip, seen: s.turn, live: true };
+    }
+    for (const id of Object.keys(mem)) {
+      const r = mem[id];
+      if (r.live) continue;
+      // chết rồi / quá lâu / nhìn lại chỗ cũ mà không còn thấy nó ở đó
+      if (!alive.has(r.id) || s.turn - r.seen > FOG.memoryTurns || m[r.y * w + r.x]) delete mem[id];
+    }
+  }
+}
+
+// Quân địch phe f còn nhớ mà hiện không thấy (bóng ma để AI tính đường và mức đe doạ). age = số lượt từ lần thấy cuối.
+export function rememberedFoes(s, f) {
+  const mem = s.memory && s.memory[f];
+  return mem ? Object.values(mem).filter((r) => !r.live).map((r) => ({ ...r, ghost: true, age: s.turn - r.seen })) : [];
 }
 
 // Quân u có lọt vào mắt phe f không (f thấy được ít nhất là bóng)
