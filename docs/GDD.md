@@ -180,6 +180,16 @@ Orc **mạnh hơn nhưng không kỷ luật** **[CHỐT]**, thể hiện bằng:
 - **Đo (AI đấu AI, 60 ván cỡ nhỏ):** giao tranh người từ ~43% xuống ~38% (goblin là lợi thế thêm cho Orc); phục kích hiếm trong ván AI đấu AI (AI phe người ít đi vào rừng), sẽ khác khi người chơi tự đi. **[MỞ]** có cần bù cho phe người không.
 - **Sprite:** pixel art sinh bằng Higgsfield theo mẫu bộ sprite cũ (`tools/prep_alpha_sprite.py --pixel 100`).
 
+### Goblin hoang (trận âm binh) **[CHỐT ý; số liệu MẶC ĐỊNH]**
+
+- Mày: "goblin tấn công cả người, âm binh, bất cứ ai vào rừng của nó, chỉ ally với orc sống"; "tỉ lệ giống thú nguy hiểm, không phải lúc nào cũng gặp".
+- Trận không có Orc: mỗi chỗ goblin (cùng cách đặt như trận Orc) chỉ có toán với xác suất **40%** (`GOBLIN.wildChance`, gieo theo bản đồ nên tái lập được). Đo 40 bản đồ nhỏ: trung bình 0,9 toán/ván, 14/40 ván không có toán nào.
+- **Lãnh địa** = cụm rừng (nối 4 hướng) chứa hang; hang bị đốt trụi thì lấy cụm rừng nó đang đứng. Goblin chỉ đi trong rừng nhà.
+- **Pha goblin:** cuối lượt của *mỗi* phe, từng toán đánh một quân của phe đó đang đứng trong rừng nhà (hoặc kề nó); đang ẩn thì là đòn phục kích (không bị đánh trả). Goblin biết rõ rừng nhà (sương mù không che với nó). Không ai trong rừng thì ẩn lại. Phục kích khi đi ngang qua vẫn như cũ, áp cho cả âm binh.
+- Không theo phe nào: không tính vào thắng thua, không tiếp quân cho ai. Quân người bị goblin giết vẫn để lại mộ (âm binh hưởng).
+- AI hai phe coi goblin hoang là chướng ngại, không phải mục tiêu (không đi săn nó).
+- Kỹ thuật: vẫn mang `faction: 'orc'` (dùng lại chỉ số, sprite, sĩ khí của goblin), đánh dấu bằng `lair`; `isWild(s, u)` = goblin mà phe Orc không có trong trận.
+
 ### Âm binh (phe đối thủ thứ hai) **[CHỐT ý; số liệu MẶC ĐỊNH]**
 
 - **Mỗi trận vẫn hai phe**; ở một số màn âm binh thay Orc làm đối thủ của người. Menu có ô "Đối thủ: Orc / Âm binh" (áp dụng cho map mới). Engine giờ có `s.sides` thay cho cặp người–Orc cứng. **[CHỐT]**
@@ -304,6 +314,7 @@ Ngẫu nhiên có chủ đích ("có may rủi thì thực hơn"), nhưng gieo t
 - Orc (trừ goblin) trong rừng mà chưa lộ: chỉ thấy bóng đen chung một dáng + huy hiệu "?"; xem trước đòn đánh không ra số. Lộ khi đi, ra đòn hoặc bị đánh; hết lộ đầu lượt sau của nó. Goblin vẫn tàng hình hẳn: phục kích là đặc sản của goblin.
 - Ra đòn từ ngoài tầm nhìn của địch (vd cung thủ trên đồi) thì bị định vị tới đầu lượt sau của nó.
 - AI chơi công bằng: chỉ tính quân nó thấy; chưa thấy ai thì tiến về thành địch (bên giữ thành ở nhà, bên săn tướng chặn ở đích).
+- **Trí nhớ** (`s.memory`, `FOG.memoryTurns`): AI nhớ chỗ quân địch nó thấy lần cuối trong 3 lượt (người chơi cũng tự nhớ được). Bóng ma đó dùng để chọn đường và tính mức đe doạ, càng cũ càng kém tin (−25%/lượt). Quên khi quân đó chết, khi nhìn lại chỗ cũ không còn ai, hoặc quá 3 lượt. Có trong bản lưu.
 
 Đo (AI chiến thuật đấu nhau, 30 ván/ô, bản nhỏ): thời tiết và hỏa công gần như trung tính (±1–2 ván). Sương mù làm **Cố thủ vs Orc** khó hẳn cho người giữ thành: người thắng 22/30 → 13/30. Thử tách: chỉ che quân Orc thì không đổi (23/30); chỉ che quân người thì 13/30, nghĩa là AI Orc đánh **tốt hơn** khi không thấy quân người, vì lao thẳng vào thành thay vì bị quân người dụ ra. **[MỞ]** AI bên tấn công thành nên ưu tiên thành hơn kể cả khi thấy địch.
 
@@ -347,6 +358,14 @@ AI chiến thuật có áp lực tiến công tăng dần theo lượt để kh�
 - **Cố thủ, bên đánh:** thành là đích chính; quân địch thấy được chỉ là đích phụ (coi như xa hơn 3 ô).
 - Đo (AI đấu AI, âm binh thắng, trước → sau): giao tranh nhỏ 57% → 72%, cố thủ nhỏ 17–20% → 35%, giao tranh vừa ~48% → 55%, cố thủ vừa → 27%. Bản vừa trước đó phần lớn trận người thắng là nhờ hạ necromancer (15/16); có hộ vệ thì giảm. Orc không đổi (chỉ phần bám thành áp cho cả hai).
 - **[MỞ]** AI đấu AI không đo được người chơi thật khai thác AI thế nào. Cần mày chơi thử lại.
+
+### Tư thế âm binh: ý chí của necromancer **[ĐANG THỬ, MẶC ĐỊNH TẮT]**
+
+Mày: âm binh tuỳ cơ ứng biến theo người chơi (thăm dò, ép khi trội, lùi khi yếu, lùi giữ necromancer, chặn cầu siêu để farm lính), khác lối của Orc lẫn người. Âm binh như con rối, theo ý necromancer: thắng hoặc giữ mạng. Ít quân mà hết mộ thì co cụm giữ necromancer.
+
+- Code: `undeadMind` trong `src/ai.js`, bật bằng `AI_FLAGS.undeadMind` (đo: `MIND=1 node tools/simulate.mjs ...`). Đầu mỗi lượt chọn một tư thế cho cả đạo: **thăm dò** (sương mù, không biết quân người ở đâu: con rẻ nhất đi dò, cả đạo nhích theo), **ép** (trội rõ: gom quân ngoài tầm đe doạ, đủ 60% quân áp sát thì cùng lao), **giữ mộ** (không còn trội, còn mộ: đứng kề mộ chặn cầu siêu), **co cụm** (yếu và hết mộ, hoặc necromancer lâm nguy: co về che necromancer, lui về thành). Tư thế giữ tối thiểu 2 lượt; ngưỡng vào ép (1,3) cao hơn ngưỡng giữ ép (1,1). Sức mạnh quân người tính cả phần thủ địa hình / trại / đội hình. Giết quân sống được cộng thêm điểm (sẽ thành mộ), đánh quân đang đứng cạnh mộ được ưu tiên.
+- Đo thêm bot "rùa" cho phe người (`humanLevel = turtle`: bám thành, chờ địch tới) để mô phỏng lối mày thắng âm binh. Cỡ vừa, 40 ván, có sương mù, âm binh thắng (tắt → bật): đấu bot rùa 7 → 10 (necromancer bị hạ 29 → 15, ván dài 26 → 38 lượt); đấu bot chiến thuật 21 → ~15 (thua vì bị chiếm thành nhiều hơn khi co cụm). Cỡ nhỏ đấu rùa 14 → 10 (+8 hoà).
+- **Vấn đề gốc tìm ra:** âm binh chậm hơn người 1 ô, kỵ binh người đi xa nhất. Đứng ngoài tầm đe doạ của người thì cũng không với tới người trong một lượt, nên "gom rồi cùng lao" vẫn là bước vào tầm và bị đánh trước. Bot rùa thắng bằng cách dồn hai đòn hạ một squad mỗi lượt. Chưa giải được bằng chỉnh số; cần quyết định thiết kế (xem HANDOFF).
 
 ## 12. Giao diện và điều khiển
 
@@ -475,7 +494,7 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 | Font | Sans-serif | Handwriting → sans |
 | Asset công trình / cây / núi | Dùng Kenney Cartography Pack thay sprite công trình cũ (nét dày hơn quân) | Mày đề xuất, sau khi xem gói gốc |
 | Mây trôi | Dùng bộ mây doodle của tác giả (đục 75%, bay cao), bóng là oval xám mép mềm, đục 28%, nhỏ hơn mây, trên nền; trôi chậm theo hướng gió, mờ dần ở mép bản đồ rồi quay lại; có nút tắt trong menu (mặc định bật). Tốn khoảng 10 lần vẽ mỗi giây. Giấy phép bộ mây chưa rõ | CHỐT |
-| Idle thở | Thử và bỏ vì nhìn lạ; còn nút trong menu, mặc định tắt | Mày quyết |
+| Idle thở | Thử và bỏ vì nhìn lạ; còn nút trong menu. Sau đó mày đổi: bật mặc định (xem dòng "Quân thở") | Mày quyết |
 | Hosting | Một file HTML duy nhất (Artifact trên iOS không tải được file phụ) | Lỗi hạ tầng, không phải thiết kế |
 | Art 3D isometric | **Hoãn.** Đã xem tham chiếu (đảo cỏ vẽ tay, pixel iso 32×32, tileset OpenGameArt, khối voxel) và cân nhắc Blender + Tripo, rồi quyết định tập trung gameplay; giữ doodle | Mày đổi ý; bản doodle cuối là commit `68b7ea0` và có một Artifact đóng băng |
 | Đánh giá gameplay | Giống nhất Wesnoth, rồi Advance Wars / Wargroove; điểm yếu: mục tiêu chiếm thành vô nghĩa, AI dễ đoán, ít khác biệt | Dev đánh giá theo mô phỏng, mày xác nhận AI đoán được |
@@ -505,3 +524,6 @@ Ván trung bình: ~16 lượt (tactical vs tactical), ~10 lượt (có AI dễ).
 | Thời tiết | Mây đen, mưa ngẫu nhiên, đồng bằng thành đầm lầy tạm; kỵ binh vào được đầm lầy | Mày đổi quan điểm: chấp nhận may rủi |
 | Hỏa công | Chỉ cung thủ người; tên lửa = phát bắn + lửa; hồi 3 lượt | Mày chọn (a) và đề xuất cooldown |
 | Sương mù | Bóng đen + "?" cho Orc trong rừng; goblin vẫn tàng hình | Mày đề xuất bóng đen; tách hai tầng để giữ phục kích |
+| Goblin hoang | Trận âm binh: ~40% cụm rừng lớn có toán goblin, đánh bất kỳ ai vào rừng của nó, chỉ là đồng minh của Orc sống | Mày chốt ý; tỉ lệ và pha đánh do dev đặt |
+| Trí nhớ AI | AI nhớ quân địch thấy lần cuối 3 lượt dưới sương mù | Mày đồng ý |
+| Quân thở | Hoạt ảnh đứng yên bật mặc định | Mày yêu cầu |
