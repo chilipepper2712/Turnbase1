@@ -124,6 +124,7 @@ const POSTURE = {
   gatherMax: 2,                    // gom quân tối đa chừng này lượt rồi cũng lao (không để bế tắc)
   unseenValue: 1.6,                // quân người không thấy, không nhớ: ước mỗi squad chừng này giá trị
   entrench: 1.5,                   // mỗi 10% phòng thủ vượt mức gốc (địa hình, trại, đội hình) làm quân đó nặng thêm 15%
+  fleeUnits: 2,                    // còn chừng này squad (không kể necromancer) trở xuống thì necromancer bỏ thành mà chạy
 };
 const MIND = {
   probe: { adv: 0.5, scoutAdv: 2.2, scoutThreat: 0.2 },
@@ -131,6 +132,8 @@ const MIND = {
   charge: { threat: 0.2, adv: 1.9 },
   graves: { adv: 1.0, near: 1.6, deny: 3 },
   guard: { adv: 0.15, ring: 2.5, necroThreat: 2 },
+  standoff: { adv: 1.0, threat: 1.6, edge: 4, exposed: 3, dug: 30 },   // dug: % thủ vượt mức gốc coi là "thủ chắc hẳn"
+  flee: { away: 1.2, threat: 3 },
   trade: 0.5,                      // giết quân người (để lại mộ dậy được) đáng thêm chừng này phần giá trị của nó
   wild: 0.3,                       // đánh goblin hoang: chẳng được gì, chỉ đánh khi tiện
 };
@@ -151,24 +154,29 @@ export function undeadMind(s, f) {
   const foesAll = enemiesOf(s, f).filter((e) => s.sides.includes(e.faction) && !e.static && !isAux(e));
   // AI biết quân số ban đầu của địch và đếm được số đã chết: phần không thấy, không nhớ thì ước theo trung bình
   const unseen = Math.max(0, foesAll.length - known.length);
-  const ratio = powerOf(mine) / Math.max(0.5, entrenchedPower(s, known) + unseen * POSTURE.unseenValue);
+  const foePower = (p) => Math.max(0.5, p + unseen * POSTURE.unseenValue);
+  const raw = powerOf(mine) / foePower(powerOf(known));                // quân số thuần
+  const ratio = powerOf(mine) / foePower(entrenchedPower(s, known));   // tính cả thế thủ của địch
   const pending = (s.graves || []).filter((g) => g.faction !== f);
   const danger = necro ? Math.max(0, Math.min(1, (threatAt(s, necro, necro.x, necro.y, null) - NECRO_GUARD.calm) / 4)) : 0;
   const fresh = known.some((e) => !e.ghost || e.age < 1);
-  // cố thủ, âm binh là bên đánh: có hạn lượt, không có đường lùi (chỉ co cụm khi necromancer lâm nguy thật)
+  // cố thủ, âm binh là bên đánh: có hạn lượt, không có đường lùi
   const mustAttack = s.mission.type === 'hold' && s.mission.defender !== f;
-  const attack = fresh || !s.fog ? 'press' : 'probe';
   const strong = ratio >= POSTURE.pressAt || (old && old.posture === 'press' && ratio >= POSTURE.pressKeep);
-  // mạnh thì thắng (đánh tan quân đang doạ necromancer là cách che tốt nhất), yếu thì giữ mạng
+  const weak = raw < POSTURE.weakAt;
+  // Thắng hoặc giữ mạng. Trội cả khi tính thế thủ của địch thì ép. Không trội vì địch thủ chắc thì đứng sát mép tầm
+  // của nó mà chờ (standoff): ai bước ra đánh thì cả đạo đánh trả; ngồi cả hai thì thôi. Yếu thật về quân số thì
+  // lùi giữ mộ / co cụm. Gần hết quân thì necromancer bỏ thành mà chạy (flee).
   let want;
-  if (necro && danger >= 0.95 && !strong) want = 'guard';
-  else if (mustAttack) want = attack;
-  else if (strong) want = attack;
-  else if (ratio < POSTURE.weakAt) want = pending.length ? 'graves' : 'guard';
-  else want = pending.length ? 'graves' : necro && danger >= POSTURE.guardDanger ? 'guard' : attack;
+  if (necro && !mustAttack && mine.length <= POSTURE.fleeUnits) want = 'flee';
+  else if (necro && danger >= 0.95 && !strong) want = 'guard';
+  else if (mustAttack || strong) want = fresh || !s.fog ? 'press' : 'probe';
+  else if (weak) want = pending.length ? 'graves' : 'guard';
+  else if (!fresh && s.fog) want = 'probe';
+  else want = 'standoff';
   let posture = want, since = s.turn;
   if (old && old.posture !== want) {
-    const urgent = want === 'guard' && danger >= 0.95;
+    const urgent = want === 'flee' || (want === 'guard' && danger >= 0.95);
     const discovered = old.posture === 'probe' && fresh;              // dò ra rồi thì thôi dò
     if (!urgent && !discovered && s.turn - old.since < POSTURE.minTurns) { posture = old.posture; since = old.since; }
   } else if (old) since = old.since;
@@ -187,7 +195,7 @@ export function undeadMind(s, f) {
     scout = old && old.scout && mine.some((u) => u.id === old.scout) ? old.scout
       : mine.slice().sort((a, b) => valueOf(a) - valueOf(b) || statsOf(b).move - statsOf(a).move || a.id - b.id)[0]?.id ?? null;
   }
-  const m = { turn: s.turn, posture, since, ratio, charge, gatherSince, scout, danger };
+  const m = { turn: s.turn, posture, since, ratio, raw, charge, gatherSince, scout, danger };
   s.aiMind[f] = m;
   return m;
 }
@@ -226,8 +234,10 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
     } else if (mind.posture === 'press') {
       if (mind.charge) { advMul = MIND.charge.adv; thrMul = MIND.charge.threat; } else { advMul = MIND.gather.adv; thrMul = MIND.gather.threat; gather = true; }
     } else if (mind.posture === 'graves') { advMul = MIND.graves.adv; thrMul = 0.8; }
-    else if (mind.posture === 'guard') { advMul = MIND.guard.adv; thrMul = 0.6; }
+    else if (mind.posture === 'guard' || mind.posture === 'flee') { advMul = MIND.guard.adv; thrMul = 0.6; }
+    else if (mind.posture === 'standoff') { advMul = MIND.standoff.adv; thrMul = MIND.standoff.threat; }
   } else if (mind && u.role === 'necromancer' && mind.posture === 'guard') { advMul = 0; thrMul = MIND.guard.necroThreat; }
+  else if (mind && u.role === 'necromancer' && mind.posture === 'flee') { advMul = 0; thrMul = MIND.flee.threat; }
   if (target) {
     const pv = previewAttack(s, u, target, x, y, node.cost);
     const wild = isWild(s, target) ? MIND.wild : 1;          // goblin hoang: đánh chẳng được gì
@@ -237,6 +247,11 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
     // âm binh: giết quân sống là có thêm lính (mộ), nên đổi quân ngang ngửa vẫn lời
     if (mind && pv.kills && wild === 1 && !target.static && target.faction !== 'undead' && terrainId(s, target.x, target.y) !== 'river') {
       score += valueOf(target) * 10 * MIND.trade * (graveInRange(s, target) ? 1 : 0.6);
+    }
+    // đứng chờ: chỉ đánh quân đã bước ra khỏi thế thủ; quân đang thủ chắc thì để yên
+    if (mind && !commander && mind.posture === 'standoff' && !isWild(s, target)) {
+      const dug = Math.min(1, Math.max(0, defensePct(s, target, target.x, target.y) - statsOf(target).def) / MIND.standoff.dug);
+      score += MIND.standoff.exposed * (1 - 2 * dug);
     }
     // chặn cầu siêu: quân người đang đứng trên / cạnh mộ là mục tiêu ưu tiên (đánh cho tan hoặc bỏ chạy thì không chôn được)
     if (mind && mind.posture !== 'guard' && s.graves && s.graves.length) {
@@ -254,11 +269,14 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
     score -= (th / CONFIG.maxStrength) * UNIT_VALUE[u.role] * 10 * w.threat * (commander ? 2.2 : 1) * thrMul;
     // gom quân: không bước một mình vào tầm đe doạ (chờ cả đạo cùng vào một lượt)
     if (gather && !target && th >= 1 && field[y * s.map.w + x] < field[u.y * s.map.w + u.x]) score -= 3;
+    // đứng chờ: sát mép tầm đe doạ của địch nhưng không bước vào (muốn đánh ta thì phải bước ra)
+    if (mind && !commander && mind.posture === 'standoff' && !target && th >= 1) score -= MIND.standoff.edge + th;
   }
   if (w.form && FACTIONS[u.faction].formation) score += adjacentAllies(s, u, x, y) * w.form * 3;
   // tiến về phía mục tiêu
   const here = field[u.y * s.map.w + u.x], there = field[y * s.map.w + x];
-  let adv = here - there;
+  // ô ngoài trường (không tới được đích từ đó): Infinity − Infinity = NaN sẽ khoá cả lượt AI vào phương án lỗi
+  let adv = isFinite(here) && isFinite(there) ? here - there : isFinite(there) ? 2 : isFinite(here) ? -2 : 0;
   if (statsOf(u).range[1] > 1 && w.rangedKeep) {
     // cung thủ không lao vào cận chiến khi chưa bắn được
     adv *= target ? 1 : 0.5;
@@ -290,7 +308,7 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
     score += near * MIND.graves.near;
   }
   // co cụm: vòng quanh necromancer
-  if (mind && !commander && mind.posture === 'guard' && ctx.necro) {
+  if (mind && !commander && (mind.posture === 'guard' || mind.posture === 'flee') && ctx.necro) {
     const d = Math.abs(x - ctx.necro.x) + Math.abs(y - ctx.necro.y);
     score += Math.max(0, 3 - d) * MIND.guard.ring;
   }
@@ -306,7 +324,13 @@ function scoreOption(s, u, node, target, w, field, ownHold, enemyHold, danger, c
   // phòng thủ thành nhà khi bị đe doạ (âm binh đang thủ / giữ mộ thì càng phải giữ thành: mất thành là thua)
   if (w.guard && danger) {
     const d = Math.abs(x - ownHold.x) + Math.abs(y - ownHold.y);
-    if (d <= 3) score += w.guard * 4 * (mind && mind.posture !== 'press' && mind.posture !== 'probe' ? 3 : 1);
+    if (d <= 3 && !(mind && mind.posture === 'flee')) score += w.guard * 4 * (mind && (mind.posture === 'guard' || mind.posture === 'graves' || mind.posture === 'standoff') ? 3 : 1);
+  }
+  // bỏ chạy: necromancer bỏ mặc thành, chạy xa khỏi quân địch nó biết
+  if (mind && u.role === 'necromancer' && mind.posture === 'flee') {
+    let near = Infinity;
+    for (const e of foesSeen(s, u.faction)) if (!e.static) near = Math.min(near, Math.abs(e.x - x) + Math.abs(e.y - y));
+    if (isFinite(near)) score += Math.min(near, 12) * MIND.flee.away;
   }
   // co cụm: necromancer lui về thành nhà (cả đạo co về theo nó)
   if (mind && u.role === 'necromancer' && mind.posture === 'guard' && ownHold) {

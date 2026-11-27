@@ -365,6 +365,21 @@ Mày: âm binh tuỳ cơ ứng biến theo người chơi (thăm dò, ép khi tr
 
 - Code: `undeadMind` trong `src/ai.js`, bật bằng `AI_FLAGS.undeadMind` (đo: `MIND=1 node tools/simulate.mjs ...`). Đầu mỗi lượt chọn một tư thế cho cả đạo: **thăm dò** (sương mù, không biết quân người ở đâu: con rẻ nhất đi dò, cả đạo nhích theo), **ép** (trội rõ: gom quân ngoài tầm đe doạ, đủ 60% quân áp sát thì cùng lao), **giữ mộ** (không còn trội, còn mộ: đứng kề mộ chặn cầu siêu), **co cụm** (yếu và hết mộ, hoặc necromancer lâm nguy: co về che necromancer, lui về thành). Tư thế giữ tối thiểu 2 lượt; ngưỡng vào ép (1,3) cao hơn ngưỡng giữ ép (1,1). Sức mạnh quân người tính cả phần thủ địa hình / trại / đội hình. Giết quân sống được cộng thêm điểm (sẽ thành mộ), đánh quân đang đứng cạnh mộ được ưu tiên.
 - Đo thêm bot "rùa" cho phe người (`humanLevel = turtle`: bám thành, chờ địch tới) để mô phỏng lối mày thắng âm binh. Cỡ vừa, 40 ván, có sương mù, âm binh thắng (tắt → bật): đấu bot rùa 7 → 10 (necromancer bị hạ 29 → 15, ván dài 26 → 38 lượt); đấu bot chiến thuật 21 → ~15 (thua vì bị chiếm thành nhiều hơn khi co cụm). Cỡ nhỏ đấu rùa 14 → 10 (+8 hoà).
+- **Đổi theo hướng (a) mày chốt (2026-11-27):** thêm tư thế **đứng chờ** (standoff): không trội khi tính cả thế thủ của địch thì đứng sát mép tầm đe doạ, không bước vào; chỉ đánh quân đã ra khỏi thế thủ (thủ vượt mức gốc < 30%), quân đang thủ chắc thì để yên. Yếu thật về quân số (không tính thế thủ) mới lùi giữ mộ / co cụm. **Bỏ chạy:** còn ≤ 2 squad thì necromancer bỏ thành, chạy xa quân địch; quân còn lại che nó.
+- Sửa lỗi cũ (cả AI Orc): ô ngoài trường khoảng cách làm điểm thành NaN, khoá lượt AI vào phương án đứng yên.
+- **Đo sát thương (cỡ nhỏ, 40 ván, sương mù, âm binh thắng):**
+
+| Sát thương | Squad thêm | Tư thế | đấu rùa | đấu chiến thuật |
+|---|---|---|---|---|
+| 82% (hiện tại) | 2 | tắt | 14 | 26 |
+| 82% | 2 | bật | 12 (+5 hoà) | 23 |
+| 90% | 2 | bật | 18 | 30 |
+| 100% | 2 | tắt | 23 | 37 |
+| 100% | 2 | bật | 23 | 34 |
+| 100% | 1 | bật | 18 | 27 |
+| 100% | 0 | bật | 13 | 16 |
+
+  Sát thương là cần gạt độ khó chính; tư thế đổi *cách* đánh (necromancer chết ít hơn hẳn, ván dài hơn, bị chiếm thành nhiều hơn khi bỏ chạy) chứ không đổi tỉ lệ thắng.
 - **Vấn đề gốc tìm ra:** âm binh chậm hơn người 1 ô, kỵ binh người đi xa nhất. Đứng ngoài tầm đe doạ của người thì cũng không với tới người trong một lượt, nên "gom rồi cùng lao" vẫn là bước vào tầm và bị đánh trước. Bot rùa thắng bằng cách dồn hai đòn hạ một squad mỗi lượt. Chưa giải được bằng chỉnh số; cần quyết định thiết kế (xem HANDOFF).
 
 ## 12. Giao diện và điều khiển

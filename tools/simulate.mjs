@@ -1,8 +1,10 @@
 // Chạy AI vs AI headless để kiểm tra game kết thúc và đo cân bằng sơ bộ.
 // node tools/simulate.mjs [số seed] [enemyLevel] [humanLevel] [small|medium|large] [orc|undead] [skirmish|hold|destroy|escort]
-// humanLevel 'turtle': phe người thủ chắc quanh thành (lối chơi rùa). Env: NOFOG=1, NOWEATHER=1, MIND=1 (bật tư thế âm binh).
+// humanLevel 'turtle': phe người thủ chắc quanh thành (lối chơi rùa). Env: NOFOG=1, NOWEATHER=1, MIND=1 (bật tư thế âm binh), ATKMUL=1 (hệ số sát thương âm binh), EXTRA=1 (số squad âm binh đông hơn).
 import { generateMap } from '../src/mapgen.js';
-import { MAP_SIZES } from '../src/config.js';
+import { MAP_SIZES, UNDEAD } from '../src/config.js';
+if (process.env.ATKMUL) UNDEAD.atkMul = +process.env.ATKMUL;   // thử hệ số sát thương âm binh
+if (process.env.EXTRA) UNDEAD.extra = +process.env.EXTRA;      // thử số squad âm binh đông hơn
 import { endTurn } from '../src/rules.js';
 import { createMissionState } from '../src/missions.js';
 import { planNextAction, AI_FLAGS } from '../src/ai.js';
